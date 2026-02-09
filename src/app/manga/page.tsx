@@ -27,7 +27,7 @@ const toMillis = (value: unknown): number | null => {
     return null;
 };
 
-export default function MoviesPage() {
+export default function MangaPage() {
     const { user } = useAuth();
     const uid = user?.uid || null;
     const [entriesState, setEntriesState] = useState<{ uid: string | null; entries: EntryDoc[] }>({ uid: null, entries: [] });
@@ -68,9 +68,9 @@ export default function MoviesPage() {
         return () => unsubscribe();
     }, [uid]);
 
-    const movieEntries = useMemo(
+    const mangaEntries = useMemo(
         () =>
-            (uid && entriesState.uid === uid ? entriesState.entries : []).filter((entry) => entry.mediaType === "movie"),
+            (uid && entriesState.uid === uid ? entriesState.entries : []).filter((entry) => entry.mediaType === "manga"),
         [entriesState, uid]
     );
     const visibleEntriesError = uid && entriesError?.uid === uid ? entriesError.message : null;
@@ -78,8 +78,8 @@ export default function MoviesPage() {
     return (
         <div className="container mx-auto px-4 md:px-6 py-12 space-y-8">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Movies</h1>
-                <p className="text-neutral-400">Your logged movies.</p>
+                <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Manga</h1>
+                <p className="text-neutral-400">Your logged manga.</p>
             </div>
 
             {!uid ? (
@@ -87,10 +87,10 @@ export default function MoviesPage() {
             ) : visibleEntriesError ? (
                 <div className="text-sm text-red-400">{visibleEntriesError}</div>
             ) : (
-                <MediaSection items={movieEntries} getGenresThemes={(entry) => entry.genresThemes} title="Results">
+                <MediaSection items={mangaEntries} getGenresThemes={(entry) => entry.genresThemes} title="Results">
                     {(filteredEntries) =>
                         filteredEntries.length === 0 ? (
-                            <div className="text-sm text-neutral-400">No movies found.</div>
+                            <div className="text-sm text-neutral-400">No manga found.</div>
                         ) : (
                             <MediaGrid
                                 items={filteredEntries.map((entry) => ({
@@ -98,7 +98,7 @@ export default function MoviesPage() {
                                     title: entry.title,
                                     image: entry.image,
                                     year: entry.year || undefined,
-                                    type: "movie",
+                                    type: "manga",
                                 }))}
                             />
                         )

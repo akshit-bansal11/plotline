@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 import { NavLinks } from "./nav-links";
 import { MobileMenu } from "./mobile-menu";
 import { AuthModal } from "@/components/auth/auth-modal";
-import { SearchModal } from "@/components/search/search-modal";
+import { SearchModal, type SearchResult } from "@/components/search/search-modal";
+import { LogEntryModal, type LoggableMedia } from "@/components/entry/log-entry-modal";
+import { ListsModal } from "@/components/lists/lists-modal";
 import { useAuth } from "@/context/auth-context";
 
 export function Navbar() {
@@ -18,8 +20,33 @@ export function Navbar() {
     const [lastScrollY, setLastScrollY] = useState(0);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isLogOpen, setIsLogOpen] = useState(false);
+    const [isListsOpen, setIsListsOpen] = useState(false);
+    const [pendingItem, setPendingItem] = useState<LoggableMedia | null>(null);
     const { user, signOut } = useAuth();
     const userLabel = user?.displayName || user?.email;
+
+    const toLoggable = (item: SearchResult): LoggableMedia => item;
+
+    const handleLogFromSearch = (item: SearchResult) => {
+        if (!user) {
+            setIsAuthOpen(true);
+            return;
+        }
+        setPendingItem(toLoggable(item));
+        setIsSearchOpen(false);
+        setIsLogOpen(true);
+    };
+
+    const handleAddToListFromSearch = (item: SearchResult) => {
+        if (!user) {
+            setIsAuthOpen(true);
+            return;
+        }
+        setPendingItem(toLoggable(item));
+        setIsSearchOpen(false);
+        setIsListsOpen(true);
+    };
 
     useMotionValueEvent(scrollY, "change", (latest) => {
         const previous = lastScrollY;
@@ -111,7 +138,28 @@ export function Navbar() {
             </motion.header>
 
             <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-            <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                onLog={handleLogFromSearch}
+                onAddToList={handleAddToListFromSearch}
+            />
+            <LogEntryModal
+                isOpen={isLogOpen}
+                onClose={() => {
+                    setIsLogOpen(false);
+                    setPendingItem(null);
+                }}
+                initialMedia={pendingItem}
+            />
+            <ListsModal
+                isOpen={isListsOpen}
+                onClose={() => {
+                    setIsListsOpen(false);
+                    setPendingItem(null);
+                }}
+                initialItem={pendingItem}
+            />
         </>
     );
 }

@@ -21,6 +21,107 @@ service cloud.firestore {
         && request.resource.data.displayName.size() <= 80
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
+
+      match /entries/{entryId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly([
+            "title",
+            "mediaType",
+            "status",
+            "rating",
+            "lengthMinutes",
+            "episodeCount",
+            "chapterCount",
+            "genresThemes",
+            "notes",
+            "source",
+            "externalId",
+            "image",
+            "year",
+            "completedAt",
+            "completionDateUnknown",
+            "createdAt",
+            "updatedAt"
+          ])
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 160
+          && request.resource.data.mediaType in ["movie", "series", "anime", "anime_movie", "manga", "game"]
+          && request.resource.data.status in ["watching", "completed", "plan_to_watch", "dropped"]
+          && (request.resource.data.rating == null || (request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 10))
+          && (request.resource.data.lengthMinutes == null || (request.resource.data.lengthMinutes is int && request.resource.data.lengthMinutes > 0))
+          && (request.resource.data.episodeCount == null || (request.resource.data.episodeCount is int && request.resource.data.episodeCount > 0))
+          && (request.resource.data.chapterCount == null || (request.resource.data.chapterCount is int && request.resource.data.chapterCount > 0))
+          && (
+            request.resource.data.genresThemes == null
+            || (
+              request.resource.data.genresThemes is list
+              && request.resource.data.genresThemes.size() <= 50
+              && (request.resource.data.genresThemes.size() < 1 || (request.resource.data.genresThemes[0] is string && request.resource.data.genresThemes[0].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 2 || (request.resource.data.genresThemes[1] is string && request.resource.data.genresThemes[1].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 3 || (request.resource.data.genresThemes[2] is string && request.resource.data.genresThemes[2].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 4 || (request.resource.data.genresThemes[3] is string && request.resource.data.genresThemes[3].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 5 || (request.resource.data.genresThemes[4] is string && request.resource.data.genresThemes[4].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 6 || (request.resource.data.genresThemes[5] is string && request.resource.data.genresThemes[5].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 7 || (request.resource.data.genresThemes[6] is string && request.resource.data.genresThemes[6].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 8 || (request.resource.data.genresThemes[7] is string && request.resource.data.genresThemes[7].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 9 || (request.resource.data.genresThemes[8] is string && request.resource.data.genresThemes[8].matches("^[a-z_]{1,40}$")))
+              && (request.resource.data.genresThemes.size() < 10 || (request.resource.data.genresThemes[9] is string && request.resource.data.genresThemes[9].matches("^[a-z_]{1,40}$")))
+            )
+          )
+          && request.resource.data.notes is string
+          && (request.resource.data.source == null || request.resource.data.source in ["tmdb", "omdb", "mal"])
+          && (request.resource.data.externalId == null || request.resource.data.externalId is string)
+          && (request.resource.data.image == null || request.resource.data.image is string)
+          && (request.resource.data.year == null || request.resource.data.year is string)
+          && (request.resource.data.completedAt == null || request.resource.data.completedAt is timestamp)
+          && request.resource.data.completionDateUnknown is bool
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /lists/{listId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(["name", "description", "createdAt", "updatedAt"])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 280
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+
+        match /items/{itemId} {
+          allow read: if request.auth != null && request.auth.uid == userId;
+          allow create, update: if request.auth != null
+            && request.auth.uid == userId
+            && request.resource.data.keys().hasOnly([
+              "title",
+              "mediaType",
+              "source",
+              "externalId",
+              "image",
+              "year",
+              "addedAt"
+            ])
+            && request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 160
+            && request.resource.data.mediaType in ["movie", "series", "anime", "manga", "game"]
+            && request.resource.data.source in ["tmdb", "omdb", "mal"]
+            && request.resource.data.externalId is string
+            && (request.resource.data.image == null || request.resource.data.image is string)
+            && (request.resource.data.year == null || request.resource.data.year is string)
+            && request.resource.data.addedAt is timestamp;
+          allow delete: if request.auth != null && request.auth.uid == userId;
+        }
+      }
     }
   }
 }

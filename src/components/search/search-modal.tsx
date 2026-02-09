@@ -6,9 +6,9 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 
 type SourceKey = "tmdb" | "omdb" | "mal";
-type MediaType = "movie" | "series" | "anime";
+type MediaType = "movie" | "series" | "anime" | "manga" | "game";
 
-interface SearchResult {
+export type SearchResult = {
     id: string | number;
     title: string;
     image: string | null;
@@ -17,7 +17,7 @@ interface SearchResult {
     source: SourceKey;
     overview?: string;
     rating?: number | null;
-}
+};
 
 interface SearchResponse {
     results: SearchResult[];
@@ -28,6 +28,8 @@ interface SearchResponse {
 interface SearchModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onLog?: (item: SearchResult) => void;
+    onAddToList?: (item: SearchResult) => void;
 }
 
 const sourceLabels: Record<SourceKey, string> = {
@@ -40,15 +42,16 @@ const typeLabels: Record<MediaType, string> = {
     movie: "Movies",
     series: "Series",
     anime: "Anime",
+    manga: "Manga",
+    game: "Game",
 };
 
-export function SearchModal({ isOpen, onClose }: SearchModalProps) {
+export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModalProps) {
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState<SearchResult[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
-    const [selectedSources, setSelectedSources] = useState<SourceKey[]>(["tmdb", "omdb", "mal"]);
-    const [selectedTypes, setSelectedTypes] = useState<MediaType[]>(["movie", "series", "anime"]);
+    const [selectedType, setSelectedType] = useState<MediaType>("movie");
     const cacheRef = useRef<Map<string, { timestamp: number; results: SearchResult[]; errors: string[] }>>(new Map());
     const abortRef = useRef<AbortController | null>(null);
 
@@ -60,6 +63,46 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         }
     }, [isOpen]);
 
+    const runSearch = async (queryValue: string, typeValue: MediaType) => {
+        const key = `${queryValue.trim().toLowerCase()}|${typeValue}`;
+        const cached = cacheRef.current.get(key);
+        const now = Date.now();
+        if (cached && now - cached.timestamp < 1000 * 60 * 5) {
+            setResults(cached.results);
+            setErrors(cached.errors);
+            return;
+        }
+
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setLoading(true);
+        setErrors([]);
+
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(queryValue.trim())}&type=${typeValue}`, {
+                signal: controller.signal,
+            });
+            if (!res.ok) {
+                throw new Error(res.status === 429 ? "Search is rate limited. Try again shortly." : "Search failed.");
+            }
+            const data = (await res.json()) as SearchResponse;
+            setResults(data.results || []);
+            setErrors(data.errors || []);
+            cacheRef.current.set(key, {
+                timestamp: now,
+                results: data.results || [],
+                errors: data.errors || [],
+            });
+        } catch (err) {
+            if (err instanceof Error && err.name === "AbortError") return;
+            setResults([]);
+            setErrors([err instanceof Error ? err.message : "Search failed."]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (!isOpen) return;
         if (query.trim().length < 2) {
@@ -69,64 +112,15 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         }
 
         const handle = setTimeout(async () => {
-            const sources = selectedSources.join(",");
-            const key = `${query.trim().toLowerCase()}|${sources}`;
-            const cached = cacheRef.current.get(key);
-            const now = Date.now();
-            if (cached && now - cached.timestamp < 1000 * 60 * 5) {
-                setResults(cached.results);
-                setErrors(cached.errors);
-                return;
-            }
-
-            abortRef.current?.abort();
-            const controller = new AbortController();
-            abortRef.current = controller;
-            setLoading(true);
-            setErrors([]);
-
-            try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}&sources=${sources}`, {
-                    signal: controller.signal,
-                });
-                if (!res.ok) {
-                    throw new Error(res.status === 429 ? "Search is rate limited. Try again shortly." : "Search failed.");
-                }
-                const data = (await res.json()) as SearchResponse;
-                setResults(data.results || []);
-                setErrors(data.errors || []);
-                cacheRef.current.set(key, {
-                    timestamp: now,
-                    results: data.results || [],
-                    errors: data.errors || [],
-                });
-            } catch (err) {
-                if (err instanceof Error && err.name === "AbortError") return;
-                setResults([]);
-                setErrors([err instanceof Error ? err.message : "Search failed."]);
-            } finally {
-                setLoading(false);
-            }
+            await runSearch(query, selectedType);
         }, 450);
 
         return () => clearTimeout(handle);
-    }, [query, selectedSources, isOpen]);
+    }, [query, selectedType, isOpen]);
 
     const filteredResults = useMemo(() => {
-        return results.filter((result) => selectedTypes.includes(result.type) && selectedSources.includes(result.source));
-    }, [results, selectedTypes, selectedSources]);
-
-    const toggleSource = (source: SourceKey) => {
-        setSelectedSources((prev) =>
-            prev.includes(source) ? prev.filter((item) => item !== source) : [...prev, source]
-        );
-    };
-
-    const toggleType = (type: MediaType) => {
-        setSelectedTypes((prev) =>
-            prev.includes(type) ? prev.filter((item) => item !== type) : [...prev, type]
-        );
-    };
+        return results.filter((result) => result.type === selectedType);
+    }, [results, selectedType]);
 
     return (
         <Modal
@@ -140,35 +134,25 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     <input
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder="Search movies, TV shows, anime..."
+                        onKeyDown={(event) => {
+                            if (event.key !== "Enter") return;
+                            event.preventDefault();
+                            const trimmed = query.trim();
+                            if (trimmed.length < 2) return;
+                            void runSearch(trimmed, selectedType);
+                        }}
+                        placeholder="Search movies, series, anime, manga, games..."
                         className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                     />
                     <div className="flex flex-wrap gap-2">
-                        {(["tmdb", "omdb", "mal"] as SourceKey[]).map((source) => (
-                            <button
-                                key={source}
-                                type="button"
-                                onClick={() => toggleSource(source)}
-                                className={cn(
-                                    "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
-                                    selectedSources.includes(source)
-                                        ? "bg-white text-neutral-950 border-transparent"
-                                        : "bg-neutral-800/50 text-neutral-300 border-white/10 hover:bg-neutral-800"
-                                )}
-                            >
-                                {sourceLabels[source]}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {(["movie", "series", "anime"] as MediaType[]).map((type) => (
+                        {(["movie", "series", "anime", "manga", "game"] as MediaType[]).map((type) => (
                             <button
                                 key={type}
                                 type="button"
-                                onClick={() => toggleType(type)}
+                                onClick={() => setSelectedType(type)}
                                 className={cn(
                                     "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
-                                    selectedTypes.includes(type)
+                                    selectedType === type
                                         ? "bg-white text-neutral-950 border-transparent"
                                         : "bg-neutral-800/50 text-neutral-300 border-white/10 hover:bg-neutral-800"
                                 )}
@@ -215,6 +199,34 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                     <div className="text-xs text-neutral-400 mt-1">
                                         {result.year ? `${result.year} • ` : ""}
                                         {typeLabels[result.type]} • {sourceLabels[result.source]}
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => onLog?.(result)}
+                                            disabled={!onLog}
+                                            className={cn(
+                                                "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                                                onLog
+                                                    ? "border-white/10 bg-neutral-800/40 text-neutral-200 hover:bg-neutral-800 hover:text-white"
+                                                    : "border-white/5 bg-neutral-900/40 text-neutral-600 cursor-not-allowed"
+                                            )}
+                                        >
+                                            Log
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => onAddToList?.(result)}
+                                            disabled={!onAddToList}
+                                            className={cn(
+                                                "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                                                onAddToList
+                                                    ? "border-white/10 bg-neutral-800/40 text-neutral-200 hover:bg-neutral-800 hover:text-white"
+                                                    : "border-white/5 bg-neutral-900/40 text-neutral-600 cursor-not-allowed"
+                                            )}
+                                        >
+                                            Add to list
+                                        </button>
                                     </div>
                                     {result.overview && (
                                         <div className="text-xs text-neutral-500 mt-2 max-h-10 overflow-hidden">

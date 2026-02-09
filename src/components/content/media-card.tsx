@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 interface MediaCardProps {
     id?: string | number;
     title: string;
-    image: string;
+    image: string | null;
     year?: string;
     type?: string;
     className?: string;
@@ -31,7 +31,9 @@ export function MediaCard({
     rating,
     status,
 }: MediaCardProps) {
-    const linkHref = href || (type && id ? `/${type === "series" ? "tv" : "movie"}/${id}` : "#");
+    const linkHref =
+        href ||
+        (type && id && (type === "movie" || type === "series") ? `/${type === "series" ? "tv" : "movie"}/${id}` : "#");
 
     // Status colors/badges
     const getStatusColor = (s?: string) => {
@@ -58,13 +60,17 @@ export function MediaCard({
                     )}
                     hoverEffect
                 >
-                    <Image
-                        src={image}
-                        alt={title}
-                        fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-                    />
+                    {image ? (
+                        <Image
+                            src={image}
+                            alt={title}
+                            fill
+                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                        />
+                    ) : (
+                        <div className="absolute inset-0 bg-neutral-800/60" />
+                    )}
 
                     <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 

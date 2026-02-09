@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "motion/react";
 import { Plus, List } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
+import { LogEntryModal } from "@/components/entry/log-entry-modal";
+import { ListsModal } from "@/components/lists/lists-modal";
 
 interface HeroProps {
     username?: string;
@@ -10,11 +13,15 @@ interface HeroProps {
         movies: number;
         series: number;
         anime: number;
+        manga: number;
         games: number;
     };
 }
 
-export function Hero({ username = "Traveler", stats = { movies: 0, series: 0, anime: 0, games: 0 } }: HeroProps) {
+export function Hero({ username = "Traveler", stats = { movies: 0, series: 0, anime: 0, manga: 0, games: 0 } }: HeroProps) {
+    const [isLogOpen, setIsLogOpen] = useState(false);
+    const [isListsOpen, setIsListsOpen] = useState(false);
+
     return (
         <div className="relative w-full overflow-hidden pt-32 pb-12">
             {/* Background Gradient/Noise */}
@@ -39,11 +46,19 @@ export function Hero({ username = "Traveler", stats = { movies: 0, series: 0, an
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-                        <GlassCard className="flex items-center gap-2 px-6 py-3 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto justify-center sm:justify-start" hoverEffect>
+                        <GlassCard
+                            className="flex items-center gap-2 px-6 py-3 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto justify-center sm:justify-start"
+                            hoverEffect
+                            onClick={() => setIsLogOpen(true)}
+                        >
                             <Plus size={20} className="text-white" />
                             <span className="font-medium text-white">Log Entry</span>
                         </GlassCard>
-                        <GlassCard className="flex items-center gap-2 px-6 py-3 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto justify-center sm:justify-start" hoverEffect>
+                        <GlassCard
+                            className="flex items-center gap-2 px-6 py-3 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto justify-center sm:justify-start"
+                            hoverEffect
+                            onClick={() => setIsListsOpen(true)}
+                        >
                             <List size={20} className="text-white" />
                             <span className="font-medium text-white">My Lists</span>
                         </GlassCard>
@@ -55,14 +70,18 @@ export function Hero({ username = "Traveler", stats = { movies: 0, series: 0, an
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.2 }}
-                    className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12"
+                    className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-12"
                 >
                     <StatCard label="Movies Watched" value={stats.movies} />
                     <StatCard label="Episodes Watched" value={stats.series} />
                     <StatCard label="Anime Completed" value={stats.anime} />
+                    <StatCard label="Manga Read" value={stats.manga} />
                     <StatCard label="Games Beaten" value={stats.games} />
                 </motion.div>
             </div>
+
+            <LogEntryModal isOpen={isLogOpen} onClose={() => setIsLogOpen(false)} />
+            <ListsModal isOpen={isListsOpen} onClose={() => setIsListsOpen(false)} />
         </div>
     );
 }

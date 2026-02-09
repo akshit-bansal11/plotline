@@ -8,7 +8,7 @@ interface MediaGridProps {
     items: Array<{
         id: string | number;
         title: string;
-        image: string;
+        image: string | null;
         year?: string;
         type?: string;
     }>;

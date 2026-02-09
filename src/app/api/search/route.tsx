@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 type SearchSource = "tmdb" | "omdb" | "mal";
-type MediaType = "movie" | "series" | "anime";
+type MediaType = "movie" | "series" | "anime" | "manga" | "game";
 
 interface SearchResult {
   id: string | number;
@@ -136,7 +136,7 @@ const searchOMDB = async (query: string): Promise<{ results: SearchResult[]; err
 
   const rawResults = payload.Search || [];
   const results: SearchResult[] = rawResults.map((item) => {
-    const mediaType: MediaType = item.Type === "series" ? "series" : "movie";
+    const mediaType: MediaType = item.Type === "series" ? "series" : item.Type === "game" ? "game" : "movie";
     return {
       id: item.imdbID,
       title: item.Title,
@@ -152,7 +152,7 @@ const searchOMDB = async (query: string): Promise<{ results: SearchResult[]; err
   return { results, error: "" };
 };
 
-const searchMAL = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
+const searchMALAnime = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
   const clientId = process.env.MAL_CLIENT_ID;
   if (!clientId) return { results: [] as SearchResult[], error: "MyAnimeList is not configured." };
 
@@ -163,13 +163,12 @@ const searchMAL = async (query: string): Promise<{ results: SearchResult[]; erro
   const payload = response.data as { data?: MalItem[] };
   const rawResults = payload.data || [];
   const results: SearchResult[] = rawResults.map((item) => {
-    const mediaType: MediaType = "anime";
     return {
       id: item.node.id,
       title: item.node.title,
       image: item.node.main_picture?.medium || null,
       year: item.node.start_date ? item.node.start_date.split("-")[0] : "",
-      type: mediaType,
+      type: "anime",
       source: "mal" as const,
       overview: item.node.synopsis || "",
       rating: item.node.mean ?? null,
@@ -179,9 +178,51 @@ const searchMAL = async (query: string): Promise<{ results: SearchResult[]; erro
   return { results, error: "" };
 };
 
+const searchMALManga = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
+  const clientId = process.env.MAL_CLIENT_ID;
+  if (!clientId) return { results: [] as SearchResult[], error: "MyAnimeList is not configured." };
+
+  const url = `https://api.myanimelist.net/v2/manga?q=${encodeURIComponent(query)}&limit=8&fields=title,main_picture,start_date,mean,synopsis`;
+  const response = await safeFetchJson(url, { headers: { "X-MAL-CLIENT-ID": clientId } });
+  if (!response.ok) return { results: [] as SearchResult[], error: response.error };
+
+  const payload = response.data as { data?: MalItem[] };
+  const rawResults = payload.data || [];
+  const results: SearchResult[] = rawResults.map((item) => {
+    return {
+      id: item.node.id,
+      title: item.node.title,
+      image: item.node.main_picture?.medium || null,
+      year: item.node.start_date ? item.node.start_date.split("-")[0] : "",
+      type: "manga",
+      source: "mal" as const,
+      overview: item.node.synopsis || "",
+      rating: item.node.mean ?? null,
+    };
+  });
+
+  return { results, error: "" };
+};
+
+const dedupeResults = (items: SearchResult[]) => {
+  const seen = new Map<string, SearchResult>();
+  for (const item of items) {
+    const titleKey = item.title.toLowerCase().replace(/\s+/g, " ").trim();
+    const yearKey = (item.year || "").trim();
+    const key = `${item.type}|${yearKey}|${titleKey}`;
+    if (!seen.has(key)) seen.set(key, item);
+  }
+  return Array.from(seen.values());
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q");
+  const typeParam = searchParams.get("type");
+  const resolvedType: MediaType | null =
+    typeParam === "movie" || typeParam === "series" || typeParam === "anime" || typeParam === "manga" || typeParam === "game"
+      ? typeParam
+      : null;
   const sources = (searchParams.get("sources")?.split(",") || ["tmdb", "omdb", "mal"]).filter(Boolean) as SearchSource[];
 
   if (!query) {
@@ -193,7 +234,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [], errors: ["Too many requests. Please wait."] }, { status: 429 });
   }
 
-  const cacheKey = `${query.trim().toLowerCase()}|${sources.sort().join(",")}`;
+  const cacheKey = resolvedType
+    ? `${query.trim().toLowerCase()}|type:${resolvedType}`
+    : `${query.trim().toLowerCase()}|sources:${sources.sort().join(",")}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return NextResponse.json(
@@ -202,10 +245,41 @@ export async function GET(request: Request) {
     );
   }
 
+  if (resolvedType) {
+    const errors: string[] = [];
+    let results: SearchResult[] = [];
+
+    if (resolvedType === "movie" || resolvedType === "series") {
+      const [tmdb, omdb] = await Promise.all([searchTMDB(query), searchOMDB(query)]);
+      if (tmdb.error) errors.push(tmdb.error);
+      if (omdb.error) errors.push(omdb.error);
+      results = dedupeResults([...tmdb.results, ...omdb.results].filter((item) => item.type === resolvedType));
+    } else if (resolvedType === "anime") {
+      const response = await searchMALAnime(query);
+      results = response.results;
+      if (response.error) errors.push(response.error);
+    } else if (resolvedType === "manga") {
+      const response = await searchMALManga(query);
+      results = response.results;
+      if (response.error) errors.push(response.error);
+    } else if (resolvedType === "game") {
+      const response = await searchOMDB(query);
+      results = response.results.filter((item) => item.type === "game");
+      if (response.error) errors.push(response.error);
+    }
+
+    cache.set(cacheKey, { timestamp: Date.now(), results, errors });
+
+    return NextResponse.json(
+      { results, errors, cached: false },
+      { headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } }
+    );
+  }
+
   const tasks: Array<Promise<{ results: SearchResult[]; error: string }>> = [];
   if (sources.includes("tmdb")) tasks.push(searchTMDB(query));
   if (sources.includes("omdb")) tasks.push(searchOMDB(query));
-  if (sources.includes("mal")) tasks.push(searchMAL(query));
+  if (sources.includes("mal")) tasks.push(searchMALAnime(query));
 
   const responses = await Promise.all(tasks);
   const results: SearchResult[] = [];
