@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Timestamp, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { Timestamp, addDoc, collection, serverTimestamp, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebase";
@@ -82,7 +82,24 @@ export function LogEntryModal({
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
+  const [selectedListId, setSelectedListId] = useState<string>("");
+
   const uid = user?.uid || null;
+
+  useEffect(() => {
+    if (!uid || !isOpen) {
+      setLists([]);
+      return;
+    }
+
+    const q = query(collection(db, "users", uid, "lists"), orderBy("updatedAt", "desc"), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setLists(snapshot.docs.map((doc) => ({ id: doc.id, name: doc.data().name || "Untitled List" })));
+    });
+
+    return () => unsubscribe();
+  }, [uid, isOpen]);
 
   const normalizedInitial = useMemo(() => {
     if (!initialMedia) return null;
@@ -115,6 +132,7 @@ export function LogEntryModal({
       setNotes("");
       setCompletionDate("");
       setCompletionUnknown(false);
+      setSelectedListId("");
     } else {
       setTitle("");
       setMediaType("movie");
@@ -127,6 +145,7 @@ export function LogEntryModal({
       setNotes("");
       setCompletionDate("");
       setCompletionUnknown(false);
+      setSelectedListId("");
     }
   }, [isOpen, normalizedInitial]);
 
@@ -261,7 +280,7 @@ export function LogEntryModal({
 
     setIsSaving(true);
     try {
-      await addDoc(collection(db, "users", uid, "entries"), {
+      const entryRef = await addDoc(collection(db, "users", uid, "entries"), {
         title: trimmedTitle,
         mediaType,
         status,
@@ -280,6 +299,21 @@ export function LogEntryModal({
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      if (selectedListId) {
+        // Map anime_movie to anime for lists compatibility
+        const listMediaType = mediaType === "anime_movie" ? "anime" : mediaType;
+        await addDoc(collection(db, "users", uid, "lists", selectedListId, "items"), {
+          title: trimmedTitle,
+          mediaType: listMediaType,
+          source: normalizedInitial?.source || "tmdb",
+          externalId: normalizedInitial ? String(normalizedInitial.id) : entryRef.id,
+          image: normalizedInitial?.image || null,
+          year: normalizedInitial?.year || null,
+          addedAt: serverTimestamp(),
+        });
+      }
+
       setInfo("Saved.");
       if (!normalizedInitial) {
         setTitle("");
@@ -291,6 +325,9 @@ export function LogEntryModal({
         setNotes("");
         setCompletionDate("");
         setCompletionUnknown(false);
+        // Do not reset selectedListId so user can add multiple items to same list?
+        // Or reset it? Usually reset form means reset everything.
+        setSelectedListId("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save entry.");
@@ -344,6 +381,24 @@ export function LogEntryModal({
                 </select>
               </div>
             </div>
+
+            {lists.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-neutral-400">Add to List (Optional)</div>
+                <select
+                  value={selectedListId}
+                  onChange={(e) => setSelectedListId(e.target.value)}
+                  className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                >
+                  <option value="">Select a list...</option>
+                  {lists.map((list) => (
+                    <option key={list.id} value={list.id}>
+                      {list.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {numericField ? (
               <div className="space-y-2">

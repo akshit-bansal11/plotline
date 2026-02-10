@@ -1,31 +1,34 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, X, Search, LogOut, LogIn } from "lucide-react";
+import { Menu, X, Search, LogOut, LogIn, List } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSection, type SectionKey } from "@/context/section-context";
 
-const links = [
-    { href: "/", label: "Home" },
-    { href: "/movies", label: "Movies" },
-    { href: "/series", label: "Series" },
-    { href: "/anime", label: "Anime" },
-    { href: "/manga", label: "Manga" },
-    { href: "/games", label: "Games" },
+const links: Array<{ href: string; label: string; section: SectionKey }> = [
+    { href: "/", label: "Home", section: "home" },
+    { href: "/#movies", label: "Movies", section: "movies" },
+    { href: "/#series", label: "Series", section: "series" },
+    { href: "/#anime", label: "Anime", section: "anime" },
+    { href: "/#manga", label: "Manga", section: "manga" },
+    { href: "/#games", label: "Games", section: "games" },
 ];
 
 interface MobileMenuProps {
     onAuthOpen: () => void;
     onSearchOpen: () => void;
+    onListsOpen: () => void;
     onSignOut: () => void;
     userLabel?: string | null;
 }
 
-export function MobileMenu({ onAuthOpen, onSearchOpen, onSignOut, userLabel }: MobileMenuProps) {
+export function MobileMenu({ onAuthOpen, onSearchOpen, onListsOpen, onSignOut, userLabel }: MobileMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const pathname = usePathname();
+    const { activeSection, setActiveSection } = useSection();
+
 
     // Prevent scrolling when menu is open
     useEffect(() => {
@@ -50,13 +53,13 @@ export function MobileMenu({ onAuthOpen, onSearchOpen, onSignOut, userLabel }: M
             </button>
 
             <AnimatePresence>
-                {isOpen && (
+                {isOpen && createPortal(
                     <motion.div
                         initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
                         animate={{ opacity: 1, backdropFilter: "blur(12px)" }}
                         exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
                         transition={{ duration: 0.3 }}
-                        className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-neutral-950/80"
+                        className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-neutral-950/80"
                     >
                         <nav className="flex flex-col items-center gap-6">
                             {links.map((link, index) => (
@@ -69,10 +72,14 @@ export function MobileMenu({ onAuthOpen, onSearchOpen, onSignOut, userLabel }: M
                                 >
                                     <Link
                                         href={link.href}
-                                        onClick={() => setIsOpen(false)}
+                                        scroll={false}
+                                        onClick={() => {
+                                            setActiveSection(link.section);
+                                            setIsOpen(false);
+                                        }}
                                         className={cn(
                                             "text-2xl font-medium transition-colors",
-                                            pathname === link.href
+                                            activeSection === link.section
                                                 ? "text-white"
                                                 : "text-neutral-400 hover:text-white"
                                         )}
@@ -94,16 +101,28 @@ export function MobileMenu({ onAuthOpen, onSearchOpen, onSignOut, userLabel }: M
                                 <span>Search</span>
                             </button>
                             {userLabel ? (
-                                <button
-                                    onClick={() => {
-                                        onSignOut();
-                                        setIsOpen(false);
-                                    }}
-                                    className="w-full flex items-center justify-center gap-2 rounded-full bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white"
-                                >
-                                    <LogOut size={16} />
-                                    <span>Sign out</span>
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            onListsOpen();
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
+                                    >
+                                        <List size={16} />
+                                        <span>Lists</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            onSignOut();
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 rounded-full bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white"
+                                    >
+                                        <LogOut size={16} />
+                                        <span>Sign out</span>
+                                    </button>
+                                </>
                             ) : (
                                 <button
                                     onClick={() => {
@@ -117,7 +136,8 @@ export function MobileMenu({ onAuthOpen, onSearchOpen, onSignOut, userLabel }: M
                                 </button>
                             )}
                         </div>
-                    </motion.div>
+                    </motion.div>,
+                    document.body
                 )}
             </AnimatePresence>
         </div>

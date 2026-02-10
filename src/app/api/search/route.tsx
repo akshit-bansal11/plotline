@@ -250,10 +250,20 @@ export async function GET(request: Request) {
     let results: SearchResult[] = [];
 
     if (resolvedType === "movie" || resolvedType === "series") {
-      const [tmdb, omdb] = await Promise.all([searchTMDB(query), searchOMDB(query)]);
+      const tmdb = await searchTMDB(query);
       if (tmdb.error) errors.push(tmdb.error);
-      if (omdb.error) errors.push(omdb.error);
-      results = dedupeResults([...tmdb.results, ...omdb.results].filter((item) => item.type === resolvedType));
+
+      const tmdbMatches = tmdb.results.filter((item) => item.type === resolvedType);
+
+      if (tmdbMatches.length > 0) {
+        results = tmdbMatches;
+      } else {
+        const omdb = await searchOMDB(query);
+        if (omdb.error) errors.push(omdb.error);
+        results = omdb.results.filter((item) => item.type === resolvedType);
+      }
+
+      results = dedupeResults(results);
     } else if (resolvedType === "anime") {
       const response = await searchMALAnime(query);
       results = response.results;
@@ -276,19 +286,41 @@ export async function GET(request: Request) {
     );
   }
 
-  const tasks: Array<Promise<{ results: SearchResult[]; error: string }>> = [];
-  if (sources.includes("tmdb")) tasks.push(searchTMDB(query));
-  if (sources.includes("omdb")) tasks.push(searchOMDB(query));
-  if (sources.includes("mal")) tasks.push(searchMALAnime(query));
-
-  const responses = await Promise.all(tasks);
   const results: SearchResult[] = [];
   const errors: string[] = [];
 
-  responses.forEach((response) => {
-    results.push(...response.results);
-    if (response.error) errors.push(response.error);
-  });
+  const searchMovieSeries = async () => {
+    const res: SearchResult[] = [];
+    const errs: string[] = [];
+    let found = false;
+
+    if (sources.includes("tmdb")) {
+      const tmdb = await searchTMDB(query);
+      if (tmdb.error) errs.push(tmdb.error);
+      if (tmdb.results.length > 0) {
+        res.push(...tmdb.results);
+        found = true;
+      }
+    }
+
+    if (!found && sources.includes("omdb")) {
+      const omdb = await searchOMDB(query);
+      if (omdb.error) errs.push(omdb.error);
+      res.push(...omdb.results);
+    }
+    return { results: res, errors: errs };
+  };
+
+  const searchMal = async () => {
+    if (!sources.includes("mal")) return { results: [], errors: [] };
+    const mal = await searchMALAnime(query);
+    return { results: mal.results, errors: mal.error ? [mal.error] : [] };
+  };
+
+  const [movieSeriesData, malData] = await Promise.all([searchMovieSeries(), searchMal()]);
+
+  results.push(...movieSeriesData.results, ...malData.results);
+  errors.push(...movieSeriesData.errors, ...malData.errors);
 
   cache.set(cacheKey, { timestamp: Date.now(), results, errors });
 

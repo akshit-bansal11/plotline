@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 
 import { Navbar } from "@/components/layout/navbar";
 import { AuthProvider } from "@/context/auth-context";
+import { SectionProvider } from "@/context/section-context";
 
 export default function RootLayout({
   children,
@@ -36,10 +37,12 @@ export default function RootLayout({
         <div className="fixed inset-0 bg-[url('/noise.svg')] opacity-[0.03] pointer-events-none z-50 mix-blend-overlay"></div>
 
         <AuthProvider>
-          <Navbar />
-          <main className="relative z-0 min-h-screen flex flex-col pt-24 pb-12">
-            {children}
-          </main>
+          <SectionProvider>
+            <Navbar />
+            <main className="relative z-0 min-h-screen flex flex-col pt-24 pb-12">
+              {children}
+            </main>
+          </SectionProvider>
         </AuthProvider>
       </body>
     </html>

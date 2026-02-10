@@ -8,4 +8,13 @@ module.exports = {
       { protocol: "https", hostname: "cdn.myanimelist.net" },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/movies", destination: "/#movies", permanent: false },
+      { source: "/series", destination: "/#series", permanent: false },
+      { source: "/anime", destination: "/#anime", permanent: false },
+      { source: "/manga", destination: "/#manga", permanent: false },
+      { source: "/games", destination: "/#games", permanent: false },
+    ];
+  },
 };

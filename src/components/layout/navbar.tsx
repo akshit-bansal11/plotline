@@ -3,14 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, useScroll, useMotionValueEvent } from "motion/react";
-import { User, Search, LogOut } from "lucide-react";
+import { User, Search, LogOut, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLinks } from "./nav-links";
 import { MobileMenu } from "./mobile-menu";
 import { AuthModal } from "@/components/auth/auth-modal";
 import { SearchModal, type SearchResult } from "@/components/search/search-modal";
 import { LogEntryModal, type LoggableMedia } from "@/components/entry/log-entry-modal";
-import { ListsModal } from "@/components/lists/lists-modal";
+import { MyListsModal } from "@/components/lists/my-lists-modal";
 import { useAuth } from "@/context/auth-context";
 
 export function Navbar() {
@@ -21,7 +21,7 @@ export function Navbar() {
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isLogOpen, setIsLogOpen] = useState(false);
-    const [isListsOpen, setIsListsOpen] = useState(false);
+    const [isMyListsOpen, setIsMyListsOpen] = useState(false);
     const [pendingItem, setPendingItem] = useState<LoggableMedia | null>(null);
     const { user, signOut } = useAuth();
     const userLabel = user?.displayName || user?.email;
@@ -45,7 +45,7 @@ export function Navbar() {
         }
         setPendingItem(toLoggable(item));
         setIsSearchOpen(false);
-        setIsListsOpen(true);
+        setIsMyListsOpen(true);
     };
 
     useMotionValueEvent(scrollY, "change", (latest) => {
@@ -79,14 +79,14 @@ export function Navbar() {
                 className={cn(
                     "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
                     isScrolled
-                        ? "glass border-b border-white/5 bg-neutral-950/50 py-3"
+                        ? "backdrop-blur-xl bg-neutral-950/50 py-3"
                         : "bg-transparent py-5"
                 )}
             >
                 <div className="container mx-auto flex items-center justify-between px-4 md:px-6">
                     <Link
                         href="/"
-                        className="relative z-50 text-xl font-bold tracking-tight text-white"
+                        className="relative z-50 text-3xl font-bold tracking-tight text-white"
                     >
                         Plotline<span className="text-neutral-600">.</span>
                     </Link>
@@ -94,6 +94,16 @@ export function Navbar() {
                         <div className="hidden md:block">
                             <NavLinks />
                         </div>
+
+                        {user && (
+                            <button
+                                onClick={() => setIsMyListsOpen(true)}
+                                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                                <List size={16} />
+                                <span>Lists</span>
+                            </button>
+                        )}
 
                         <button
                             onClick={() => setIsSearchOpen(true)}
@@ -130,6 +140,7 @@ export function Navbar() {
                         <MobileMenu
                             onAuthOpen={() => setIsAuthOpen(true)}
                             onSearchOpen={() => setIsSearchOpen(true)}
+                            onListsOpen={() => setIsMyListsOpen(true)}
                             onSignOut={() => signOut()}
                             userLabel={userLabel}
                         />
@@ -152,10 +163,10 @@ export function Navbar() {
                 }}
                 initialMedia={pendingItem}
             />
-            <ListsModal
-                isOpen={isListsOpen}
+            <MyListsModal
+                isOpen={isMyListsOpen}
                 onClose={() => {
-                    setIsListsOpen(false);
+                    setIsMyListsOpen(false);
                     setPendingItem(null);
                 }}
                 initialItem={pendingItem}

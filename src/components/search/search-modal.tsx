@@ -46,6 +46,31 @@ const typeLabels: Record<MediaType, string> = {
     game: "Game",
 };
 
+function ExpandableText({ text }: { text: string }) {
+    const [expanded, setExpanded] = useState(false);
+    const isLong = text.length > 150;
+
+    return (
+        <div className="mt-2">
+            <div className={cn("text-xs text-neutral-500", !expanded && isLong && "line-clamp-2")}>
+                {text}
+            </div>
+            {isLong && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setExpanded(!expanded);
+                    }}
+                    className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400 hover:text-white"
+                >
+                    {expanded ? "Show less" : "Show more"}
+                </button>
+            )}
+        </div>
+    );
+}
+
 export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModalProps) {
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(false);
@@ -177,7 +202,7 @@ export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModal
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
                     {filteredResults.map((result) => (
                         <div key={`${result.source}-${result.id}`} className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4">
                             <div className="flex gap-3">
@@ -228,11 +253,7 @@ export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModal
                                             Add to list
                                         </button>
                                     </div>
-                                    {result.overview && (
-                                        <div className="text-xs text-neutral-500 mt-2 max-h-10 overflow-hidden">
-                                            {result.overview}
-                                        </div>
-                                    )}
+                                    {result.overview && <ExpandableText text={result.overview} />}
                                 </div>
                             </div>
                         </div>

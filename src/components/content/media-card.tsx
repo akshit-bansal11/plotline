@@ -92,8 +92,8 @@ export function MediaCard({
                         </div>
                     )}
 
-                    <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-2 transition-transform duration-300 group-hover:translate-y-0 opacity-0 group-hover:opacity-100">
-                        <h3 className="font-medium text-white truncate text-shadow-sm">{title}</h3>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 transition-all duration-300 translate-y-0 opacity-100 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
+                        <h3 className="font-medium text-white line-clamp-2 text-shadow-sm">{title}</h3>
                         <div className="flex items-center gap-2 mt-1 text-xs text-neutral-300">
                             {year && <span>{year}</span>}
                             {type && (
