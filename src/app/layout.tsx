@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Plotline",
   description: "A modern, cinematic media organizer.",
+  icons: {
+    icon: "/ab11-logo-dot-dark.svg",
+  },
 };
 
 import { Navbar } from "@/components/layout/navbar";

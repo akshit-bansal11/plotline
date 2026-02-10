@@ -19,10 +19,13 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import type { LoggableMedia } from "@/components/entry/log-entry-modal";
 
+type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
+
 type ListRow = {
   id: string;
   name: string;
   description: string;
+  type: EntryMediaType;
   updatedAt: number | null;
   createdAt: number | null;
 };
@@ -31,7 +34,6 @@ type ListItemRow = {
   id: string;
   title: string;
   mediaType: "movie" | "series" | "anime" | "manga" | "game";
-  source: "tmdb" | "omdb" | "mal";
   externalId: string;
   image: string | null;
   year: string | null;
@@ -44,12 +46,6 @@ const mediaTypeLabels: Record<ListItemRow["mediaType"], string> = {
   anime: "Anime",
   manga: "Manga",
   game: "Game",
-};
-
-const sourceLabels: Record<ListItemRow["source"], string> = {
-  tmdb: "TMDB",
-  omdb: "OMDb",
-  mal: "MyAnimeList",
 };
 
 const toMillis = (value: unknown) => {
@@ -70,10 +66,12 @@ export function MyListsModal({
   isOpen,
   onClose,
   initialItem,
+  mediaType,
 }: {
   isOpen: boolean;
   onClose: () => void;
   initialItem?: LoggableMedia | null;
+  mediaType?: EntryMediaType | null;
 }) {
   const { user } = useAuth();
   const uid = user?.uid || null;
@@ -85,6 +83,7 @@ export function MyListsModal({
 
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [newType, setNewType] = useState<EntryMediaType | "">("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -122,6 +121,7 @@ export function MyListsModal({
           const data = snap.data() as {
             name?: unknown;
             description?: unknown;
+            type?: unknown;
             updatedAt?: unknown;
             createdAt?: unknown;
           };
@@ -130,17 +130,21 @@ export function MyListsModal({
             name: typeof data.name === "string" ? data.name : "",
             description:
               typeof data.description === "string" ? data.description : "",
+            type: (data.type as EntryMediaType) || "movie",
             updatedAt: toMillis(data.updatedAt),
             createdAt: toMillis(data.createdAt),
           };
         });
-        setLists(nextLists);
+        
+        // Filter lists by media type if specified
+        const filteredLists = mediaType ? nextLists.filter(list => list.type === mediaType) : nextLists;
+        setLists(filteredLists);
         // Default selected to first list for the dropdown
-        if (!selectedListId && nextLists.length > 0) {
-          setSelectedListId(nextLists[0].id);
+        if (!selectedListId && filteredLists.length > 0) {
+          setSelectedListId(filteredLists[0].id);
         }
-        if (selectedListId && !nextLists.some((l) => l.id === selectedListId)) {
-          setSelectedListId(nextLists[0]?.id || null);
+        if (selectedListId && !filteredLists.some((l) => l.id === selectedListId)) {
+          setSelectedListId(filteredLists.length > 0 ? filteredLists[0].id : null);
         }
       },
       (err) => {
@@ -175,12 +179,6 @@ export function MyListsModal({
           const data = snap.data() as Partial<ListItemRow> & {
             addedAt?: unknown;
           };
-          const sourceValue =
-            data.source === "tmdb" ||
-              data.source === "omdb" ||
-              data.source === "mal"
-              ? data.source
-              : "tmdb";
           const typeValue =
             data.mediaType === "movie" ||
               data.mediaType === "series" ||
@@ -193,7 +191,6 @@ export function MyListsModal({
             id: snap.id,
             title: String(data.title || ""),
             mediaType: typeValue,
-            source: sourceValue,
             externalId: String(data.externalId || ""),
             image: data.image ? String(data.image) : null,
             year: data.year ? String(data.year) : null,
@@ -239,6 +236,10 @@ export function MyListsModal({
       setError("List name is too long.");
       return;
     }
+    if (!newType) {
+      setError("Type is required.");
+      return;
+    }
     if (newDescription.trim().length > 280) {
       setError("Description is too long.");
       return;
@@ -249,11 +250,13 @@ export function MyListsModal({
       const docRef = await addDoc(collection(db, "users", uid, "lists"), {
         name,
         description: newDescription.trim(),
+        type: newType,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       setNewName("");
       setNewDescription("");
+      setNewType("");
       setIsCreating(false);
       // setSelectedListId(docRef.id); // No longer auto-select for dropdown
       setInfo("List created.");
@@ -320,7 +323,6 @@ export function MyListsModal({
         {
           title: pendingItem.title,
           mediaType: pendingItem.type,
-          source: pendingItem.source,
           externalId: String(pendingItem.id),
           image: pendingItem.image || null,
           year: pendingItem.year || null,
@@ -439,8 +441,7 @@ export function MyListsModal({
                   </div>
                   <div className="mt-1 text-xs text-neutral-500">
                     {(item.year ? `${item.year} • ` : "") +
-                      mediaTypeLabels[item.mediaType]}{" "}
-                    • {sourceLabels[item.source]}
+                      mediaTypeLabels[item.mediaType]}
                   </div>
                   <button
                     type="button"
@@ -551,6 +552,18 @@ export function MyListsModal({
                     placeholder="List name"
                     className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
                   />
+                  <select
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value as EntryMediaType)}
+                    className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+                  >
+                    <option value="" disabled>Select type</option>
+                    <option value="movie">Movie</option>
+                    <option value="series">Series</option>
+                    <option value="anime">Anime</option>
+                    <option value="manga">Manga</option>
+                    <option value="game">Game</option>
+                  </select>
                   <input
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}

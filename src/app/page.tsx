@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query, deleteDoc, doc } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
 import { Hero } from "@/components/content/hero";
 import { GlassCard } from "@/components/ui/glass-card";
+import { Modal } from "@/components/ui/modal";
 import { MediaGrid } from "@/components/content/media-grid";
 import { MediaSection } from "@/components/content/media-section";
 import { useAuth } from "@/context/auth-context";
 import { useSection, type SectionKey } from "@/context/section-context";
 import { db } from "@/lib/firebase";
+import { LogEntryModal } from "@/components/entry/log-entry-modal";
 
 type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
 type EntryStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
@@ -22,13 +24,32 @@ type EntryDoc = {
   status: EntryStatus;
   rating: number | null;
   notes: string;
-  source: string | null;
+  description: string;
   image: string | null;
   year: string | null;
+  lengthMinutes: number | null;
+  episodeCount: number | null;
+  chapterCount: number | null;
   createdAtMs: number | null;
   completedAtMs: number | null;
   completionDateUnknown: boolean;
   genresThemes: string[];
+};
+
+const statusLabels: Record<EntryStatus, string> = {
+  watching: "Watching",
+  completed: "Completed",
+  plan_to_watch: "Plan to watch",
+  dropped: "Dropped",
+};
+
+const mediaTypeLabels: Record<EntryMediaType, string> = {
+  movie: "Movie",
+  series: "Series",
+  anime: "Anime",
+  anime_movie: "Anime movie",
+  manga: "Manga",
+  game: "Game",
 };
 
 const toMillis = (value: unknown): number | null => {
@@ -39,6 +60,16 @@ const toMillis = (value: unknown): number | null => {
     return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
   }
   return null;
+};
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value !== "number") return null;
+  return Number.isFinite(value) ? value : null;
+};
+
+const formatDate = (value: number | null) => {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
 const formatISODate = (millis: number) => {
@@ -101,15 +132,93 @@ const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
     status: coerceStatus(raw.status),
     rating: typeof raw.rating === "number" ? raw.rating : null,
     notes: String(raw.notes || ""),
-    source: raw.source ? String(raw.source) : null,
+    description: String(raw.description || ""),
     image: raw.image ? String(raw.image) : null,
     year: raw.year ? String(raw.year) : null,
+    lengthMinutes: toNumber(raw.lengthMinutes),
+    episodeCount: toNumber(raw.episodeCount),
+    chapterCount: toNumber(raw.chapterCount),
     createdAtMs: toMillis(raw.createdAt),
     completedAtMs: toMillis(raw.completedAt),
     completionDateUnknown: Boolean(raw.completionDateUnknown),
     genresThemes,
   };
 };
+
+function EntryDetailModal({ entry, onClose }: { entry: EntryDoc | null; onClose: () => void }) {
+  if (!entry) return null;
+  const subtitle = [entry.year, mediaTypeLabels[entry.mediaType], statusLabels[entry.status]].filter(Boolean).join(" • ");
+  const completionValue =
+    entry.status === "completed"
+      ? entry.completionDateUnknown
+        ? "Unknown"
+        : formatDate(entry.completedAtMs)
+      : "";
+
+  return (
+    <Modal isOpen={Boolean(entry)} onClose={onClose} title="Item details" className="max-w-4xl bg-neutral-900/60">
+      <div className="flex flex-col gap-6 sm:flex-row">
+        <div className="w-full sm:w-48">
+          <div className="aspect-[2/3] w-full overflow-hidden rounded-2xl bg-neutral-800/50">
+            {entry.image ? (
+              <Image src={entry.image} alt={entry.title} width={192} height={288} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-neutral-800/50" />
+            )}
+          </div>
+        </div>
+        <div className="flex-1 space-y-4">
+          <div className="space-y-1">
+            <div className="text-xl font-semibold text-white">{entry.title || "Untitled"}</div>
+            {subtitle ? <div className="text-sm text-neutral-400">{subtitle}</div> : null}
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {entry.rating !== null ? (
+              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
+                Rating: {entry.rating}/10
+              </div>
+            ) : null}
+            {entry.lengthMinutes !== null ? (
+              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
+                Length: {entry.lengthMinutes} min
+              </div>
+            ) : null}
+            {entry.episodeCount !== null ? (
+              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
+                Episodes: {entry.episodeCount}
+              </div>
+            ) : null}
+            {entry.chapterCount !== null ? (
+              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
+                Chapters: {entry.chapterCount}
+              </div>
+            ) : null}
+            {completionValue ? (
+              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
+                Completed: {completionValue}
+              </div>
+            ) : null}
+            {entry.createdAtMs ? (
+              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
+                Logged: {formatDate(entry.createdAtMs)}
+              </div>
+            ) : null}
+          </div>
+          {entry.description ? <div className="text-sm text-neutral-300 whitespace-pre-line">{entry.description}</div> : null}
+          {entry.genresThemes.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {entry.genresThemes.map((tag) => (
+                <span key={tag} className="rounded-full border border-white/10 bg-neutral-800/50 px-2 py-1 text-xs text-neutral-200">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 const useEntriesStore = (uid: string | null, reloadToken: number): EntriesStore => {
   const cached = uid ? entriesCache.get(uid) : null;
@@ -162,11 +271,13 @@ function DashboardSection({
   status,
   error,
   onRetry,
+  onSelectEntry,
 }: {
   entries: EntryDoc[];
   status: EntriesStatus;
   error: string | null;
   onRetry: () => void;
+  onSelectEntry: (entry: EntryDoc) => void;
 }) {
   const { user } = useAuth();
   const uid = user?.uid || null;
@@ -274,6 +385,7 @@ function DashboardSection({
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           {(Object.keys(contentTypeLabels) as EntryMediaType[]).map((type) => {
             const items = recentByType[type].slice(0, 5);
+
             return (
               <GlassCard key={type} className="p-5" hoverEffect>
                 <div className="flex items-center justify-between gap-4">
@@ -312,6 +424,13 @@ function DashboardSection({
                             {entry.rating.toFixed(1)}
                           </div>
                         ) : null}
+                        <button
+                          type="button"
+                          onClick={() => onSelectEntry(entry)}
+                          className="shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-800/70 transition-colors"
+                        >
+                          View
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -336,6 +455,9 @@ function LibrarySection({
   status,
   error,
   onRetry,
+  onSelectEntry,
+  onEditEntry,
+  onDeleteEntry,
 }: {
   title: string;
   description: string;
@@ -347,9 +469,13 @@ function LibrarySection({
   status: EntriesStatus;
   error: string | null;
   onRetry: () => void;
+  onSelectEntry: (entry: EntryDoc) => void;
+  onEditEntry: (entry: EntryDoc) => void;
+  onDeleteEntry: (entry: EntryDoc) => void;
 }) {
   const { user } = useAuth();
   const uid = user?.uid || null;
+
 
   const sectionEntries = useMemo(() => {
     return entries.filter((entry) => mediaTypes.includes(entry.mediaType));
@@ -399,6 +525,11 @@ function LibrarySection({
                     image: entry.image,
                     year: entry.year || undefined,
                     type: gridType,
+                    onClick: () => onSelectEntry(entry),
+                    showActions: true,
+                    onView: () => onSelectEntry(entry),
+                    onEdit: () => onEditEntry(entry),
+                    onDelete: () => onDeleteEntry(entry),
                   }))}
                 />
               )
@@ -414,6 +545,7 @@ export default function Home() {
   const { user } = useAuth();
   const uid = user?.uid || null;
   const { activeSection } = useSection();
+  const [selectedEntry, setSelectedEntry] = useState<EntryDoc | null>(null);
   const [libraryFilters, setLibraryFilters] = useState<Record<Exclude<SectionKey, "home">, string>>({
     movies: "",
     series: "",
@@ -422,6 +554,27 @@ export default function Home() {
     games: "",
   });
   const [entriesReloadToken, setEntriesReloadToken] = useState(0);
+  const [isEditingEntry, setIsEditingEntry] = useState<EntryDoc | null>(null);
+
+  const handleEditEntry = (entry: EntryDoc) => {
+    setIsEditingEntry(entry);
+  };
+
+  const handleDeleteEntry = async (entry: EntryDoc) => {
+    if (!uid) return;
+    
+    if (!confirm(`Are you sure you want to delete "${entry.title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "users", uid, "entries", entry.id));
+      // The entry will be automatically removed from the UI due to the real-time listener
+    } catch (error) {
+      console.error("Error deleting entry:", error);
+      alert("Failed to delete entry. Please try again.");
+    }
+  };
   const entriesStore = useEntriesStore(uid, entriesReloadToken);
 
   const retrySync = () => setEntriesReloadToken((prev) => prev + 1);
@@ -430,7 +583,13 @@ export default function Home() {
 
   const sectionNode =
     activeSection === "home" ? (
-      <DashboardSection entries={entriesStore.entries} status={entriesStore.status} error={entriesStore.error} onRetry={retrySync} />
+      <DashboardSection
+        entries={entriesStore.entries}
+        status={entriesStore.status}
+        error={entriesStore.error}
+        onRetry={retrySync}
+        onSelectEntry={setSelectedEntry}
+      />
     ) : activeSection === "movies" ? (
       <LibrarySection
         title="Movies"
@@ -443,6 +602,9 @@ export default function Home() {
         status={entriesStore.status}
         error={entriesStore.error}
         onRetry={retrySync}
+        onSelectEntry={setSelectedEntry}
+        onEditEntry={handleEditEntry}
+        onDeleteEntry={handleDeleteEntry}
       />
     ) : activeSection === "series" ? (
       <LibrarySection
@@ -456,6 +618,9 @@ export default function Home() {
         status={entriesStore.status}
         error={entriesStore.error}
         onRetry={retrySync}
+        onSelectEntry={setSelectedEntry}
+        onEditEntry={handleEditEntry}
+        onDeleteEntry={handleDeleteEntry}
       />
     ) : activeSection === "anime" ? (
       <LibrarySection
@@ -469,6 +634,9 @@ export default function Home() {
         status={entriesStore.status}
         error={entriesStore.error}
         onRetry={retrySync}
+        onSelectEntry={setSelectedEntry}
+        onEditEntry={handleEditEntry}
+        onDeleteEntry={handleDeleteEntry}
       />
     ) : activeSection === "manga" ? (
       <LibrarySection
@@ -482,6 +650,9 @@ export default function Home() {
         status={entriesStore.status}
         error={entriesStore.error}
         onRetry={retrySync}
+        onSelectEntry={setSelectedEntry}
+        onEditEntry={handleEditEntry}
+        onDeleteEntry={handleDeleteEntry}
       />
     ) : (
       <LibrarySection
@@ -495,21 +666,38 @@ export default function Home() {
         status={entriesStore.status}
         error={entriesStore.error}
         onRetry={retrySync}
+        onSelectEntry={setSelectedEntry}
+        onEditEntry={handleEditEntry}
+        onDeleteEntry={handleDeleteEntry}
       />
     );
 
   return (
-    <AnimatePresence mode="sync" initial={false}>
-      <motion.div
-        key={activeSection}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.14 }}
-        className="w-full"
-      >
-        {sectionNode}
-      </motion.div>
-    </AnimatePresence>
+    <>
+      <AnimatePresence mode="sync" initial={false}>
+        <motion.div
+          key={activeSection}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.14 }}
+          className="w-full"
+        >
+          {sectionNode}
+        </motion.div>
+      </AnimatePresence>
+      <EntryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      <LogEntryModal
+        isOpen={!!isEditingEntry}
+        onClose={() => setIsEditingEntry(null)}
+        initialMedia={isEditingEntry ? {
+          id: isEditingEntry.id,
+          title: isEditingEntry.title,
+          image: isEditingEntry.image,
+          year: isEditingEntry.year || undefined,
+          type: isEditingEntry.mediaType === "anime_movie" ? "movie" : isEditingEntry.mediaType,
+        } : null}
+      />
+    </>
   );
 }

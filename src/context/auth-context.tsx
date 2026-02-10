@@ -21,6 +21,7 @@ export interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  updateUserProfile: (displayName: string, photoURL: string | null) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithEmail: async () => {},
   signUpWithEmail: async () => {},
   sendPasswordReset: async () => {},
+  updateUserProfile: async () => {},
   signOut: async () => {},
 });
 
@@ -49,6 +51,7 @@ const normalizeAuthError = (error: unknown) => {
 const buildProfile = (user: User, displayNameOverride?: string) => {
   const displayName = displayNameOverride || user.displayName || "";
   const email = user.email || "";
+  const photoURL = user.photoURL || "";
   if (!user.uid) {
     throw new Error("Missing user id.");
   }
@@ -62,6 +65,7 @@ const buildProfile = (user: User, displayNameOverride?: string) => {
     uid: user.uid,
     email,
     displayName,
+    photoURL,
   };
 };
 
@@ -138,6 +142,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUserProfile = async (displayName: string, photoURL: string | null) => {
+    if (!auth.currentUser) throw new Error("No active account.");
+    try {
+      await updateProfile(auth.currentUser, { displayName, photoURL: photoURL || null });
+      await saveUserProfile(auth.currentUser, displayName);
+    } catch (error) {
+      throw new Error(normalizeAuthError(error));
+    }
+  };
+
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
@@ -155,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithEmail,
         signUpWithEmail,
         sendPasswordReset,
+        updateUserProfile,
         signOut,
       }}
     >

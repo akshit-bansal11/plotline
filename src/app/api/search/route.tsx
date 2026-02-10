@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 
-type SearchSource = "tmdb" | "omdb" | "mal";
 type MediaType = "movie" | "series" | "anime" | "manga" | "game";
 
 interface SearchResult {
-  id: string | number;
+  id: string;
   title: string;
   image: string | null;
   year?: string;
   type: MediaType;
-  source: SearchSource;
   overview?: string;
   rating?: number | null;
 }
@@ -47,8 +45,20 @@ interface MalItem {
   node: MalNode;
 }
 
+interface IgdbGame {
+  id: number;
+  name?: string;
+  cover?: { url?: string };
+  first_release_date?: number;
+  summary?: string;
+  genres?: Array<{ name?: string }>;
+  rating?: number;
+  aggregated_rating?: number;
+}
+
 const cache = new Map<string, { timestamp: number; results: SearchResult[]; errors: string[] }>();
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
+const igdbTokenCache = { token: null as string | null, expiresAt: 0 };
 
 const RATE_LIMIT_WINDOW = 60_000;
 const RATE_LIMIT_MAX = 60;
@@ -92,10 +102,45 @@ const safeFetchJson = async (url: string, init?: RequestInit): Promise<FetchResu
   }
 };
 
+const normalizeTitle = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
+const normalizeYear = (value?: string) => (value ? value.trim() : "");
+
+const mergeSearchResult = (primary: SearchResult, secondary: SearchResult): SearchResult => {
+  const primaryOverview = primary.overview || "";
+  const secondaryOverview = secondary.overview || "";
+  return {
+    id: primary.id,
+    title: primary.title || secondary.title,
+    image: primary.image ?? secondary.image,
+    year: primary.year || secondary.year,
+    type: primary.type,
+    overview: primaryOverview.length >= secondaryOverview.length ? primaryOverview : secondaryOverview,
+    rating: primary.rating ?? secondary.rating,
+  };
+};
+
+const mergeMovieSeriesResults = (primary: SearchResult[], secondary: SearchResult[]) => {
+  const seen = new Map<string, SearchResult>();
+  for (const item of primary) {
+    const key = `${item.type}|${normalizeYear(item.year)}|${normalizeTitle(item.title)}`;
+    seen.set(key, item);
+  }
+  for (const item of secondary) {
+    const key = `${item.type}|${normalizeYear(item.year)}|${normalizeTitle(item.title)}`;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, item);
+    } else {
+      seen.set(key, mergeSearchResult(existing, item));
+    }
+  }
+  return Array.from(seen.values());
+};
+
 const searchTMDB = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
   const apiKey = process.env.TMDB_API_KEY;
   const bearerToken = process.env.TMDB_BEARER_TOKEN;
-  if (!apiKey && !bearerToken) return { results: [] as SearchResult[], error: "TMDB is not configured." };
+  if (!apiKey && !bearerToken) return { results: [] as SearchResult[], error: "Movie/series data provider is not configured." };
 
   const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(query)}`;
   const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
@@ -106,16 +151,15 @@ const searchTMDB = async (query: string): Promise<{ results: SearchResult[]; err
   const payload = response.data as { results?: TmdbResult[] };
   const rawResults = payload.results || [];
   const results: SearchResult[] = rawResults
-    .filter((item) => item.media_type !== "person")
+    .filter((item) => item.media_type === "movie" || item.media_type === "tv")
     .map((item) => {
       const mediaType: MediaType = item.media_type === "tv" ? "series" : "movie";
       return {
-        id: item.id,
+        id: String(item.id),
         title: item.title || item.name || "",
         image: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
         year: (item.release_date || item.first_air_date || "").split("-")[0],
         type: mediaType,
-        source: "tmdb" as const,
         overview: item.overview || "",
         rating: item.vote_average ?? null,
       };
@@ -124,37 +168,39 @@ const searchTMDB = async (query: string): Promise<{ results: SearchResult[]; err
   return { results, error: "" };
 };
 
-const searchOMDB = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
+const searchOMDB = async (query: string, type?: "movie" | "series"): Promise<{ results: SearchResult[]; error: string }> => {
   const apiKey = process.env.OMDB_API_KEY;
-  if (!apiKey) return { results: [] as SearchResult[], error: "OMDb is not configured." };
+  if (!apiKey) return { results: [] as SearchResult[], error: "Movie/series data provider is not configured." };
 
-  const url = `https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(query)}`;
+  const typeParam = type ? `&type=${type}` : "";
+  const url = `https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(query)}${typeParam}`;
   const response = await safeFetchJson(url);
   if (!response.ok) return { results: [] as SearchResult[], error: response.error };
   const payload = response.data as { Response?: string; Search?: OmdbResult[] };
   if (payload.Response === "False") return { results: [] as SearchResult[], error: "" };
 
   const rawResults = payload.Search || [];
-  const results: SearchResult[] = rawResults.map((item) => {
-    const mediaType: MediaType = item.Type === "series" ? "series" : item.Type === "game" ? "game" : "movie";
-    return {
-      id: item.imdbID,
-      title: item.Title,
-      image: item.Poster !== "N/A" ? item.Poster : null,
-      year: item.Year,
-      type: mediaType,
-      source: "omdb" as const,
-      overview: "",
-      rating: null,
-    };
-  });
+  const results: SearchResult[] = rawResults
+    .filter((item) => item.Type === "movie" || item.Type === "series")
+    .map((item) => {
+      const mediaType: MediaType = item.Type === "series" ? "series" : "movie";
+      return {
+        id: item.imdbID,
+        title: item.Title,
+        image: item.Poster !== "N/A" ? item.Poster : null,
+        year: item.Year,
+        type: mediaType,
+        overview: "",
+        rating: null,
+      };
+    });
 
   return { results, error: "" };
 };
 
 const searchMALAnime = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
   const clientId = process.env.MAL_CLIENT_ID;
-  if (!clientId) return { results: [] as SearchResult[], error: "MyAnimeList is not configured." };
+  if (!clientId) return { results: [] as SearchResult[], error: "Anime data provider is not configured." };
 
   const url = `https://api.myanimelist.net/v2/anime?q=${encodeURIComponent(query)}&limit=8&fields=title,main_picture,start_date,mean,synopsis`;
   const response = await safeFetchJson(url, { headers: { "X-MAL-CLIENT-ID": clientId } });
@@ -164,12 +210,11 @@ const searchMALAnime = async (query: string): Promise<{ results: SearchResult[];
   const rawResults = payload.data || [];
   const results: SearchResult[] = rawResults.map((item) => {
     return {
-      id: item.node.id,
+      id: String(item.node.id),
       title: item.node.title,
       image: item.node.main_picture?.medium || null,
       year: item.node.start_date ? item.node.start_date.split("-")[0] : "",
       type: "anime",
-      source: "mal" as const,
       overview: item.node.synopsis || "",
       rating: item.node.mean ?? null,
     };
@@ -180,7 +225,7 @@ const searchMALAnime = async (query: string): Promise<{ results: SearchResult[];
 
 const searchMALManga = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
   const clientId = process.env.MAL_CLIENT_ID;
-  if (!clientId) return { results: [] as SearchResult[], error: "MyAnimeList is not configured." };
+  if (!clientId) return { results: [] as SearchResult[], error: "Manga data provider is not configured." };
 
   const url = `https://api.myanimelist.net/v2/manga?q=${encodeURIComponent(query)}&limit=8&fields=title,main_picture,start_date,mean,synopsis`;
   const response = await safeFetchJson(url, { headers: { "X-MAL-CLIENT-ID": clientId } });
@@ -190,12 +235,11 @@ const searchMALManga = async (query: string): Promise<{ results: SearchResult[];
   const rawResults = payload.data || [];
   const results: SearchResult[] = rawResults.map((item) => {
     return {
-      id: item.node.id,
+      id: String(item.node.id),
       title: item.node.title,
       image: item.node.main_picture?.medium || null,
       year: item.node.start_date ? item.node.start_date.split("-")[0] : "",
       type: "manga",
-      source: "mal" as const,
       overview: item.node.synopsis || "",
       rating: item.node.mean ?? null,
     };
@@ -204,26 +248,86 @@ const searchMALManga = async (query: string): Promise<{ results: SearchResult[];
   return { results, error: "" };
 };
 
-const dedupeResults = (items: SearchResult[]) => {
-  const seen = new Map<string, SearchResult>();
-  for (const item of items) {
-    const titleKey = item.title.toLowerCase().replace(/\s+/g, " ").trim();
-    const yearKey = (item.year || "").trim();
-    const key = `${item.type}|${yearKey}|${titleKey}`;
-    if (!seen.has(key)) seen.set(key, item);
+const formatIgdbCoverUrl = (url?: string) => {
+  if (!url) return null;
+  const normalized = url.startsWith("//") ? `https:${url}` : url;
+  return normalized.replace("t_thumb", "t_cover_big");
+};
+
+const normalizeIgdbRating = (value?: number) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Number((value / 10).toFixed(1));
+};
+
+const getIgdbAccessToken = async (): Promise<{ token: string | null; error: string }> => {
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return { token: null, error: "Game data provider is not configured." };
+
+  const now = Date.now();
+  if (igdbTokenCache.token && igdbTokenCache.expiresAt > now + 60_000) {
+    return { token: igdbTokenCache.token, error: "" };
   }
-  return Array.from(seen.values());
+
+  const tokenUrl = `https://id.twitch.tv/oauth2/token?client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(
+    clientSecret
+  )}&grant_type=client_credentials`;
+  const response = await safeFetchJson(tokenUrl, { method: "POST" });
+  if (!response.ok) return { token: null, error: response.error };
+  const payload = response.data as { access_token?: string; expires_in?: number };
+  if (!payload.access_token || typeof payload.expires_in !== "number") {
+    return { token: null, error: "Game data provider authentication failed." };
+  }
+
+  igdbTokenCache.token = payload.access_token;
+  igdbTokenCache.expiresAt = now + payload.expires_in * 1000;
+  return { token: payload.access_token, error: "" };
+};
+
+const searchIGDBGames = async (query: string): Promise<{ results: SearchResult[]; error: string }> => {
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  const tokenResult = await getIgdbAccessToken();
+  if (!clientId || !tokenResult.token) return { results: [] as SearchResult[], error: tokenResult.error };
+
+  const sanitized = query.replace(/"/g, "").trim();
+  const body = `search "${sanitized}"; fields id,name,cover.url,first_release_date,summary,genres.name,aggregated_rating,rating; limit 20;`;
+  const response = await safeFetchJson("https://api.igdb.com/v4/games", {
+    method: "POST",
+    headers: {
+      "Client-ID": clientId,
+      Authorization: `Bearer ${tokenResult.token}`,
+      "Content-Type": "text/plain",
+    },
+    body,
+  });
+  if (!response.ok) return { results: [] as SearchResult[], error: response.error };
+
+  const payload = response.data as IgdbGame[];
+  const results: SearchResult[] = (payload || []).map((item) => {
+    const year = item.first_release_date ? String(new Date(item.first_release_date * 1000).getUTCFullYear()) : "";
+    const ratingValue = normalizeIgdbRating(item.aggregated_rating ?? item.rating);
+    return {
+      id: String(item.id),
+      title: item.name || "",
+      image: formatIgdbCoverUrl(item.cover?.url),
+      year,
+      type: "game",
+      overview: item.summary || "",
+      rating: ratingValue,
+    };
+  });
+
+  return { results, error: "" };
 };
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get("q");
+  const query = searchParams.get("q")?.trim();
   const typeParam = searchParams.get("type");
   const resolvedType: MediaType | null =
     typeParam === "movie" || typeParam === "series" || typeParam === "anime" || typeParam === "manga" || typeParam === "game"
       ? typeParam
       : null;
-  const sources = (searchParams.get("sources")?.split(",") || ["tmdb", "omdb", "mal"]).filter(Boolean) as SearchSource[];
 
   if (!query) {
     return NextResponse.json({ results: [] });
@@ -234,9 +338,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [], errors: ["Too many requests. Please wait."] }, { status: 429 });
   }
 
-  const cacheKey = resolvedType
-    ? `${query.trim().toLowerCase()}|type:${resolvedType}`
-    : `${query.trim().toLowerCase()}|sources:${sources.sort().join(",")}`;
+  const cacheKey = resolvedType ? `${query.toLowerCase()}|type:${resolvedType}` : `${query.toLowerCase()}|all`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return NextResponse.json(
@@ -245,25 +347,17 @@ export async function GET(request: Request) {
     );
   }
 
+  const errors: string[] = [];
+  let results: SearchResult[] = [];
+
   if (resolvedType) {
-    const errors: string[] = [];
-    let results: SearchResult[] = [];
-
     if (resolvedType === "movie" || resolvedType === "series") {
-      const tmdb = await searchTMDB(query);
+      const [tmdb, omdb] = await Promise.all([searchTMDB(query), searchOMDB(query, resolvedType)]);
       if (tmdb.error) errors.push(tmdb.error);
-
+      if (omdb.error) errors.push(omdb.error);
       const tmdbMatches = tmdb.results.filter((item) => item.type === resolvedType);
-
-      if (tmdbMatches.length > 0) {
-        results = tmdbMatches;
-      } else {
-        const omdb = await searchOMDB(query);
-        if (omdb.error) errors.push(omdb.error);
-        results = omdb.results.filter((item) => item.type === resolvedType);
-      }
-
-      results = dedupeResults(results);
+      const omdbMatches = omdb.results.filter((item) => item.type === resolvedType);
+      results = mergeMovieSeriesResults(tmdbMatches, omdbMatches);
     } else if (resolvedType === "anime") {
       const response = await searchMALAnime(query);
       results = response.results;
@@ -273,54 +367,28 @@ export async function GET(request: Request) {
       results = response.results;
       if (response.error) errors.push(response.error);
     } else if (resolvedType === "game") {
-      const response = await searchOMDB(query);
-      results = response.results.filter((item) => item.type === "game");
+      const response = await searchIGDBGames(query);
+      results = response.results;
       if (response.error) errors.push(response.error);
     }
+  } else {
+    const [tmdb, omdb, anime, manga, games] = await Promise.all([
+      searchTMDB(query),
+      searchOMDB(query),
+      searchMALAnime(query),
+      searchMALManga(query),
+      searchIGDBGames(query),
+    ]);
 
-    cache.set(cacheKey, { timestamp: Date.now(), results, errors });
+    if (tmdb.error) errors.push(tmdb.error);
+    if (omdb.error) errors.push(omdb.error);
+    if (anime.error) errors.push(anime.error);
+    if (manga.error) errors.push(manga.error);
+    if (games.error) errors.push(games.error);
 
-    return NextResponse.json(
-      { results, errors, cached: false },
-      { headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } }
-    );
+    const mergedMovieSeries = mergeMovieSeriesResults(tmdb.results, omdb.results);
+    results = [...mergedMovieSeries, ...anime.results, ...manga.results, ...games.results];
   }
-
-  const results: SearchResult[] = [];
-  const errors: string[] = [];
-
-  const searchMovieSeries = async () => {
-    const res: SearchResult[] = [];
-    const errs: string[] = [];
-    let found = false;
-
-    if (sources.includes("tmdb")) {
-      const tmdb = await searchTMDB(query);
-      if (tmdb.error) errs.push(tmdb.error);
-      if (tmdb.results.length > 0) {
-        res.push(...tmdb.results);
-        found = true;
-      }
-    }
-
-    if (!found && sources.includes("omdb")) {
-      const omdb = await searchOMDB(query);
-      if (omdb.error) errs.push(omdb.error);
-      res.push(...omdb.results);
-    }
-    return { results: res, errors: errs };
-  };
-
-  const searchMal = async () => {
-    if (!sources.includes("mal")) return { results: [], errors: [] };
-    const mal = await searchMALAnime(query);
-    return { results: mal.results, errors: mal.error ? [mal.error] : [] };
-  };
-
-  const [movieSeriesData, malData] = await Promise.all([searchMovieSeries(), searchMal()]);
-
-  results.push(...movieSeriesData.results, ...malData.results);
-  errors.push(...movieSeriesData.errors, ...malData.errors);
 
   cache.set(cacheKey, { timestamp: Date.now(), results, errors });
 

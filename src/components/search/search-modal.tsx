@@ -4,17 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
+import type { LoggableMedia } from "@/components/entry/log-entry-modal";
 
-type SourceKey = "tmdb" | "omdb" | "mal";
 type MediaType = "movie" | "series" | "anime" | "manga" | "game";
 
 export type SearchResult = {
-    id: string | number;
+    id: string;
     title: string;
     image: string | null;
     year?: string;
     type: MediaType;
-    source: SourceKey;
     overview?: string;
     rating?: number | null;
 };
@@ -28,15 +27,8 @@ interface SearchResponse {
 interface SearchModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onLog?: (item: SearchResult) => void;
-    onAddToList?: (item: SearchResult) => void;
+    onOpenLogModal?: (item: LoggableMedia) => void;
 }
-
-const sourceLabels: Record<SourceKey, string> = {
-    tmdb: "TMDB",
-    omdb: "OMDb",
-    mal: "MyAnimeList",
-};
 
 const typeLabels: Record<MediaType, string> = {
     movie: "Movies",
@@ -71,12 +63,13 @@ function ExpandableText({ text }: { text: string }) {
     );
 }
 
-export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModalProps) {
+export function SearchModal({ isOpen, onClose, onOpenLogModal }: SearchModalProps) {
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState<SearchResult[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
     const [selectedType, setSelectedType] = useState<MediaType>("movie");
+    const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
     const cacheRef = useRef<Map<string, { timestamp: number; results: SearchResult[]; errors: string[] }>>(new Map());
     const abortRef = useRef<AbortController | null>(null);
 
@@ -147,6 +140,81 @@ export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModal
         return results.filter((result) => result.type === selectedType);
     }, [results, selectedType]);
 
+    const getResultKey = (result: SearchResult) => `${result.type}-${result.id}`;
+
+    const handleResultActivate = (result: SearchResult) => {
+        if (actionLoading[getResultKey(result)]) return;
+        handleResultClick(result);
+    };
+
+    const fetchMetadata = async (result: SearchResult): Promise<LoggableMedia> => {
+        const fallback: LoggableMedia = {
+            id: result.id,
+            title: result.title,
+            image: result.image,
+            year: result.year,
+            type: result.type,
+            description: result.overview || "",
+            rating: result.rating ?? null,
+        };
+
+        try {
+            const params = new URLSearchParams({
+                type: result.type,
+                id: String(result.id),
+                title: result.title,
+            });
+            if (result.year) params.set("year", result.year);
+            const res = await fetch(`/api/metadata?${params.toString()}`);
+            if (!res.ok) return fallback;
+            const payload = (await res.json()) as {
+                data?: {
+                    title?: string;
+                    description?: string;
+                    year?: string;
+                    type?: MediaType;
+                    image?: string | null;
+                    rating?: number | null;
+                    lengthMinutes?: number | null;
+                    episodeCount?: number | null;
+                    chapterCount?: number | null;
+                    genresThemes?: string[];
+                } | null;
+            };
+            const data = payload.data || null;
+            if (!data) return fallback;
+
+            return {
+                ...fallback,
+                title: data.title || fallback.title,
+                image: data.image ?? fallback.image,
+                year: data.year ?? fallback.year,
+                type: data.type || fallback.type,
+                description: data.description || fallback.description,
+                rating: data.rating ?? fallback.rating,
+                lengthMinutes: data.lengthMinutes ?? null,
+                episodeCount: data.episodeCount ?? null,
+                chapterCount: data.chapterCount ?? null,
+                genresThemes: data.genresThemes ?? [],
+            };
+        } catch {
+            return fallback;
+        }
+    };
+
+    const handleResultClick = async (result: SearchResult) => {
+        if (!onOpenLogModal) return;
+        const key = getResultKey(result);
+        setActionLoading((prev) => ({ ...prev, [key]: true }));
+        try {
+            const enriched = await fetchMetadata(result);
+            onClose(); // Close search modal first
+            onOpenLogModal(enriched);
+        } finally {
+            setActionLoading((prev) => ({ ...prev, [key]: false }));
+        }
+    };
+
     return (
         <Modal
             isOpen={isOpen}
@@ -204,7 +272,23 @@ export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModal
 
                 <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
                     {filteredResults.map((result) => (
-                        <div key={`${result.source}-${result.id}`} className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4">
+                        <div
+                            key={`${result.type}-${result.id}`}
+                            role="button"
+                            tabIndex={actionLoading[getResultKey(result)] ? -1 : 0}
+                            aria-disabled={actionLoading[getResultKey(result)]}
+                            onClick={() => handleResultActivate(result)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    handleResultActivate(result);
+                                }
+                            }}
+                            className={cn(
+                                "w-full text-left rounded-2xl border border-white/5 bg-neutral-900/40 p-4 transition-colors hover:bg-neutral-900/60 disabled:opacity-50 disabled:cursor-not-allowed",
+                                actionLoading[getResultKey(result)] && "cursor-not-allowed"
+                            )}
+                        >
                             <div className="flex gap-3">
                                 <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-neutral-800/50">
                                     {result.image ? (
@@ -219,42 +303,19 @@ export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModal
                                         <div className="h-full w-full bg-neutral-800/50" />
                                     )}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                     <div className="text-sm font-semibold text-white truncate">{result.title}</div>
-                                    <div className="text-xs text-neutral-400 mt-1">
+                                    <div className="text-xs text-neutral-500">
                                         {result.year ? `${result.year} • ` : ""}
-                                        {typeLabels[result.type]} • {sourceLabels[result.source]}
-                                    </div>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => onLog?.(result)}
-                                            disabled={!onLog}
-                                            className={cn(
-                                                "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                                                onLog
-                                                    ? "border-white/10 bg-neutral-800/40 text-neutral-200 hover:bg-neutral-800 hover:text-white"
-                                                    : "border-white/5 bg-neutral-900/40 text-neutral-600 cursor-not-allowed"
-                                            )}
-                                        >
-                                            Log
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => onAddToList?.(result)}
-                                            disabled={!onAddToList}
-                                            className={cn(
-                                                "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                                                onAddToList
-                                                    ? "border-white/10 bg-neutral-800/40 text-neutral-200 hover:bg-neutral-800 hover:text-white"
-                                                    : "border-white/5 bg-neutral-900/40 text-neutral-600 cursor-not-allowed"
-                                            )}
-                                        >
-                                            Add to list
-                                        </button>
+                                        {typeLabels[result.type]}
                                     </div>
                                     {result.overview && <ExpandableText text={result.overview} />}
                                 </div>
+                                {actionLoading[getResultKey(result)] && (
+                                    <div className="flex items-center">
+                                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

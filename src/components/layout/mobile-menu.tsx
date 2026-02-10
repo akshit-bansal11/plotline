@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, X, Search, LogOut, LogIn, List } from "lucide-react";
+import { Menu, X, Search, LogIn, List, UserCircle, Upload, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSection, type SectionKey } from "@/context/section-context";
 
@@ -21,11 +21,21 @@ interface MobileMenuProps {
     onAuthOpen: () => void;
     onSearchOpen: () => void;
     onListsOpen: () => void;
-    onSignOut: () => void;
+    onProfileOpen: () => void;
+    onImportExportOpen: () => void;
+    onSettingsOpen: () => void;
     userLabel?: string | null;
 }
 
-export function MobileMenu({ onAuthOpen, onSearchOpen, onListsOpen, onSignOut, userLabel }: MobileMenuProps) {
+export function MobileMenu({
+    onAuthOpen,
+    onSearchOpen,
+    onListsOpen,
+    onProfileOpen,
+    onImportExportOpen,
+    onSettingsOpen,
+    userLabel,
+}: MobileMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
     const { activeSection, setActiveSection } = useSection();
 
@@ -114,13 +124,33 @@ export function MobileMenu({ onAuthOpen, onSearchOpen, onListsOpen, onSignOut, u
                                     </button>
                                     <button
                                         onClick={() => {
-                                            onSignOut();
+                                            onProfileOpen();
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
+                                    >
+                                        <UserCircle size={16} />
+                                        <span>Profile</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            onImportExportOpen();
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
+                                    >
+                                        <Upload size={16} />
+                                        <span>Import/Export</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            onSettingsOpen();
                                             setIsOpen(false);
                                         }}
                                         className="w-full flex items-center justify-center gap-2 rounded-full bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white"
                                     >
-                                        <LogOut size={16} />
-                                        <span>Sign out</span>
+                                        <Settings size={16} />
+                                        <span>Settings</span>
                                     </button>
                                 </>
                             ) : (

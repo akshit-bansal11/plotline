@@ -11,6 +11,11 @@ interface MediaGridProps {
         image: string | null;
         year?: string;
         type?: string;
+        onClick?: () => void;
+        onView?: () => void;
+        onEdit?: () => void;
+        onDelete?: () => void;
+        showActions?: boolean;
     }>;
     className?: string;
 }
@@ -40,7 +45,13 @@ export function MediaGrid({ items, className }: MediaGridProps) {
         >
             {items.map((item) => (
                 <motion.div key={item.id} variants={itemVariants}>
-                    <MediaCard {...item} />
+                    <MediaCard 
+                        {...item} 
+                        onView={item.onView}
+                        onEdit={item.onEdit}
+                        onDelete={item.onDelete}
+                        showActions={item.showActions}
+                    />
                 </motion.div>
             ))}
         </motion.div>

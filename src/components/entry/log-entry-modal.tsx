@@ -16,7 +16,12 @@ export type LoggableMedia = {
   image: string | null;
   year?: string;
   type: "movie" | "series" | "anime" | "manga" | "game";
-  source: "tmdb" | "omdb" | "mal";
+  description?: string;
+  rating?: number | null;
+  lengthMinutes?: number | null;
+  episodeCount?: number | null;
+  chapterCount?: number | null;
+  genresThemes?: string[];
 };
 
 const statusLabels: Record<EntryStatus, string> = {
@@ -125,13 +130,17 @@ export function LogEntryModal({
       setTitle(normalizedInitial.title);
       setMediaType(normalizedInitial.inferredType);
       setStatus("watching");
-      setRating("");
-      setLengthMinutes("");
-      setEpisodeCount("");
-      setChapterCount("");
-      setTags([]);
+      if (typeof normalizedInitial.rating === "number" && normalizedInitial.rating >= 1 && normalizedInitial.rating <= 10) {
+        setRating(String(Math.round(normalizedInitial.rating)));
+      } else {
+        setRating("");
+      }
+      setLengthMinutes(normalizedInitial.lengthMinutes ? String(normalizedInitial.lengthMinutes) : "");
+      setEpisodeCount(normalizedInitial.episodeCount ? String(normalizedInitial.episodeCount) : "");
+      setChapterCount(normalizedInitial.chapterCount ? String(normalizedInitial.chapterCount) : "");
+      setTags(Array.isArray(normalizedInitial.genresThemes) ? normalizedInitial.genresThemes.slice(0, 10) : []);
       setTagInput("");
-      setDescription("");
+      setDescription(normalizedInitial.description || "");
       setCompletionDate("");
       setCompletionUnknown(false);
       setSelectedListId("");
@@ -267,7 +276,6 @@ export function LogEntryModal({
         chapterCount: chapterCountValue,
         genresThemes: tags,
         description: description.trim(),
-        source: normalizedInitial?.source || null,
         externalId: normalizedInitial ? String(normalizedInitial.id) : null,
         image: normalizedInitial?.image || null,
         year: normalizedInitial?.year || null,
@@ -283,7 +291,6 @@ export function LogEntryModal({
         await addDoc(collection(db, "users", uid, "lists", selectedListId, "items"), {
           title: trimmedTitle,
           mediaType: listMediaType,
-          source: normalizedInitial?.source || "tmdb",
           externalId: normalizedInitial ? String(normalizedInitial.id) : entryRef.id,
           image: normalizedInitial?.image || null,
           year: normalizedInitial?.year || null,
