@@ -74,8 +74,9 @@ export function LogEntryModal({
   const [lengthMinutes, setLengthMinutes] = useState<string>("");
   const [episodeCount, setEpisodeCount] = useState<string>("");
   const [chapterCount, setChapterCount] = useState<string>("");
-  const [genresThemes, setGenresThemes] = useState<string>("");
-  const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState<string>("");
+  const [description, setDescription] = useState("");
   const [completionDate, setCompletionDate] = useState("");
   const [completionUnknown, setCompletionUnknown] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,8 +129,9 @@ export function LogEntryModal({
       setLengthMinutes("");
       setEpisodeCount("");
       setChapterCount("");
-      setGenresThemes("");
-      setNotes("");
+      setTags([]);
+      setTagInput("");
+      setDescription("");
       setCompletionDate("");
       setCompletionUnknown(false);
       setSelectedListId("");
@@ -141,8 +143,9 @@ export function LogEntryModal({
       setLengthMinutes("");
       setEpisodeCount("");
       setChapterCount("");
-      setGenresThemes("");
-      setNotes("");
+      setTags([]);
+      setTagInput("");
+      setDescription("");
       setCompletionDate("");
       setCompletionUnknown(false);
       setSelectedListId("");
@@ -187,15 +190,6 @@ export function LogEntryModal({
     return null;
   }, [numericField]);
 
-  const genresThemesAccepted = useMemo(() => genresThemes.replace(/[^A-Za-z_,]/g, ""), [genresThemes]);
-  const genresThemesRejected = useMemo(() => {
-    const rejected = new Set<string>();
-    for (const ch of genresThemes) {
-      if (!/[A-Za-z_,]/.test(ch)) rejected.add(ch);
-    }
-    return Array.from(rejected);
-  }, [genresThemes]);
-
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -236,27 +230,10 @@ export function LogEntryModal({
       mediaType === "series" || mediaType === "anime" ? (episodeCount.trim() ? Number(episodeCount.trim()) : null) : null;
     const chapterCountValue = mediaType === "manga" ? (chapterCount.trim() ? Number(chapterCount.trim()) : null) : null;
 
-    if (genresThemes.trim()) {
-      if (genresThemesRejected.length > 0) {
-        setError("Genres/themes may only include letters, underscores, and commas.");
-        return;
-      }
-      const parts = genresThemesAccepted
-        .split(",")
-        .map((part) => part.trim())
-        .filter(Boolean);
-      if (parts.length > 0 && parts.some((part) => !/^[A-Za-z_]+$/.test(part))) {
-        setError("Genres/themes must be comma-separated values containing only letters and underscores.");
-        return;
-      }
+    if (tags.length > 10) {
+      setError("You can only add up to 10 genres/themes.");
+      return;
     }
-
-    const genresThemesArray = genresThemesAccepted
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .map((part) => part.toLowerCase())
-      .filter((part, index, arr) => arr.indexOf(part) === index);
 
     let completedAt: Timestamp | null = null;
     let completionDateUnknown = false;
@@ -288,8 +265,8 @@ export function LogEntryModal({
         lengthMinutes: lengthMinutesValue,
         episodeCount: episodeCountValue,
         chapterCount: chapterCountValue,
-        genresThemes: genresThemesArray,
-        notes: notes.trim(),
+        genresThemes: tags,
+        description: description.trim(),
         source: normalizedInitial?.source || null,
         externalId: normalizedInitial ? String(normalizedInitial.id) : null,
         image: normalizedInitial?.image || null,
@@ -321,8 +298,9 @@ export function LogEntryModal({
         setLengthMinutes("");
         setEpisodeCount("");
         setChapterCount("");
-        setGenresThemes("");
-        setNotes("");
+        setTags([]);
+        setTagInput("");
+        setDescription("");
         setCompletionDate("");
         setCompletionUnknown(false);
         // Do not reset selectedListId so user can add multiple items to same list?
@@ -337,9 +315,9 @@ export function LogEntryModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Log entry" className="max-w-4xl bg-neutral-900/60">
+    <Modal isOpen={isOpen} onClose={onClose} title="Log entry" className="max-w-5xl bg-neutral-900/60">
       <div className="w-full">
-        <form onSubmit={onSubmit} className="flex max-h-[400px] flex-col">
+        <form onSubmit={onSubmit} className="flex max-h-[500px] flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto pr-1 scroll-smooth">
             <div className="space-y-2">
               <div className="text-xs font-medium text-neutral-400">Title</div>
@@ -347,7 +325,7 @@ export function LogEntryModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Dune: Part Two"
-                className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
               />
             </div>
 
@@ -357,7 +335,7 @@ export function LogEntryModal({
                 <select
                   value={mediaType}
                   onChange={(e) => setMediaType(e.target.value as EntryMediaType)}
-                  className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                 >
                   {(["movie", "series", "anime", "anime_movie", "manga", "game"] as EntryMediaType[]).map((value) => (
                     <option key={value} value={value}>
@@ -371,7 +349,7 @@ export function LogEntryModal({
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as EntryStatus)}
-                  className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                 >
                   {(["watching", "completed", "plan_to_watch", "dropped"] as EntryStatus[]).map((value) => (
                     <option key={value} value={value}>
@@ -388,7 +366,7 @@ export function LogEntryModal({
                 <select
                   value={selectedListId}
                   onChange={(e) => setSelectedListId(e.target.value)}
-                  className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                 >
                   <option value="">Select a list...</option>
                   {lists.map((list) => (
@@ -416,7 +394,7 @@ export function LogEntryModal({
                   inputMode="numeric"
                   min={1}
                   step={1}
-                  className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                 />
                 {numericFieldError ? <div className="text-xs text-red-400">{numericFieldError}</div> : null}
               </div>
@@ -431,7 +409,7 @@ export function LogEntryModal({
                     onClick={() => setCompletionDate(todayISODate())}
                     disabled={status !== "completed" || completionUnknown || isSaving}
                     className={cn(
-                      "rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white",
+                      "rounded-full border border-neutral-100/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-neutral-100",
                       status !== "completed" || completionUnknown || isSaving ? "cursor-not-allowed opacity-70" : ""
                     )}
                   >
@@ -448,7 +426,7 @@ export function LogEntryModal({
                         if (!next && status === "completed" && !completionDate) setCompletionDate(todayISODate());
                       }}
                       disabled={status !== "completed" || isSaving}
-                      className="h-4 w-4 rounded border border-white/10 bg-neutral-800/50"
+                      className="h-4 w-4 rounded border border-neutral-100/10 bg-neutral-800/50"
                     />
                     Unknown
                   </label>
@@ -460,7 +438,7 @@ export function LogEntryModal({
                 onChange={(e) => setCompletionDate(e.target.value)}
                 disabled={status !== "completed" || completionUnknown || isSaving}
                 className={cn(
-                  "w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all",
+                  "w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all",
                   status !== "completed" || completionUnknown || isSaving ? "cursor-not-allowed opacity-70" : ""
                 )}
               />
@@ -480,36 +458,130 @@ export function LogEntryModal({
                 min={1}
                 max={10}
                 step={1}
-                className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
               />
               {ratingError ? <div className="text-xs text-red-400">{ratingError}</div> : null}
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-neutral-400">Genres / themes</div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium text-neutral-400">Genres / themes</div>
+                <div className="text-xs text-neutral-500">{tags.length}/10 tags</div>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {tags.map((tag, index) => (
+                  <div
+                    key={`${tag}-${index}`}
+                    className="flex items-center gap-1 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-200 border border-neutral-100/10"
+                  >
+                    <span>{tag}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newTags = [...tags];
+                        newTags.splice(index, 1);
+                        setTags(newTags);
+                      }}
+                      className="ml-1 text-neutral-500 hover:text-neutral-100 transition-colors"
+                      aria-label={`Remove ${tag}`}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-3 w-3"
+                      >
+                        <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
               <input
-                value={genresThemes}
-                onChange={(e) => setGenresThemes(e.target.value)}
-                placeholder="e.g. dark_fantasy, coming_of_age"
-                className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                value={tagInput}
+                onChange={(e) => {
+                  setError(null);
+                  const val = e.target.value;
+                  // Allow letters, underscores, spaces, commas
+                  const cleanVal = val.replace(/[^A-Za-z_,\s]/g, "");
+
+                  if (cleanVal.includes(",")) {
+                    if (tags.length >= 10) {
+                      setError("Maximum of 10 tags allowed.");
+                      return;
+                    }
+                    const parts = cleanVal.split(",");
+                    const newTags = [...tags];
+                    let added = false;
+                    let errorMsg = null;
+
+                    for (const part of parts) {
+                      const trimmed = part.trim();
+                      if (!trimmed) continue;
+                      
+                      // Check for duplicates (case-sensitive)
+                      if (newTags.includes(trimmed)) {
+                        errorMsg = `Duplicate tag: "${trimmed}"`;
+                        continue;
+                      }
+                      
+                      if (newTags.length >= 10) {
+                        errorMsg = "Maximum of 10 tags allowed.";
+                        break;
+                      }
+
+                      newTags.push(trimmed);
+                      added = true;
+                    }
+
+                    if (errorMsg) setError(errorMsg);
+                    setTags(newTags);
+                    // Keep the part after the last comma as the new input, if any
+                    // Actually usually comma clears the input.
+                    // If user types "a,b", we add "a" and "b" and clear input.
+                    // If user types "a,b,c", same.
+                    // If user types "a," -> add "a", clear input.
+                    // The split will give ["a", ""] for "a,".
+                    // But if user types "a, b" -> ["a", " b"].
+                    // We should probably clear the input completely if the comma was at the end.
+                    // Or keep the partial text if it wasn't valid?
+                    // Let's just clear the input if a tag was added, or set it to empty?
+                    // Wait, if I type "action, hor", "action" becomes tag, "hor" remains in input?
+                    // Yes, that's better UX.
+                    const lastCommaIndex = cleanVal.lastIndexOf(",");
+                    const remainder = cleanVal.substring(lastCommaIndex + 1);
+                    setTagInput(remainder);
+                  } else {
+                     setTagInput(cleanVal);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Backspace" && !tagInput && tags.length > 0) {
+                    const newTags = [...tags];
+                    newTags.pop();
+                    setTags(newTags);
+                  }
+                }}
+                disabled={tags.length >= 10}
+                placeholder={tags.length >= 10 ? "Limit reached" : "e.g. dark_fantasy, coming_of_age"}
+                className={cn(
+                  "w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all",
+                  tags.length >= 10 ? "opacity-50 cursor-not-allowed" : ""
+                )}
               />
               <div className="space-y-1 text-xs text-neutral-500">
-                <div>Use commas to separate values. Allowed: letters (A–Z), underscores, commas.</div>
-                <div className="text-neutral-500">Accepted: {genresThemesAccepted || "—"}</div>
-                <div className={cn("text-neutral-500", genresThemesRejected.length > 0 ? "text-red-400" : "")}>
-                  Rejected: {genresThemesRejected.length > 0 ? genresThemesRejected.join(" ") : "—"}
-                </div>
+                <div>Type a comma to add a tag. Allowed: letters (A–Z), underscores, spaces.</div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-neutral-400">Notes</div>
+              <div className="text-xs font-medium text-neutral-400">Description</div>
               <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="What did you think?"
                 rows={5}
-                className="w-full resize-none rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                className="w-full resize-none rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
               />
             </div>
           </div>
@@ -522,7 +594,7 @@ export function LogEntryModal({
               type="submit"
               disabled={isSaving}
               className={cn(
-                "w-full rounded-xl bg-white py-3 font-semibold text-neutral-950 transition-transform hover:scale-[1.02] active:scale-[0.98]",
+                "w-full rounded-xl bg-neutral-100/90 backdrop-blur-sm py-3 font-semibold text-neutral-950 transition-all hover:bg-neutral-100 hover:shadow-[0_0_20px_rgba(245,245,245,0.1)] active:scale-[0.98]",
                 isSaving ? "cursor-not-allowed opacity-70" : ""
               )}
             >

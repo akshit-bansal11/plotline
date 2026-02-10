@@ -167,7 +167,7 @@ export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModal
                             void runSearch(trimmed, selectedType);
                         }}
                         placeholder="Search movies, series, anime, manga, games..."
-                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
                     />
                     <div className="flex flex-wrap gap-2">
                         {(["movie", "series", "anime", "manga", "game"] as MediaType[]).map((type) => (
@@ -176,9 +176,9 @@ export function SearchModal({ isOpen, onClose, onLog, onAddToList }: SearchModal
                                 type="button"
                                 onClick={() => setSelectedType(type)}
                                 className={cn(
-                                    "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+                                    "rounded-full px-3 py-1 text-xs font-medium border transition-all",
                                     selectedType === type
-                                        ? "bg-white text-neutral-950 border-transparent"
+                                        ? "bg-neutral-100/70 backdrop-blur-sm text-neutral-950 border-transparent shadow-[0_0_15px_rgba(255,255,255,0.05)]"
                                         : "bg-neutral-800/50 text-neutral-300 border-white/10 hover:bg-neutral-800"
                                 )}
                             >

@@ -90,6 +90,7 @@ export function MyListsModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const [renameValue, setRenameValue] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
   const pendingItem = useMemo(() => initialItem || null, [initialItem]);
 
@@ -98,6 +99,7 @@ export function MyListsModal({
     setError(null);
     setInfo(null);
     setViewingListId(null);
+    setIsCreating(false);
   }, [isOpen]);
 
   useEffect(() => {
@@ -252,6 +254,7 @@ export function MyListsModal({
       });
       setNewName("");
       setNewDescription("");
+      setIsCreating(false);
       // setSelectedListId(docRef.id); // No longer auto-select for dropdown
       setInfo("List created.");
     } catch (err) {
@@ -401,14 +404,14 @@ export function MyListsModal({
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
                 placeholder="Rename list"
-                className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
               />
               <button
                 type="button"
                 onClick={renameList}
                 disabled={!uid || isSaving}
                 className={cn(
-                  "rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-transform hover:scale-[1.02] active:scale-[0.98]",
+                  "rounded-xl bg-white/90 backdrop-blur-sm px-5 py-3 text-sm font-semibold text-neutral-950 transition-all hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]",
                   !uid || isSaving ? "cursor-not-allowed opacity-70" : "",
                 )}
               >
@@ -495,7 +498,7 @@ export function MyListsModal({
                     <select
                         value={selectedListId || ""}
                         onChange={(e) => setSelectedListId(e.target.value)}
-                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none"
+                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all appearance-none"
                     >
                         {lists.map(list => (
                             <option key={list.id} value={list.id} className="bg-neutral-900 text-white">
@@ -508,7 +511,7 @@ export function MyListsModal({
                     onClick={addPendingToSelected}
                     disabled={isSaving || !selectedListId}
                     className={cn(
-                        "w-full sm:w-auto px-6 py-3 rounded-xl bg-white font-semibold text-neutral-950 transition-transform hover:scale-[1.02] active:scale-[0.98]",
+                        "w-full sm:w-auto px-6 py-3 rounded-xl bg-white/90 backdrop-blur-sm font-semibold text-neutral-950 transition-all hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]",
                         (isSaving || !selectedListId) ? "cursor-not-allowed opacity-70" : ""
                     )}
                 >
@@ -520,32 +523,54 @@ export function MyListsModal({
 
         {/* 3. Create List */}
         <div className="space-y-4">
-          <div className="text-sm font-semibold text-white">Create a new list</div>
-          <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4 space-y-3">
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="List name"
-                className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-              />
-              <input
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Description (optional)"
-                className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-              />
-              <button
-                type="button"
-                onClick={createList}
-                disabled={isSaving}
-                className={cn(
-                  "w-full rounded-xl bg-white py-3 font-semibold text-neutral-950 transition-transform hover:scale-[1.02] active:scale-[0.98]",
-                  isSaving ? "cursor-not-allowed opacity-70" : ""
-                )}
-              >
-                Create
-              </button>
-          </div>
+          {!isCreating ? (
+            <button
+              onClick={() => setIsCreating(true)}
+              className="group flex items-center gap-2 text-sm font-semibold text-neutral-400 hover:text-white transition-colors"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-600 group-hover:border-white transition-colors">
+                +
+              </span>
+              Create a new list
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-white">Create a new list</div>
+                <button
+                  onClick={() => setIsCreating(false)}
+                  className="text-xs text-neutral-500 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4 space-y-3">
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="List name"
+                    className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+                  />
+                  <input
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    placeholder="Description (optional)"
+                    className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={createList}
+                    disabled={isSaving}
+                    className={cn(
+                      "w-full rounded-xl bg-white/90 backdrop-blur-sm py-3 font-semibold text-neutral-950 transition-all hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]",
+                      isSaving ? "cursor-not-allowed opacity-70" : ""
+                    )}
+                  >
+                    Create
+                  </button>
+              </div>
+            </>
+          )}
         </div>
 
         {error && <div className="text-sm text-red-400">{error}</div>}

@@ -71,7 +71,7 @@ export function MediaSection<TItem>({
                         value={resolvedFilterRaw}
                         onChange={(e) => setResolvedFilterRaw(e.target.value)}
                         placeholder="e.g. dark_fantasy, coming_of_age"
-                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
                     />
                 </div>
             </div>

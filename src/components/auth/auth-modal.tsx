@@ -102,7 +102,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                                         placeholder="Full Name"
                                         value={displayName}
                                         onChange={(event) => setDisplayName(event.target.value)}
-                                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 pl-10 pr-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 pl-10 pr-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
                                     />
                                 </div>
                             </motion.div>
@@ -116,7 +116,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             placeholder="Email Address"
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
-                            className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 pl-10 pr-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                            className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 pl-10 pr-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
                         />
                     </div>
 
@@ -127,7 +127,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             placeholder="Password"
                             value={password}
                             onChange={(event) => setPassword(event.target.value)}
-                            className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 pl-10 pr-4 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                            className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 pl-10 pr-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
                         />
                     </div>
                 </div>
@@ -138,7 +138,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-white text-neutral-950 py-3 font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-white/90 backdrop-blur-sm text-neutral-950 py-3 font-semibold transition-all hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                     <span>{mode === "signin" ? "Sign In" : "Sign Up"}</span>
                     <ArrowRight size={18} />
