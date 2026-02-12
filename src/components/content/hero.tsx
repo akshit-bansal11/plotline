@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "motion/react";
-import { Plus, List } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
-import { LogEntryModal } from "@/components/entry/log-entry-modal";
-import { MyListsModal } from "@/components/lists/my-lists-modal";
 
 interface HeroProps {
   username?: string;
@@ -22,9 +18,6 @@ export function Hero({
   username = "Traveler",
   stats = { movies: 0, series: 0, anime: 0, manga: 0, games: 0 },
 }: HeroProps) {
-  const [isLogOpen, setIsLogOpen] = useState(false);
-  const [isMyListsOpen, setIsMyListsOpen] = useState(false);
-
   return (
     <div className="relative w-full overflow-hidden pt-32 pb-12">
       {/* Background Gradient/Noise */}
@@ -49,25 +42,6 @@ export function Hero({
               your ultimate collection.
             </p>
           </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-            <GlassCard
-              className="flex items-center gap-2 px-6 py-3 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto justify-center sm:justify-start"
-              hoverEffect
-              onClick={() => setIsLogOpen(true)}
-            >
-              <Plus size={20} className="text-white" />
-              <span className="font-medium text-white">Log Entry</span>
-            </GlassCard>
-            <GlassCard
-              className="flex items-center gap-2 px-6 py-3 cursor-pointer hover:bg-white/5 transition-colors w-full sm:w-auto justify-center sm:justify-start"
-              hoverEffect
-              onClick={() => setIsMyListsOpen(true)}
-            >
-              <List size={20} className="text-white" />
-              <span className="font-medium text-white">My Lists</span>
-            </GlassCard>
-          </div>
         </motion.div>
 
         {/* Stats Grid */}
@@ -85,8 +59,6 @@ export function Hero({
         </motion.div>
       </div>
 
-      <LogEntryModal isOpen={isLogOpen} onClose={() => setIsLogOpen(false)} />
-      <MyListsModal isOpen={isMyListsOpen} onClose={() => setIsMyListsOpen(false)} />
     </div>
   );
 }

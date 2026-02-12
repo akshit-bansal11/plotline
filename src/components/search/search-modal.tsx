@@ -153,8 +153,10 @@ export function SearchModal({ isOpen, onClose, onOpenLogModal }: SearchModalProp
             title: result.title,
             image: result.image,
             year: result.year,
+            releaseYear: result.year,
             type: result.type,
             description: result.overview || "",
+            imdbRating: result.rating ?? null,
             rating: result.rating ?? null,
         };
 
@@ -189,8 +191,10 @@ export function SearchModal({ isOpen, onClose, onOpenLogModal }: SearchModalProp
                 title: data.title || fallback.title,
                 image: data.image ?? fallback.image,
                 year: data.year ?? fallback.year,
+                releaseYear: data.year ?? fallback.releaseYear,
                 type: data.type || fallback.type,
                 description: data.description || fallback.description,
+                imdbRating: data.rating ?? fallback.imdbRating,
                 rating: data.rating ?? fallback.rating,
                 lengthMinutes: data.lengthMinutes ?? null,
                 episodeCount: data.episodeCount ?? null,

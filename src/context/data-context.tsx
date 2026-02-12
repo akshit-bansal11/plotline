@@ -1,0 +1,169 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
+import { collection, limit, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/auth-context";
+
+export type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
+export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
+
+export type EntryDoc = {
+  id: string;
+  title: string;
+  mediaType: EntryMediaType;
+  status: EntryStatus;
+  userRating: number | null;
+  imdbRating: number | null;
+  notes: string;
+  description: string;
+  image: string | null;
+  releaseYear: string | null;
+  lengthMinutes: number | null;
+  episodeCount: number | null;
+  chapterCount: number | null;
+  createdAtMs: number | null;
+  completedAtMs: number | null;
+  completionDateUnknown: boolean;
+  genresThemes: string[];
+};
+
+type EntriesStatus = "idle" | "loading" | "ready" | "error";
+
+interface DataContextType {
+  entries: EntryDoc[];
+  status: EntriesStatus;
+  error: string | null;
+  selectedEntry: EntryDoc | null;
+  setSelectedEntry: (entry: EntryDoc | null) => void;
+  refresh: () => void;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+const entriesCache = new Map<string, { entries: EntryDoc[]; updatedAt: number }>();
+
+const coerceMediaType = (value: unknown): EntryMediaType => {
+  if (value === "movie" || value === "series" || value === "anime" || value === "anime_movie" || value === "manga" || value === "game") return value;
+  return "movie";
+};
+
+const coerceStatus = (value: unknown): EntryStatus => {
+  if (value === "watching" || value === "completed" || value === "plan_to_watch" || value === "dropped") return value;
+  return "watching";
+};
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value !== "number") return null;
+  return Number.isFinite(value) ? value : null;
+};
+
+const toMillis = (value: unknown): number | null => {
+  if (!value) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "object" && value && "toMillis" in value && typeof (value as { toMillis?: unknown }).toMillis === "function") {
+    const millis = (value as { toMillis: () => number }).toMillis();
+    return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+  }
+  return null;
+};
+
+const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
+  const genresThemes = Array.isArray(raw.genresThemes) ? raw.genresThemes.filter((v): v is string => typeof v === "string") : [];
+  return {
+    id,
+    title: String(raw.title || ""),
+    mediaType: coerceMediaType(raw.mediaType),
+    status: coerceStatus(raw.status),
+    userRating: typeof raw.userRating === "number" ? raw.userRating : typeof raw.rating === "number" ? raw.rating : null,
+    imdbRating: typeof raw.imdbRating === "number" ? raw.imdbRating : null,
+    notes: String(raw.notes || ""),
+    description: String(raw.description || ""),
+    image: raw.image ? String(raw.image) : null,
+    releaseYear: raw.releaseYear ? String(raw.releaseYear) : raw.year ? String(raw.year) : null,
+    lengthMinutes: toNumber(raw.lengthMinutes),
+    episodeCount: toNumber(raw.episodeCount),
+    chapterCount: toNumber(raw.chapterCount),
+    createdAtMs: toMillis(raw.createdAt),
+    completedAtMs: toMillis(raw.completedAt),
+    completionDateUnknown: Boolean(raw.completionDateUnknown),
+    genresThemes,
+  };
+};
+
+export function DataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.uid || null;
+  const [entries, setEntries] = useState<EntryDoc[]>([]);
+  const [status, setStatus] = useState<EntriesStatus>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState(0);
+  const [selectedEntry, setSelectedEntry] = useState<EntryDoc | null>(null);
+
+  const refresh = () => setToken((prev) => prev + 1);
+
+  useEffect(() => {
+    if (!uid) return;
+
+    // Check cache first
+    const cached = entriesCache.get(uid);
+    if (cached) {
+      queueMicrotask(() => {
+        setEntries(cached.entries);
+        setStatus("ready");
+      });
+    } else {
+      queueMicrotask(() => {
+        setStatus("loading");
+      });
+    }
+
+    const entriesQuery = query(collection(db, "users", uid, "entries"), orderBy("createdAt", "desc"), limit(1000));
+    const unsubscribe = onSnapshot(
+      entriesQuery,
+      (snapshot) => {
+        const next = snapshot.docs.map((docSnap) => parseEntry(docSnap.id, docSnap.data() as Record<string, unknown>));
+        const updatedAt = Date.now();
+        entriesCache.set(uid, { entries: next, updatedAt });
+        setEntries(next);
+        setStatus("ready");
+        setError(null);
+      },
+      (err) => {
+        console.error("Data sync error:", err);
+        setError(err.message);
+        setStatus("error");
+      }
+    );
+
+    return () => unsubscribe();
+  }, [uid, token]);
+
+  const value = useMemo(
+    () => {
+      const safeEntries = uid ? entries : [];
+      const safeStatus = uid ? status : "idle";
+      const safeError = uid ? error : null;
+      const safeSelectedEntry = uid ? selectedEntry : null;
+      return {
+        entries: safeEntries,
+        status: safeStatus,
+        error: safeError,
+        selectedEntry: safeSelectedEntry,
+        setSelectedEntry,
+        refresh,
+      };
+    },
+    [uid, entries, status, error, selectedEntry],
+  );
+
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+}
+
+export function useData() {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error("useData must be used within a DataProvider");
+  }
+  return context;
+}

@@ -9,6 +9,8 @@ type MetadataResult = {
   type?: MediaType;
   image?: string | null;
   rating?: number | null;
+  tmdbRating?: number | null;
+  imdbRating?: number | null;
   lengthMinutes?: number | null;
   episodeCount?: number | null;
   chapterCount?: number | null;
@@ -87,6 +89,8 @@ const mergeMetadata = (primary: MetadataResult | null, secondary: MetadataResult
           ? Math.max(primary.rating, secondary.rating)
           : primary.rating
         : secondary.rating ?? null,
+    tmdbRating: primary.tmdbRating ?? secondary.tmdbRating ?? null,
+    imdbRating: primary.imdbRating ?? secondary.imdbRating ?? null,
     lengthMinutes: primary.lengthMinutes ?? secondary.lengthMinutes ?? null,
     episodeCount: primary.episodeCount ?? secondary.episodeCount ?? null,
     chapterCount: primary.chapterCount ?? secondary.chapterCount ?? null,
@@ -159,6 +163,7 @@ const fetchTmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
     type: mediaType,
     image: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
     rating: typeof data.vote_average === "number" ? data.vote_average : null,
+    tmdbRating: typeof data.vote_average === "number" ? data.vote_average : null,
     lengthMinutes,
     episodeCount: mediaType === "series" && typeof data.number_of_episodes === "number" ? data.number_of_episodes : null,
     genresThemes: Array.isArray(data.genres) ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v)) : [],
@@ -198,6 +203,7 @@ const fetchOmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
     type: mediaType,
     image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
     rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
+    imdbRating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes: data.Genre ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [],
   };
@@ -231,6 +237,7 @@ const fetchOmdbMetadataByTitle = async (title: string, mediaType: MediaType, yea
     type: mediaType,
     image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
     rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
+    imdbRating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes: data.Genre ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [],
   };

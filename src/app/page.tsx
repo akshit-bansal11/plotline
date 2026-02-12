@@ -2,39 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { collection, limit, onSnapshot, orderBy, query, deleteDoc, doc } from "firebase/firestore";
+import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Hero } from "@/components/content/hero";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Modal } from "@/components/ui/modal";
 import { MediaGrid } from "@/components/content/media-grid";
 import { MediaSection } from "@/components/content/media-section";
 import { useAuth } from "@/context/auth-context";
 import { useSection, type SectionKey } from "@/context/section-context";
+import { useData, type EntryDoc, type EntryMediaType, type EntryStatus } from "@/context/data-context";
 import { db } from "@/lib/firebase";
+import { cn } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entry/log-entry-modal";
-
-type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
-type EntryStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
-
-type EntryDoc = {
-  id: string;
-  title: string;
-  mediaType: EntryMediaType;
-  status: EntryStatus;
-  rating: number | null;
-  notes: string;
-  description: string;
-  image: string | null;
-  year: string | null;
-  lengthMinutes: number | null;
-  episodeCount: number | null;
-  chapterCount: number | null;
-  createdAtMs: number | null;
-  completedAtMs: number | null;
-  completionDateUnknown: boolean;
-  genresThemes: string[];
-};
+import { EntryDetailModal } from "@/components/entry/entry-detail-modal";
+import { MyListsModal } from "@/components/lists/my-lists-modal";
 
 const statusLabels: Record<EntryStatus, string> = {
   watching: "Watching",
@@ -50,26 +32,6 @@ const mediaTypeLabels: Record<EntryMediaType, string> = {
   anime_movie: "Anime movie",
   manga: "Manga",
   game: "Game",
-};
-
-const toMillis = (value: unknown): number | null => {
-  if (!value) return null;
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value === "object" && value && "toMillis" in value && typeof (value as { toMillis?: unknown }).toMillis === "function") {
-    const millis = (value as { toMillis: () => number }).toMillis();
-    return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
-  }
-  return null;
-};
-
-const toNumber = (value: unknown): number | null => {
-  if (typeof value !== "number") return null;
-  return Number.isFinite(value) ? value : null;
-};
-
-const formatDate = (value: number | null) => {
-  if (!value) return "";
-  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
 const formatISODate = (millis: number) => {
@@ -97,173 +59,29 @@ const contentTypeLabels: Record<EntryMediaType, string> = {
   game: "Games",
 };
 
-// Removed normalizeSection here as it is imported from context or handled by it.
-// Actually we need SectionKey type which is imported.
-
-
-type EntriesStatus = "idle" | "loading" | "ready" | "error";
-type EntriesStore = {
-  uid: string | null;
-  entries: EntryDoc[];
-  status: EntriesStatus;
-  error: string | null;
-  updatedAt: number | null;
-  token: number;
+type ListRow = {
+  id: string;
+  name: string;
+  description: string;
+  type: EntryMediaType;
 };
 
-const entriesCache = new Map<string, { entries: EntryDoc[]; updatedAt: number }>();
+type ListItemRow = {
+  id: string;
+  title: string;
+  mediaType: EntryMediaType;
+  externalId: string;
+  image: string | null;
+  year: string | null;
+};
 
-const coerceMediaType = (value: unknown): EntryMediaType => {
-  if (value === "movie" || value === "series" || value === "anime" || value === "anime_movie" || value === "manga" || value === "game") return value;
+type ListModalType = Exclude<EntryMediaType, "anime_movie">;
+
+const coerceListType = (value: unknown): EntryMediaType => {
+  if (value === "movie" || value === "series" || value === "anime" || value === "manga" || value === "game" || value === "anime_movie") {
+    return value;
+  }
   return "movie";
-};
-
-const coerceStatus = (value: unknown): EntryStatus => {
-  if (value === "watching" || value === "completed" || value === "plan_to_watch" || value === "dropped") return value;
-  return "watching";
-};
-
-const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
-  const genresThemes = Array.isArray(raw.genresThemes) ? raw.genresThemes.filter((v): v is string => typeof v === "string") : [];
-  return {
-    id,
-    title: String(raw.title || ""),
-    mediaType: coerceMediaType(raw.mediaType),
-    status: coerceStatus(raw.status),
-    rating: typeof raw.rating === "number" ? raw.rating : null,
-    notes: String(raw.notes || ""),
-    description: String(raw.description || ""),
-    image: raw.image ? String(raw.image) : null,
-    year: raw.year ? String(raw.year) : null,
-    lengthMinutes: toNumber(raw.lengthMinutes),
-    episodeCount: toNumber(raw.episodeCount),
-    chapterCount: toNumber(raw.chapterCount),
-    createdAtMs: toMillis(raw.createdAt),
-    completedAtMs: toMillis(raw.completedAt),
-    completionDateUnknown: Boolean(raw.completionDateUnknown),
-    genresThemes,
-  };
-};
-
-function EntryDetailModal({ entry, onClose }: { entry: EntryDoc | null; onClose: () => void }) {
-  if (!entry) return null;
-  const subtitle = [entry.year, mediaTypeLabels[entry.mediaType], statusLabels[entry.status]].filter(Boolean).join(" • ");
-  const completionValue =
-    entry.status === "completed"
-      ? entry.completionDateUnknown
-        ? "Unknown"
-        : formatDate(entry.completedAtMs)
-      : "";
-
-  return (
-    <Modal isOpen={Boolean(entry)} onClose={onClose} title="Item details" className="max-w-4xl bg-neutral-900/60">
-      <div className="flex flex-col gap-6 sm:flex-row">
-        <div className="w-full sm:w-48">
-          <div className="aspect-[2/3] w-full overflow-hidden rounded-2xl bg-neutral-800/50">
-            {entry.image ? (
-              <Image src={entry.image} alt={entry.title} width={192} height={288} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full bg-neutral-800/50" />
-            )}
-          </div>
-        </div>
-        <div className="flex-1 space-y-4">
-          <div className="space-y-1">
-            <div className="text-xl font-semibold text-white">{entry.title || "Untitled"}</div>
-            {subtitle ? <div className="text-sm text-neutral-400">{subtitle}</div> : null}
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {entry.rating !== null ? (
-              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
-                Rating: {entry.rating}/10
-              </div>
-            ) : null}
-            {entry.lengthMinutes !== null ? (
-              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
-                Length: {entry.lengthMinutes} min
-              </div>
-            ) : null}
-            {entry.episodeCount !== null ? (
-              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
-                Episodes: {entry.episodeCount}
-              </div>
-            ) : null}
-            {entry.chapterCount !== null ? (
-              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
-                Chapters: {entry.chapterCount}
-              </div>
-            ) : null}
-            {completionValue ? (
-              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
-                Completed: {completionValue}
-              </div>
-            ) : null}
-            {entry.createdAtMs ? (
-              <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
-                Logged: {formatDate(entry.createdAtMs)}
-              </div>
-            ) : null}
-          </div>
-          {entry.description ? <div className="text-sm text-neutral-300 whitespace-pre-line">{entry.description}</div> : null}
-          {entry.genresThemes.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {entry.genresThemes.map((tag) => (
-                <span key={tag} className="rounded-full border border-white/10 bg-neutral-800/50 px-2 py-1 text-xs text-neutral-200">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-const useEntriesStore = (uid: string | null, reloadToken: number): EntriesStore => {
-  const cached = uid ? entriesCache.get(uid) : null;
-  const [store, setStore] = useState<EntriesStore>(() => {
-    if (!uid) return { uid: null, entries: [], status: "idle", error: null, updatedAt: null, token: reloadToken };
-    if (cached) return { uid, entries: cached.entries, status: "ready", error: null, updatedAt: cached.updatedAt, token: reloadToken };
-    return { uid, entries: [], status: "loading", error: null, updatedAt: null, token: reloadToken };
-  });
-
-  useEffect(() => {
-    if (!uid) return;
-    const entriesQuery = query(collection(db, "users", uid, "entries"), orderBy("createdAt", "desc"), limit(1000));
-    const unsubscribe = onSnapshot(
-      entriesQuery,
-      (snapshot) => {
-        const next = snapshot.docs.map((docSnap) => parseEntry(docSnap.id, docSnap.data() as Record<string, unknown>));
-        const updatedAt = Date.now();
-        entriesCache.set(uid, { entries: next, updatedAt });
-        setStore({ uid, entries: next, status: "ready", error: null, updatedAt, token: reloadToken });
-      },
-      (err) => {
-        const message = err instanceof Error ? err.message : "Failed to sync entries.";
-        setStore((prev) => ({ ...prev, uid, status: "error", error: message, token: reloadToken }));
-      }
-    );
-
-    return () => unsubscribe();
-  }, [reloadToken, uid]);
-
-  if (!uid) return { uid: null, entries: [], status: "idle", error: null, updatedAt: null, token: reloadToken };
-
-  const cachedNow = entriesCache.get(uid) || null;
-  const retrying = store.uid === uid && store.status === "error" && store.token !== reloadToken;
-  if (retrying) {
-    if (cachedNow) return { uid, entries: cachedNow.entries, status: "ready", error: null, updatedAt: cachedNow.updatedAt, token: reloadToken };
-    return { uid, entries: store.entries, status: "loading", error: null, updatedAt: store.updatedAt, token: reloadToken };
-  }
-
-  if (store.uid === uid) {
-    if (store.status === "loading" && cachedNow) return { uid, entries: cachedNow.entries, status: "ready", error: null, updatedAt: cachedNow.updatedAt, token: store.token };
-    return store;
-  }
-
-  if (cachedNow) return { uid, entries: cachedNow.entries, status: "ready", error: null, updatedAt: cachedNow.updatedAt, token: reloadToken };
-  return { uid, entries: [], status: "loading", error: null, updatedAt: null, token: reloadToken };
 };
 
 function DashboardSection({
@@ -274,7 +92,7 @@ function DashboardSection({
   onSelectEntry,
 }: {
   entries: EntryDoc[];
-  status: EntriesStatus;
+  status: string;
   error: string | null;
   onRetry: () => void;
   onSelectEntry: (entry: EntryDoc) => void;
@@ -411,7 +229,7 @@ function DashboardSection({
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-white">{entry.title}</div>
                           <div className="mt-1 text-xs text-neutral-500">
-                            {entry.year ? `${entry.year} • ` : ""}
+                            {entry.releaseYear ? `${entry.releaseYear} • ` : ""}
                             {entry.completedAtMs
                               ? formatISODate(entry.completedAtMs)
                               : entry.completionDateUnknown
@@ -419,9 +237,13 @@ function DashboardSection({
                                 : "No date set"}
                           </div>
                         </div>
-                        {typeof entry.rating === "number" ? (
+                        {typeof entry.userRating === "number" ? (
                           <div className="shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 tabular-nums">
-                            {entry.rating.toFixed(1)}
+                            You {entry.userRating.toFixed(1)}
+                          </div>
+                        ) : typeof entry.imdbRating === "number" ? (
+                          <div className="shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 tabular-nums">
+                            IMDb {entry.imdbRating.toFixed(1)}
                           </div>
                         ) : null}
                         <button
@@ -458,6 +280,8 @@ function LibrarySection({
   onSelectEntry,
   onEditEntry,
   onDeleteEntry,
+  onEditList,
+  onDeleteList,
 }: {
   title: string;
   description: string;
@@ -466,28 +290,95 @@ function LibrarySection({
   filterRaw: string;
   onFilterRawChange: (next: string) => void;
   entries: EntryDoc[];
-  status: EntriesStatus;
+  status: string;
   error: string | null;
   onRetry: () => void;
   onSelectEntry: (entry: EntryDoc) => void;
   onEditEntry: (entry: EntryDoc) => void;
   onDeleteEntry: (entry: EntryDoc) => void;
+  onEditList: (list: ListRow) => void;
+  onDeleteList: (list: ListRow) => void;
 }) {
   const { user } = useAuth();
   const uid = user?.uid || null;
-
+  const [lists, setLists] = useState<ListRow[]>([]);
+  const [listItemsById, setListItemsById] = useState<Record<string, ListItemRow[]>>({});
+  const [openLists, setOpenLists] = useState<Record<string, boolean>>({});
 
   const sectionEntries = useMemo(() => {
     return entries.filter((entry) => mediaTypes.includes(entry.mediaType));
   }, [entries, mediaTypes]);
 
+  const mediaTypeSet = useMemo(() => {
+    const normalized = mediaTypes.map((type) => (type === "anime_movie" ? "anime" : type));
+    return new Set(normalized);
+  }, [mediaTypes]);
+
+  useEffect(() => {
+    if (!uid) return;
+
+    const listsQuery = query(collection(db, "users", uid, "lists"), orderBy("updatedAt", "desc"), limit(50));
+    const unsubscribe = onSnapshot(listsQuery, (snapshot) => {
+      const nextLists = snapshot.docs.map((snap) => {
+        const data = snap.data() as { name?: unknown; description?: unknown; type?: unknown };
+        return {
+          id: snap.id,
+          name: typeof data.name === "string" ? data.name : "",
+          description: typeof data.description === "string" ? data.description : "",
+          type: coerceListType(data.type),
+        };
+      });
+      const filteredLists = nextLists.filter((list) => mediaTypeSet.has(list.type));
+      setLists(filteredLists);
+      setOpenLists((prev) => {
+        const next = { ...prev };
+        filteredLists.forEach((list) => {
+          if (next[list.id] === undefined) next[list.id] = true;
+        });
+        return next;
+      });
+    });
+
+    return () => unsubscribe();
+  }, [mediaTypeSet, uid]);
+
+  useEffect(() => {
+    if (!uid || lists.length === 0) return;
+
+    const unsubscribers = lists.map((list) => {
+      const itemsQuery = query(
+        collection(db, "users", uid, "lists", list.id, "items"),
+        orderBy("addedAt", "desc"),
+        limit(500),
+      );
+      return onSnapshot(itemsQuery, (snapshot) => {
+        const nextItems = snapshot.docs.map((snap) => {
+          const data = snap.data() as Partial<ListItemRow> & { mediaType?: unknown; externalId?: unknown; image?: unknown; year?: unknown; title?: unknown };
+          return {
+            id: snap.id,
+            title: typeof data.title === "string" ? data.title : "",
+            mediaType: coerceListType(data.mediaType),
+            externalId: typeof data.externalId === "string" ? data.externalId : "",
+            image: data.image ? String(data.image) : null,
+            year: data.year ? String(data.year) : null,
+          };
+        });
+        setListItemsById((prev) => ({ ...prev, [list.id]: nextItems }));
+      });
+    });
+
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [lists, uid]);
+
+ 
+
   const visibleEntriesError = uid ? error : null;
 
   return (
     <div className="pt-12">
-      <div className="container mx-auto px-4 md:px-6">
-        <h1 className="text-3xl font-bold tracking-tight text-white mb-2">{title}</h1>
-        <p className="text-neutral-400">{description}</p>
+      <div className="container mx-auto px-4 md:px-6 mb-4">
+        <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
+        <p className="text-neutral-400 text-sm">{description}</p>
       </div>
 
       {!uid ? (
@@ -510,30 +401,139 @@ function LibrarySection({
           <MediaSection
             items={sectionEntries}
             getGenresThemes={(entry) => entry.genresThemes}
+            getFilterValues={(entry) => [
+              entry.releaseYear,
+              entry.userRating,
+              entry.imdbRating,
+            ]}
             title="Results"
             filterRaw={filterRaw}
             onFilterRawChange={onFilterRawChange}
           >
-            {(filteredEntries) =>
-              filteredEntries.length === 0 ? (
-                <div className="text-sm text-neutral-400">No items found.</div>
-              ) : (
-                <MediaGrid
-                  items={filteredEntries.map((entry) => ({
-                    id: entry.id,
-                    title: entry.title,
-                    image: entry.image,
-                    year: entry.year || undefined,
-                    type: gridType,
-                    onClick: () => onSelectEntry(entry),
-                    showActions: true,
-                    onView: () => onSelectEntry(entry),
-                    onEdit: () => onEditEntry(entry),
-                    onDelete: () => onDeleteEntry(entry),
-                  }))}
-                />
-              )
-            }
+            {(filteredEntries) => {
+              const filteredById = new Map(filteredEntries.map((entry) => [entry.id, entry]));
+              const listedIds = new Set<string>();
+
+              const listSections = lists.map((list) => {
+                const listItems = listItemsById[list.id] || [];
+                const listEntries = listItems
+                  .map((item) => filteredById.get(item.externalId))
+                  .filter((entry): entry is EntryDoc => Boolean(entry));
+                listEntries.forEach((entry) => listedIds.add(entry.id));
+                const isOpen = openLists[list.id] ?? true;
+
+                return (
+                  <div key={list.id} className="space-y-3">
+                    <div className="flex w-full items-center justify-between rounded-xl border border-white/5 bg-neutral-900/40 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-900/60">
+                      <button
+                        type="button"
+                        onClick={() => setOpenLists((prev) => ({ ...prev, [list.id]: !isOpen }))}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        aria-label={isOpen ? "Collapse list" : "Expand list"}
+                      >
+                        <div className="p-1.5 rounded-full bg-white/5">
+                          {isOpen ? <ChevronDown size={18} className="text-white" /> : <ChevronRight size={18} className="text-white" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate">{list.name || "Untitled list"}</div>
+                          {list.description ? <div className="text-xs text-neutral-500 truncate">{list.description}</div> : null}
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs text-neutral-400">{listEntries.length} items</div>
+                        {isOpen ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onEditList(list)}
+                              disabled={!uid}
+                              className={cn(
+                                "rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-[11px] font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white",
+                                !uid ? "cursor-not-allowed opacity-70" : "",
+                              )}
+                              aria-label="Edit list"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteList(list)}
+                              disabled={!uid}
+                              className={cn(
+                                "rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-[11px] font-semibold text-red-200 transition-colors hover:bg-red-500/20",
+                                !uid ? "cursor-not-allowed opacity-70" : "",
+                              )}
+                              aria-label="Delete list"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                    {isOpen ? (
+                      listEntries.length === 0 ? (
+                        <div className="text-sm text-neutral-400">No items in this list.</div>
+                      ) : (
+                        <MediaGrid
+                          items={listEntries.map((entry) => ({
+                            id: entry.id,
+                            title: entry.title,
+                            image: entry.image,
+                            year: entry.releaseYear || undefined,
+                            userRating: entry.userRating,
+                            imdbRating: entry.imdbRating,
+                            type: gridType,
+                            onClick: () => onSelectEntry(entry),
+                            showActions: true,
+                            onView: () => onSelectEntry(entry),
+                            onEdit: () => onEditEntry(entry),
+                            onDelete: () => onDeleteEntry(entry),
+                          }))}
+                        />
+                      )
+                    ) : null}
+                  </div>
+                );
+              });
+
+              const otherEntries = filteredEntries.filter((entry) => !listedIds.has(entry.id));
+
+              return (
+                <div className="space-y-10">
+                  {listSections.length > 0 ? listSections : null}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between rounded-xl border border-white/5 bg-neutral-900/40 px-4 py-3 text-sm font-semibold text-white">
+                      <div className="min-w-0">
+                        <div className="truncate">Other</div>
+                        <div className="text-xs text-neutral-500 truncate">Items not in a list</div>
+                      </div>
+                      <div className="text-xs text-neutral-400">{otherEntries.length} items</div>
+                    </div>
+                    {otherEntries.length === 0 ? (
+                      <div className="text-sm text-neutral-400">No items found.</div>
+                    ) : (
+                      <MediaGrid
+                        items={otherEntries.map((entry) => ({
+                          id: entry.id,
+                          title: entry.title,
+                          image: entry.image,
+                          year: entry.releaseYear || undefined,
+                          userRating: entry.userRating,
+                          imdbRating: entry.imdbRating,
+                          type: gridType,
+                          onClick: () => onSelectEntry(entry),
+                          showActions: true,
+                          onView: () => onSelectEntry(entry),
+                          onEdit: () => onEditEntry(entry),
+                          onDelete: () => onDeleteEntry(entry),
+                        }))}
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            }}
           </MediaSection>
         </>
       )}
@@ -545,7 +545,7 @@ export default function Home() {
   const { user } = useAuth();
   const uid = user?.uid || null;
   const { activeSection } = useSection();
-  const [selectedEntry, setSelectedEntry] = useState<EntryDoc | null>(null);
+  const { entries, status, error, refresh, selectedEntry, setSelectedEntry } = useData();
   const [libraryFilters, setLibraryFilters] = useState<Record<Exclude<SectionKey, "home">, string>>({
     movies: "",
     series: "",
@@ -553,41 +553,58 @@ export default function Home() {
     manga: "",
     games: "",
   });
-  const [entriesReloadToken, setEntriesReloadToken] = useState(0);
   const [isEditingEntry, setIsEditingEntry] = useState<EntryDoc | null>(null);
+  const [isListsModalOpen, setIsListsModalOpen] = useState(false);
+  const [listsModalListId, setListsModalListId] = useState<string | null>(null);
+  const [listsModalType, setListsModalType] = useState<ListModalType | null>(null);
+  const [listsModalMode, setListsModalMode] = useState<"edit" | "delete" | "view">("view");
 
   const handleEditEntry = (entry: EntryDoc) => {
     setIsEditingEntry(entry);
   };
 
+  const handleEditList = (list: ListRow) => {
+    setListsModalListId(list.id);
+    setListsModalType(list.type === "anime_movie" ? "anime" : list.type);
+    setListsModalMode("edit");
+    setIsListsModalOpen(true);
+  };
+
+  const handleDeleteList = (list: ListRow) => {
+    setListsModalListId(list.id);
+    setListsModalType(list.type === "anime_movie" ? "anime" : list.type);
+    setListsModalMode("delete");
+    setIsListsModalOpen(true);
+  };
+
+  const deleteEntry = async (entry: EntryDoc) => {
+    if (!uid) return false;
+    try {
+      await deleteDoc(doc(db, "users", uid, "entries", entry.id));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const handleDeleteEntry = async (entry: EntryDoc) => {
     if (!uid) return;
-    
     if (!confirm(`Are you sure you want to delete "${entry.title}"? This action cannot be undone.`)) {
       return;
     }
-
-    try {
-      await deleteDoc(doc(db, "users", uid, "entries", entry.id));
-      // The entry will be automatically removed from the UI due to the real-time listener
-    } catch (error) {
-      console.error("Error deleting entry:", error);
+    const ok = await deleteEntry(entry);
+    if (!ok) {
       alert("Failed to delete entry. Please try again.");
     }
   };
-  const entriesStore = useEntriesStore(uid, entriesReloadToken);
-
-  const retrySync = () => setEntriesReloadToken((prev) => prev + 1);
-
-  // No internal hash listener needed anymore, handled by SectionProvider
 
   const sectionNode =
     activeSection === "home" ? (
       <DashboardSection
-        entries={entriesStore.entries}
-        status={entriesStore.status}
-        error={entriesStore.error}
-        onRetry={retrySync}
+        entries={entries}
+        status={status}
+        error={error}
+        onRetry={refresh}
         onSelectEntry={setSelectedEntry}
       />
     ) : activeSection === "movies" ? (
@@ -598,13 +615,15 @@ export default function Home() {
         gridType="movie"
         filterRaw={libraryFilters.movies}
         onFilterRawChange={(next) => setLibraryFilters((prev) => ({ ...prev, movies: next }))}
-        entries={entriesStore.entries}
-        status={entriesStore.status}
-        error={entriesStore.error}
-        onRetry={retrySync}
+        entries={entries}
+        status={status}
+        error={error}
+        onRetry={refresh}
         onSelectEntry={setSelectedEntry}
         onEditEntry={handleEditEntry}
         onDeleteEntry={handleDeleteEntry}
+        onEditList={handleEditList}
+        onDeleteList={handleDeleteList}
       />
     ) : activeSection === "series" ? (
       <LibrarySection
@@ -614,13 +633,15 @@ export default function Home() {
         gridType="series"
         filterRaw={libraryFilters.series}
         onFilterRawChange={(next) => setLibraryFilters((prev) => ({ ...prev, series: next }))}
-        entries={entriesStore.entries}
-        status={entriesStore.status}
-        error={entriesStore.error}
-        onRetry={retrySync}
+        entries={entries}
+        status={status}
+        error={error}
+        onRetry={refresh}
         onSelectEntry={setSelectedEntry}
         onEditEntry={handleEditEntry}
         onDeleteEntry={handleDeleteEntry}
+        onEditList={handleEditList}
+        onDeleteList={handleDeleteList}
       />
     ) : activeSection === "anime" ? (
       <LibrarySection
@@ -630,13 +651,15 @@ export default function Home() {
         gridType="anime"
         filterRaw={libraryFilters.anime}
         onFilterRawChange={(next) => setLibraryFilters((prev) => ({ ...prev, anime: next }))}
-        entries={entriesStore.entries}
-        status={entriesStore.status}
-        error={entriesStore.error}
-        onRetry={retrySync}
+        entries={entries}
+        status={status}
+        error={error}
+        onRetry={refresh}
         onSelectEntry={setSelectedEntry}
         onEditEntry={handleEditEntry}
         onDeleteEntry={handleDeleteEntry}
+        onEditList={handleEditList}
+        onDeleteList={handleDeleteList}
       />
     ) : activeSection === "manga" ? (
       <LibrarySection
@@ -646,13 +669,15 @@ export default function Home() {
         gridType="manga"
         filterRaw={libraryFilters.manga}
         onFilterRawChange={(next) => setLibraryFilters((prev) => ({ ...prev, manga: next }))}
-        entries={entriesStore.entries}
-        status={entriesStore.status}
-        error={entriesStore.error}
-        onRetry={retrySync}
+        entries={entries}
+        status={status}
+        error={error}
+        onRetry={refresh}
         onSelectEntry={setSelectedEntry}
         onEditEntry={handleEditEntry}
         onDeleteEntry={handleDeleteEntry}
+        onEditList={handleEditList}
+        onDeleteList={handleDeleteList}
       />
     ) : (
       <LibrarySection
@@ -662,13 +687,15 @@ export default function Home() {
         gridType="game"
         filterRaw={libraryFilters.games}
         onFilterRawChange={(next) => setLibraryFilters((prev) => ({ ...prev, games: next }))}
-        entries={entriesStore.entries}
-        status={entriesStore.status}
-        error={entriesStore.error}
-        onRetry={retrySync}
+        entries={entries}
+        status={status}
+        error={error}
+        onRetry={refresh}
         onSelectEntry={setSelectedEntry}
         onEditEntry={handleEditEntry}
         onDeleteEntry={handleDeleteEntry}
+        onEditList={handleEditList}
+        onDeleteList={handleDeleteList}
       />
     );
 
@@ -686,17 +713,47 @@ export default function Home() {
           {sectionNode}
         </motion.div>
       </AnimatePresence>
-      <EntryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      <EntryDetailModal
+        entry={selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        onEdit={handleEditEntry}
+        onDelete={deleteEntry}
+      />
       <LogEntryModal
         isOpen={!!isEditingEntry}
         onClose={() => setIsEditingEntry(null)}
+        isEditing={!!isEditingEntry}
         initialMedia={isEditingEntry ? {
           id: isEditingEntry.id,
           title: isEditingEntry.title,
           image: isEditingEntry.image,
-          year: isEditingEntry.year || undefined,
-          type: isEditingEntry.mediaType === "anime_movie" ? "movie" : isEditingEntry.mediaType,
+          year: isEditingEntry.releaseYear || undefined,
+          releaseYear: isEditingEntry.releaseYear || undefined,
+          type: isEditingEntry.mediaType,
+          description: isEditingEntry.description,
+          userRating: isEditingEntry.userRating,
+          imdbRating: isEditingEntry.imdbRating,
+          lengthMinutes: isEditingEntry.lengthMinutes,
+          episodeCount: isEditingEntry.episodeCount,
+          chapterCount: isEditingEntry.chapterCount,
+          genresThemes: isEditingEntry.genresThemes,
+          status: isEditingEntry.status,
+          completedAt: isEditingEntry.completedAtMs,
+          completionDateUnknown: isEditingEntry.completionDateUnknown,
         } : null}
+      />
+      <MyListsModal
+        isOpen={isListsModalOpen}
+        onClose={() => {
+          setIsListsModalOpen(false);
+          setListsModalListId(null);
+          setListsModalType(null);
+          setListsModalMode("view");
+        }}
+        mediaType={listsModalType}
+        initialViewListId={listsModalMode === "view" ? listsModalListId : null}
+        initialEditListId={listsModalMode === "edit" ? listsModalListId : null}
+        initialDeleteListId={listsModalMode === "delete" ? listsModalListId : null}
       />
     </>
   );

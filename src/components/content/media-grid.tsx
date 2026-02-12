@@ -10,6 +10,8 @@ interface MediaGridProps {
         title: string;
         image: string | null;
         year?: string;
+        userRating?: number | null;
+        imdbRating?: number | null;
         type?: string;
         onClick?: () => void;
         onView?: () => void;

@@ -6,18 +6,22 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import type { LoggableMedia } from "@/components/entry/log-entry-modal";
+import { NewListModal } from "@/components/lists/new-list-modal";
 
 type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 
@@ -48,6 +52,14 @@ const mediaTypeLabels: Record<ListItemRow["mediaType"], string> = {
   game: "Game",
 };
 
+const listTypeLabels: Record<EntryMediaType, string> = {
+  movie: "Movie",
+  series: "Series",
+  anime: "Anime",
+  manga: "Manga",
+  game: "Game",
+};
+
 const toMillis = (value: unknown) => {
   if (!value) return null;
   if (typeof value === "number") return value;
@@ -67,11 +79,19 @@ export function MyListsModal({
   onClose,
   initialItem,
   mediaType,
+  startCreating = false,
+  initialViewListId,
+  initialEditListId,
+  initialDeleteListId,
 }: {
   isOpen: boolean;
   onClose: () => void;
   initialItem?: LoggableMedia | null;
   mediaType?: EntryMediaType | null;
+  startCreating?: boolean;
+  initialViewListId?: string | null;
+  initialEditListId?: string | null;
+  initialDeleteListId?: string | null;
 }) {
   const { user } = useAuth();
   const uid = user?.uid || null;
@@ -81,25 +101,39 @@ export function MyListsModal({
   const [viewingListId, setViewingListId] = useState<string | null>(null);
   const [items, setItems] = useState<ListItemRow[]>([]);
 
-  const [newName, setNewName] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newType, setNewType] = useState<EntryMediaType | "">("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCheckingItem, setIsCheckingItem] = useState(false);
+  const [isItemAlreadyInList, setIsItemAlreadyInList] = useState(false);
 
   const [renameValue, setRenameValue] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
+  const [isNewListOpen, setIsNewListOpen] = useState(startCreating);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingList, setIsDeletingList] = useState(false);
+  const [pendingDeleteListId, setPendingDeleteListId] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editType, setEditType] = useState<EntryMediaType>("movie");
+  const [deleteItemTarget, setDeleteItemTarget] = useState<{ id: string; title: string } | null>(null);
 
   const pendingItem = useMemo(() => initialItem || null, [initialItem]);
+  const pendingListType = useMemo<EntryMediaType | null>(() => {
+    if (!pendingItem) return null;
+    return pendingItem.type === "anime_movie" ? "anime" : pendingItem.type;
+  }, [pendingItem]);
 
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
     setInfo(null);
-    setViewingListId(null);
-    setIsCreating(false);
-  }, [isOpen]);
+    const targetListId = initialEditListId || initialDeleteListId || initialViewListId || null;
+    setViewingListId(targetListId);
+    setIsNewListOpen(startCreating);
+    setIsEditOpen(Boolean(initialEditListId));
+    setPendingDeleteListId(initialDeleteListId || null);
+  }, [isOpen, startCreating, initialDeleteListId, initialEditListId, initialViewListId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -214,72 +248,108 @@ export function MyListsModal({
     () => lists.find((l) => l.id === viewingListId) || null,
     [lists, viewingListId],
   );
+  const selectedList = useMemo(
+    () => lists.find((l) => l.id === selectedListId) || null,
+    [lists, selectedListId],
+  );
+
+  useEffect(() => {
+    if (!isOpen || !pendingDeleteListId) return;
+    const list = lists.find((entry) => entry.id === pendingDeleteListId);
+    if (list) {
+      setDeleteTarget({ id: list.id, name: list.name });
+      setPendingDeleteListId(null);
+    }
+  }, [isOpen, lists, pendingDeleteListId]);
 
   useEffect(() => {
     if (!isOpen) return;
     if (viewingList) setRenameValue(viewingList.name);
   }, [isOpen, viewingList]);
 
-  const createList = async () => {
-    setError(null);
-    setInfo(null);
-    if (!uid) {
-      setError("Sign in to create lists.");
-      return;
+  useEffect(() => {
+    if (!viewingListId) {
+      setIsEditOpen(false);
+      setDeleteItemTarget(null);
     }
-    const name = newName.trim();
-    if (!name) {
-      setError("List name is required.");
-      return;
-    }
-    if (name.length > 80) {
-      setError("List name is too long.");
-      return;
-    }
-    if (!newType) {
-      setError("Type is required.");
-      return;
-    }
-    if (newDescription.trim().length > 280) {
-      setError("Description is too long.");
-      return;
-    }
+  }, [viewingListId]);
 
-    setIsSaving(true);
-    try {
-      const docRef = await addDoc(collection(db, "users", uid, "lists"), {
-        name,
-        description: newDescription.trim(),
-        type: newType,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      setNewName("");
-      setNewDescription("");
-      setNewType("");
-      setIsCreating(false);
-      // setSelectedListId(docRef.id); // No longer auto-select for dropdown
-      setInfo("List created.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create list.");
-    } finally {
-      setIsSaving(false);
+  useEffect(() => {
+    if (!isOpen || !viewingList) return;
+    setEditName(viewingList.name);
+    setEditDescription(viewingList.description || "");
+    setEditType(viewingList.type);
+  }, [isOpen, viewingList]);
+
+  useEffect(() => {
+    if (!isOpen || !uid || !selectedListId || !pendingItem) {
+      setIsItemAlreadyInList(false);
+      setIsCheckingItem(false);
+      return;
     }
+    setIsCheckingItem(true);
+    const externalId = String(pendingItem.id);
+    const itemsQuery = query(
+      collection(db, "users", uid, "lists", selectedListId, "items"),
+      where("externalId", "==", externalId),
+      limit(1),
+    );
+    const unsubscribe = onSnapshot(
+      itemsQuery,
+      (snapshot) => {
+        setIsItemAlreadyInList(!snapshot.empty);
+        setIsCheckingItem(false);
+      },
+      () => {
+        setIsItemAlreadyInList(false);
+        setIsCheckingItem(false);
+      },
+    );
+    return () => unsubscribe();
+  }, [isOpen, uid, selectedListId, pendingItem]);
+
+  const handleListCreated = (list: { id: string; name: string; type: EntryMediaType; description: string }) => {
+    setInfo("List created.");
+    setSelectedListId(list.id);
   };
 
-  const deleteList = async (listId: string) => {
-    if (!uid) return;
+  const deleteList = async (mode: "keep" | "delete") => {
+    if (!uid || !deleteTarget) return;
     setError(null);
     setInfo(null);
-    setIsSaving(true);
+    setIsDeletingList(true);
     try {
-      await deleteDoc(doc(db, "users", uid, "lists", listId));
+      const listId = deleteTarget.id;
+      const itemsSnap = await getDocs(collection(db, "users", uid, "lists", listId, "items"));
+      let batch = writeBatch(db);
+      let opCount = 0;
+      const commitBatch = async () => {
+        if (opCount === 0) return;
+        await batch.commit();
+        batch = writeBatch(db);
+        opCount = 0;
+      };
+      for (const itemDoc of itemsSnap.docs) {
+        const data = itemDoc.data() as { externalId?: unknown };
+        if (mode === "delete" && typeof data.externalId === "string" && data.externalId) {
+          batch.delete(doc(db, "users", uid, "entries", data.externalId));
+          opCount += 1;
+          if (opCount >= 400) await commitBatch();
+        }
+        batch.delete(itemDoc.ref);
+        opCount += 1;
+        if (opCount >= 400) await commitBatch();
+      }
+      batch.delete(doc(db, "users", uid, "lists", listId));
+      opCount += 1;
+      await commitBatch();
       setInfo("List deleted.");
-      setViewingListId(null); // Go back to overview
+      setViewingListId(null);
+      setDeleteTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete list.");
     } finally {
-      setIsSaving(false);
+      setIsDeletingList(false);
     }
   };
 
@@ -311,10 +381,79 @@ export function MyListsModal({
     }
   };
 
+  const saveListEdits = async () => {
+    if (!uid || !viewingListId) return;
+    setError(null);
+    setInfo(null);
+    const name = editName.trim();
+    if (!name) {
+      setError("List name is required.");
+      return;
+    }
+    if (name.length > 80) {
+      setError("List name cannot exceed 80 characters.");
+      return;
+    }
+    const descriptionValue = editDescription.trim();
+    if (descriptionValue.length > 250) {
+      setError("Description cannot exceed 250 characters.");
+      return;
+    }
+    if (!editType) {
+      setError("Select a category.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const nameQuery = query(
+        collection(db, "users", uid, "lists"),
+        where("name", "==", name),
+        limit(3),
+      );
+      const nameSnapshot = await getDocs(nameQuery);
+      const hasDuplicate = nameSnapshot.docs.some((docSnap) => docSnap.id !== viewingListId);
+      if (hasDuplicate) {
+        setError("A list with this name already exists.");
+        setIsSaving(false);
+        return;
+      }
+      await updateDoc(doc(db, "users", uid, "lists", viewingListId), {
+        name,
+        description: descriptionValue,
+        type: editType,
+        updatedAt: serverTimestamp(),
+      });
+      setRenameValue(name);
+      setInfo("List updated.");
+      setIsEditOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update list.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const addPendingToSelected = async () => {
     if (!uid || !selectedListId || !pendingItem) return;
     setError(null);
     setInfo(null);
+    if (!selectedList) {
+      setError("Select a valid list.");
+      return;
+    }
+    if (!pendingListType) {
+      setError("Select an item type to continue.");
+      return;
+    }
+    if (selectedList.type !== pendingListType) {
+      setError(`This list only accepts ${listTypeLabels[selectedList.type]} items.`);
+      return;
+    }
+    if (isItemAlreadyInList) {
+      setError("This item is already in the selected list.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -322,10 +461,10 @@ export function MyListsModal({
         collection(db, "users", uid, "lists", selectedListId, "items"),
         {
           title: pendingItem.title,
-          mediaType: pendingItem.type,
           externalId: String(pendingItem.id),
           image: pendingItem.image || null,
           year: pendingItem.year || null,
+          mediaType: pendingListType,
           addedAt: serverTimestamp(),
         },
       );
@@ -341,37 +480,46 @@ export function MyListsModal({
     }
   };
 
-  const removeItem = async (itemId: string) => {
-    if (!uid || !viewingListId) return;
+  const removeItem = (itemId: string, title: string) => {
+    setDeleteItemTarget({ id: itemId, title });
+  };
+
+  const confirmRemoveItem = async () => {
+    if (!uid || !viewingListId || !deleteItemTarget) return;
     setError(null);
     setInfo(null);
+    setIsSaving(true);
     try {
       await deleteDoc(
-        doc(db, "users", uid, "lists", viewingListId, "items", itemId),
+        doc(db, "users", uid, "lists", viewingListId, "items", deleteItemTarget.id),
       );
       await updateDoc(doc(db, "users", uid, "lists", viewingListId), {
         updatedAt: serverTimestamp(),
       });
+      setDeleteItemTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove item.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (viewingListId) {
     return (
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title="List Details"
-        className="max-w-5xl bg-neutral-900/60"
-      >
-        <div className="space-y-4">
-          <button
-            onClick={() => setViewingListId(null)}
-            className="text-sm text-neutral-400 hover:text-white transition-colors"
-          >
-            ← Back to all lists
-          </button>
+      <>
+        <Modal
+          isOpen={isOpen}
+          onClose={onClose}
+          title="List Details"
+          className="max-w-5xl bg-neutral-900/60"
+        >
+          <div className="space-y-4">
+            <button
+              onClick={() => setViewingListId(null)}
+              className="text-sm text-neutral-400 hover:text-white transition-colors"
+            >
+              ← Back to all lists
+            </button>
 
           <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -379,6 +527,13 @@ export function MyListsModal({
                 <div className="text-sm font-semibold text-white truncate">
                   {viewingList?.name || "List"}
                 </div>
+                  <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-neutral-400">
+                    {viewingList?.type ? (
+                      <span className="rounded-full border border-white/10 bg-neutral-900/60 px-3 py-1">
+                        Category: {listTypeLabels[viewingList.type]}
+                      </span>
+                    ) : null}
+                  </div>
                 {viewingList?.description ? (
                   <div className="mt-1 text-xs text-neutral-500">
                     {viewingList.description}
@@ -389,12 +544,25 @@ export function MyListsModal({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => viewingListId && deleteList(viewingListId)}
+                  onClick={() => setIsEditOpen(true)}
                   disabled={isSaving}
                   className={cn(
                     "rounded-full border border-white/10 bg-neutral-800/40 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white",
                     isSaving ? "cursor-not-allowed opacity-70" : "",
                   )}
+                  aria-label="Edit list"
+                >
+                  Edit list
+                </button>
+                <button
+                  type="button"
+                  onClick={() => viewingList && setDeleteTarget({ id: viewingList.id, name: viewingList.name })}
+                  disabled={isSaving || isDeletingList}
+                  className={cn(
+                    "rounded-full border border-white/10 bg-neutral-800/40 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white",
+                    isSaving || isDeletingList ? "cursor-not-allowed opacity-70" : "",
+                  )}
+                  aria-label="Delete list"
                 >
                   Delete list
                 </button>
@@ -445,7 +613,7 @@ export function MyListsModal({
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => removeItem(item.id, item.title)}
                     className="mt-3 w-full rounded-xl border border-white/10 bg-neutral-800/40 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white"
                   >
                     Remove
@@ -454,12 +622,221 @@ export function MyListsModal({
               ))}
             </div>
           </div>
-        </div>
-      </Modal>
+          </div>
+        </Modal>
+        <Modal
+          isOpen={Boolean(deleteTarget)}
+          onClose={() => setDeleteTarget(null)}
+          title="Delete list"
+          className="max-w-md bg-neutral-900/70"
+        >
+          <div className="space-y-4 text-sm text-neutral-300">
+            <div>
+              Delete {deleteTarget?.name || "this list"}?
+            </div>
+            <div className="text-xs text-neutral-500">
+              Keep Items removes the list but keeps entries in Other. Delete Items permanently removes entries.
+            </div>
+            {error ? <div className="text-sm text-red-400">{error}</div> : null}
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => deleteList("keep")}
+                disabled={isDeletingList}
+                className={cn(
+                  "rounded-xl border border-white/10 bg-neutral-800/50 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800",
+                  isDeletingList ? "cursor-not-allowed opacity-70" : "",
+                )}
+              >
+                Keep Items
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteList("delete")}
+                disabled={isDeletingList}
+                className={cn(
+                  "rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-200 transition-colors hover:bg-red-500/20",
+                  isDeletingList ? "cursor-not-allowed opacity-70" : "",
+                )}
+              >
+                Delete Items
+              </button>
+            </div>
+          </div>
+        </Modal>
+        <Modal
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          title="Edit list"
+          className="max-w-5xl bg-neutral-900/70"
+        >
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-neutral-400">List name</div>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  maxLength={80}
+                  className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-neutral-400">Category</div>
+                <select
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value as EntryMediaType)}
+                  className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+                >
+                  {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map((value) => (
+                    <option key={value} value={value} className="bg-neutral-900 text-white">
+                      {listTypeLabels[value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-medium text-neutral-400">Description</div>
+                  <div className="text-xs text-neutral-500">{editDescription.length}/250</div>
+                </div>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={4}
+                  maxLength={250}
+                  className="w-full resize-none rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-neutral-400">Items</div>
+                {items.length === 0 ? (
+                  <div className="text-sm text-neutral-500">No items yet.</div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {items.map((item) => (
+                      <div key={item.id} className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4">
+                        <div className="text-sm font-semibold text-white line-clamp-2">
+                          {item.title}
+                        </div>
+                        <div className="mt-1 text-xs text-neutral-500">
+                          {(item.year ? `${item.year} • ` : "") + mediaTypeLabels[item.mediaType]}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id, item.title)}
+                          className="mt-3 w-full rounded-xl border border-white/10 bg-neutral-800/40 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {error && <div className="text-sm text-red-400">{error}</div>}
+              {info && <div className="text-sm text-emerald-300">{info}</div>}
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  disabled={isSaving}
+                  className={cn(
+                    "rounded-xl border border-white/10 bg-neutral-800/50 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800",
+                    isSaving ? "cursor-not-allowed opacity-70" : "",
+                  )}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveListEdits}
+                  disabled={isSaving}
+                  className={cn(
+                    "rounded-xl bg-white/90 px-4 py-2 text-xs font-semibold text-neutral-950 transition-colors hover:bg-white",
+                    isSaving ? "cursor-not-allowed opacity-70" : "",
+                  )}
+                >
+                  {isSaving ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="text-sm font-semibold text-white">Preview</div>
+              <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4">
+                <div className="text-sm font-semibold text-white truncate">
+                  {editName.trim() || viewingList?.name || "List"}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-neutral-400">
+                  <span className="rounded-full border border-white/10 bg-neutral-900/60 px-3 py-1">
+                    Category: {listTypeLabels[editType]}
+                  </span>
+                </div>
+                {editDescription.trim() ? (
+                  <div className="mt-1 text-xs text-neutral-500">{editDescription.trim()}</div>
+                ) : null}
+              </div>
+              <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4">
+                <div className="text-xs text-neutral-500">{items.length} items</div>
+                {items.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {items.slice(0, 6).map((item) => (
+                      <span
+                        key={item.id}
+                        className="rounded-full border border-white/10 bg-neutral-900/60 px-3 py-1 text-[10px] text-neutral-300"
+                      >
+                        {item.title}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </Modal>
+        <Modal
+          isOpen={Boolean(deleteItemTarget)}
+          onClose={() => setDeleteItemTarget(null)}
+          title="Remove item"
+          className="max-w-md bg-neutral-900/70"
+        >
+          <div className="space-y-4 text-sm text-neutral-300">
+            <div>
+              Remove {deleteItemTarget?.title || "this item"} from the list?
+            </div>
+            {error ? <div className="text-sm text-red-400">{error}</div> : null}
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteItemTarget(null)}
+                disabled={isSaving}
+                className={cn(
+                  "rounded-xl border border-white/10 bg-neutral-800/50 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800",
+                  isSaving ? "cursor-not-allowed opacity-70" : "",
+                )}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRemoveItem}
+                disabled={isSaving}
+                className={cn(
+                  "rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-200 transition-colors hover:bg-red-500/20",
+                  isSaving ? "cursor-not-allowed opacity-70" : "",
+                )}
+              >
+                {isSaving ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      </>
     );
   }
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -467,7 +844,6 @@ export function MyListsModal({
       className="max-w-3xl bg-neutral-900/60"
     >
       <div className="flex flex-col gap-8">
-        {/* 1. Your Lists */}
         <div className="space-y-4">
           <div className="text-sm font-semibold text-white">Your lists</div>
           {!uid && (
@@ -489,7 +865,6 @@ export function MyListsModal({
           </div>
         </div>
 
-        {/* 2. List Selector (Only if pendingItem) */}
         {pendingItem && uid && (
           <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-6 space-y-4">
              <div className="text-sm font-semibold text-white">Add to list</div>
@@ -507,89 +882,114 @@ export function MyListsModal({
                             </option>
                         ))}
                     </select>
+                    {selectedList ? (
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
+                      <span>Category: {listTypeLabels[selectedList.type]}</span>
+                        {pendingListType && selectedList.type !== pendingListType ? (
+                          <span className="text-amber-300">Different category</span>
+                        ) : null}
+                        {isCheckingItem ? <span>Checking…</span> : null}
+                        {!isCheckingItem && isItemAlreadyInList ? (
+                          <span className="text-amber-300">Already in list</span>
+                        ) : null}
+                      </div>
+                    ) : null}
                 </div>
-                <button
-                    onClick={addPendingToSelected}
-                    disabled={isSaving || !selectedListId}
-                    className={cn(
-                        "w-full sm:w-auto px-6 py-3 rounded-xl bg-white/90 backdrop-blur-sm font-semibold text-neutral-950 transition-all hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]",
-                        (isSaving || !selectedListId) ? "cursor-not-allowed opacity-70" : ""
-                    )}
-                >
-                    Add {pendingItem.title}
-                </button>
+                <div className="flex w-full flex-col gap-2 sm:w-auto">
+                  <button
+                      onClick={addPendingToSelected}
+                      disabled={
+                        isSaving ||
+                        !selectedListId ||
+                        !selectedList ||
+                        !pendingListType ||
+                        selectedList.type !== pendingListType ||
+                        isItemAlreadyInList
+                      }
+                      className={cn(
+                          "w-full sm:w-auto px-6 py-3 rounded-xl bg-white/90 backdrop-blur-sm font-semibold text-neutral-950 transition-all hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]",
+                          (isSaving || !selectedListId || !selectedList || !pendingListType || selectedList.type !== pendingListType || isItemAlreadyInList)
+                            ? "cursor-not-allowed opacity-70"
+                            : ""
+                      )}
+                  >
+                      {isSaving ? "Adding..." : `Add ${pendingItem.title}`}
+                  </button>
+                  <button
+                      type="button"
+                      onClick={() => setIsNewListOpen(true)}
+                      className="w-full sm:w-auto rounded-xl border border-white/10 bg-neutral-900/40 px-6 py-3 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60 hover:text-white"
+                  >
+                      New list
+                  </button>
+                </div>
              </div>
           </div>
         )}
 
-        {/* 3. Create List */}
         <div className="space-y-4">
-          {!isCreating ? (
-            <button
-              onClick={() => setIsCreating(true)}
-              className="group flex items-center gap-2 text-sm font-semibold text-neutral-400 hover:text-white transition-colors"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-600 group-hover:border-white transition-colors">
-                +
-              </span>
-              Create a new list
-            </button>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-white">Create a new list</div>
-                <button
-                  onClick={() => setIsCreating(false)}
-                  className="text-xs text-neutral-500 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-              <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4 space-y-3">
-                  <input
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="List name"
-                    className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
-                  />
-                  <select
-                    value={newType}
-                    onChange={(e) => setNewType(e.target.value as EntryMediaType)}
-                    className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
-                  >
-                    <option value="" disabled>Select type</option>
-                    <option value="movie">Movie</option>
-                    <option value="series">Series</option>
-                    <option value="anime">Anime</option>
-                    <option value="manga">Manga</option>
-                    <option value="game">Game</option>
-                  </select>
-                  <input
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    placeholder="Description (optional)"
-                    className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={createList}
-                    disabled={isSaving}
-                    className={cn(
-                      "w-full rounded-xl bg-white/90 backdrop-blur-sm py-3 font-semibold text-neutral-950 transition-all hover:bg-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]",
-                      isSaving ? "cursor-not-allowed opacity-70" : ""
-                    )}
-                  >
-                    Create
-                  </button>
-              </div>
-            </>
-          )}
+          <button
+            onClick={() => setIsNewListOpen(true)}
+            className="group flex items-center gap-2 text-sm font-semibold text-neutral-400 hover:text-white transition-colors"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-neutral-600 group-hover:border-white transition-colors">
+              +
+            </span>
+            Create a new list
+          </button>
         </div>
 
         {error && <div className="text-sm text-red-400">{error}</div>}
         {info && <div className="text-sm text-emerald-300">{info}</div>}
       </div>
+      <NewListModal
+        isOpen={isNewListOpen}
+        onClose={() => setIsNewListOpen(false)}
+        defaultType={mediaType || null}
+        onCreated={handleListCreated}
+      />
     </Modal>
+    <Modal
+      isOpen={Boolean(deleteTarget)}
+      onClose={() => setDeleteTarget(null)}
+      title="Delete list"
+      className="max-w-md bg-neutral-900/70"
+    >
+      <div className="space-y-4 text-sm text-neutral-300">
+        <div>
+          Delete {deleteTarget?.name || "this list"}?
+        </div>
+        <div className="text-xs text-neutral-500">
+          Keep Items removes the list but keeps entries in Other. Delete Items permanently removes entries.
+        </div>
+        {error ? <div className="text-sm text-red-400">{error}</div> : null}
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => deleteList("keep")}
+            disabled={isDeletingList}
+            className={cn(
+              "rounded-xl border border-white/10 bg-neutral-800/50 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800",
+              isDeletingList ? "cursor-not-allowed opacity-70" : "",
+            )}
+          >
+            Keep Items
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteList("delete")}
+            disabled={isDeletingList}
+            className={cn(
+              "rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-200 transition-colors hover:bg-red-500/20",
+              isDeletingList ? "cursor-not-allowed opacity-70" : "",
+            )}
+          >
+            Delete Items
+          </button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 }
 
@@ -609,7 +1009,7 @@ function ListCard({
     const q = query(
       collection(db, "users", uid, "lists", list.id, "items"),
       orderBy("addedAt", "desc"),
-      limit(3),
+      limit(6),
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setPreviewItems(
@@ -620,27 +1020,33 @@ function ListCard({
   }, [uid, list.id]);
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4 flex flex-col gap-3 transition-colors hover:bg-neutral-900/60">
-      <div>
-        <div className="text-sm font-semibold text-white truncate">
-          {list.name}
+    <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4 flex flex-col gap-4 transition-colors hover:bg-neutral-900/60">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-semibold text-white truncate">{list.name}</div>
+          <span className="rounded-full border border-white/10 bg-neutral-900/70 px-3 py-1 text-[10px] text-neutral-300">
+            {listTypeLabels[list.type]}
+          </span>
         </div>
         {list.description && (
-          <div className="mt-1 text-xs text-neutral-500 line-clamp-1">
+          <div className="text-xs text-neutral-500 line-clamp-2">
             {list.description}
           </div>
         )}
       </div>
 
-      <div className="flex-1 space-y-1">
+      <div className="flex flex-wrap gap-2">
         {previewItems.length > 0 ? (
           previewItems.map((title, i) => (
-            <div key={i} className="text-xs text-neutral-400 truncate">
-              • {title}
-            </div>
+            <span
+              key={i}
+              className="rounded-full border border-white/10 bg-neutral-900/60 px-3 py-1 text-[10px] text-neutral-300"
+            >
+              {title}
+            </span>
           ))
         ) : (
-            <div className="text-xs text-neutral-600 italic">Empty list</div>
+          <span className="text-xs text-neutral-600 italic">Empty list</span>
         )}
       </div>
 

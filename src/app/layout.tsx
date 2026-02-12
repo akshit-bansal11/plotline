@@ -25,6 +25,7 @@ export const metadata: Metadata = {
 import { Navbar } from "@/components/layout/navbar";
 import { AuthProvider } from "@/context/auth-context";
 import { SectionProvider } from "@/context/section-context";
+import { DataProvider } from "@/context/data-context";
 
 export default function RootLayout({
   children,
@@ -41,10 +42,12 @@ export default function RootLayout({
 
         <AuthProvider>
           <SectionProvider>
-            <Navbar />
-            <main className="relative z-0 min-h-screen flex flex-col pt-24 pb-12">
-              {children}
-            </main>
+            <DataProvider>
+              <Navbar />
+              <main className="relative z-0 min-h-screen flex flex-col pt-24 pb-12">
+                {children}
+              </main>
+            </DataProvider>
           </SectionProvider>
         </AuthProvider>
       </body>

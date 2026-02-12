@@ -8,13 +8,14 @@ import {
     Search,
     LogOut,
     List,
-    ChevronDown,
     Settings,
     Upload,
     Download,
     LogIn,
     UserCircle,
     KeyRound,
+    Plus,
+    ListPlus,
 } from "lucide-react";
 import {
     Timestamp,
@@ -31,13 +32,15 @@ import { cn } from "@/lib/utils";
 import { NavLinks } from "./nav-links";
 import { MobileMenu } from "./mobile-menu";
 import { AuthModal } from "@/components/auth/auth-modal";
-import { SearchModal } from "@/components/search/search-modal";
 import { LogEntryModal, type LoggableMedia } from "@/components/entry/log-entry-modal";
 import { MyListsModal } from "@/components/lists/my-lists-modal";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/context/auth-context";
 import { useSection } from "@/context/section-context";
 import { db, storage } from "@/lib/firebase";
+import { GlobalSearch } from "@/components/search/global-search";
+import { useData } from "@/context/data-context";
+import { NewListModal } from "@/components/lists/new-list-modal";
 
 type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
 type EntryStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
@@ -46,13 +49,15 @@ type EntryExportRow = {
     title: string;
     mediaType: EntryMediaType;
     status: EntryStatus;
-    rating: number | null;
+    userRating: number | null;
+    imdbRating: number | null;
     lengthMinutes: number | null;
     episodeCount: number | null;
     chapterCount: number | null;
     genresThemes: string[];
     description: string;
-    year: string | null;
+    releaseYear: string | null;
+    image: string | null;
     completedAt: number | null;
     createdAt: number | null;
 };
@@ -110,6 +115,25 @@ const parseImdbDate = (value: string) => {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return null;
     return parsed.getTime();
+};
+
+const parseYearValue = (value: string | null | undefined) => {
+    if (!value) return null;
+    const match = value.match(/\d{4}/);
+    if (!match) return null;
+    const year = Number(match[0]);
+    const maxYear = new Date().getFullYear() + 1;
+    if (Number.isNaN(year) || year < 1888 || year > maxYear) return null;
+    return match[0];
+};
+
+const parseRatingValue = (value: string | null | undefined, min: number, max: number) => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed < min || parsed > max) return null;
+    return parsed;
 };
 
 const mapImdbType = (value: string): EntryMediaType => {
@@ -360,17 +384,26 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             const rows: EntryExportRow[] = [];
             snapshot.forEach((docSnap) => {
                 const data = docSnap.data() as Record<string, unknown>;
+                const releaseYearRaw = data.releaseYear ?? data.year ?? null;
+                const userRating =
+                    typeof data.userRating === "number"
+                        ? data.userRating
+                        : typeof data.rating === "number"
+                            ? data.rating
+                            : null;
                 rows.push({
                     title: String(data.title || ""),
                     mediaType: data.mediaType as EntryMediaType,
                     status: data.status as EntryStatus,
-                    rating: typeof data.rating === "number" ? data.rating : null,
+                    userRating,
+                    imdbRating: typeof data.imdbRating === "number" ? data.imdbRating : null,
                     lengthMinutes: typeof data.lengthMinutes === "number" ? data.lengthMinutes : null,
                     episodeCount: typeof data.episodeCount === "number" ? data.episodeCount : null,
                     chapterCount: typeof data.chapterCount === "number" ? data.chapterCount : null,
                     genresThemes: Array.isArray(data.genresThemes) ? (data.genresThemes as string[]) : [],
                     description: String(data.description || ""),
-                    year: data.year ? String(data.year) : null,
+                    releaseYear: releaseYearRaw ? String(releaseYearRaw) : null,
+                    image: typeof data.image === "string" ? data.image : null,
                     completedAt: data.completedAt instanceof Timestamp ? data.completedAt.toMillis() : null,
                     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : null,
                 });
@@ -379,8 +412,10 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 "Title",
                 "Media Type",
                 "Status",
-                "Year",
-                "Rating",
+                "Release Year",
+                "Your Rating",
+                "IMDb Rating",
+                "Image",
                 "Length (mins)",
                 "Episodes",
                 "Chapters",
@@ -396,8 +431,10 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                         escapeCsv(row.title),
                         escapeCsv(row.mediaType),
                         escapeCsv(row.status),
-                        escapeCsv(row.year || ""),
-                        escapeCsv(row.rating !== null ? String(row.rating) : ""),
+                        escapeCsv(row.releaseYear || ""),
+                        escapeCsv(row.userRating !== null ? String(row.userRating) : ""),
+                        escapeCsv(row.imdbRating !== null ? String(row.imdbRating) : ""),
+                        escapeCsv(row.image || ""),
                         escapeCsv(row.lengthMinutes !== null ? String(row.lengthMinutes) : ""),
                         escapeCsv(row.episodeCount !== null ? String(row.episodeCount) : ""),
                         escapeCsv(row.chapterCount !== null ? String(row.chapterCount) : ""),
@@ -443,12 +480,75 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 return;
             }
             const typeIndex = headerIndex.get("title type");
-            const yearIndex = headerIndex.get("year");
+            const releaseYearIndex = headerIndex.get("release year") ?? headerIndex.get("year");
             const runtimeIndex = headerIndex.get("runtime (mins)") ?? headerIndex.get("runtime");
             const genresIndex = headerIndex.get("genres");
-            const imdbRatingIndex = headerIndex.get("imdb rating");
-            const yourRatingIndex = headerIndex.get("your rating");
+            const imdbRatingIndex = headerIndex.get("imdb rating") ?? headerIndex.get("imdb");
+            const yourRatingIndex = headerIndex.get("your rating") ?? headerIndex.get("rating");
             const dateRatedIndex = headerIndex.get("date rated");
+            const imageIndex =
+                headerIndex.get("image") ??
+                headerIndex.get("image url") ??
+                headerIndex.get("poster") ??
+                headerIndex.get("poster url") ??
+                headerIndex.get("poster_url");
+
+            type MetadataCache = {
+                image?: string | null;
+                description?: string;
+                year?: string;
+                imdbRating?: number | null;
+                lengthMinutes?: number | null;
+                episodeCount?: number | null;
+                chapterCount?: number | null;
+                genresThemes?: string[];
+            };
+
+            const metadataCache = new Map<string, MetadataCache | null>();
+            let lastFetchAt = 0;
+            let windowResetAt = Date.now() + 60000;
+            let windowCount = 0;
+            const minIntervalMs = 350;
+            const maxPerWindow = 50;
+
+            const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+            const fetchFullMetadata = async (title: string, year: string | null, mediaType: EntryMediaType) => {
+                if (mediaType !== "movie" && mediaType !== "series") return null;
+                const key = `${mediaType}|${title}|${year || ""}`.toLowerCase();
+                if (metadataCache.has(key)) return metadataCache.get(key) ?? null;
+                const now = Date.now();
+                if (now > windowResetAt) {
+                    windowResetAt = now + 60000;
+                    windowCount = 0;
+                }
+                if (windowCount >= maxPerWindow) {
+                    const waitMs = Math.max(0, windowResetAt - now);
+                    if (waitMs > 0) await wait(waitMs);
+                    windowResetAt = Date.now() + 60000;
+                    windowCount = 0;
+                }
+                const delta = now - lastFetchAt;
+                if (delta < minIntervalMs) await wait(minIntervalMs - delta);
+                lastFetchAt = Date.now();
+                windowCount += 1;
+                try {
+                    const params = new URLSearchParams({ title, type: mediaType });
+                    if (year) params.set("year", year);
+                    const res = await fetch(`/api/metadata?${params.toString()}`);
+                    if (!res.ok) {
+                        metadataCache.set(key, null);
+                        return null;
+                    }
+                    const payload = (await res.json()) as { data?: MetadataCache | null };
+                    const data = payload?.data ?? null;
+                    metadataCache.set(key, data);
+                    return data;
+                } catch {
+                    metadataCache.set(key, null);
+                    return null;
+                }
+            };
 
             let imported = 0;
             let skipped = 0;
@@ -464,20 +564,31 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                     continue;
                 }
                 const typeValue = typeIndex !== undefined ? row[typeIndex] || "" : "";
-                const yearValue = yearIndex !== undefined ? row[yearIndex]?.trim() : "";
+                const releaseYearRaw = releaseYearIndex !== undefined ? row[releaseYearIndex]?.trim() : "";
                 const runtimeValue = runtimeIndex !== undefined ? Number(row[runtimeIndex]) : null;
                 const genresValue = genresIndex !== undefined ? row[genresIndex] || "" : "";
-                const imdbRatingValue = imdbRatingIndex !== undefined ? Number(row[imdbRatingIndex]) : NaN;
-                const yourRatingValue = yourRatingIndex !== undefined ? Number(row[yourRatingIndex]) : NaN;
+                const imdbRatingRaw = imdbRatingIndex !== undefined ? row[imdbRatingIndex] || "" : "";
+                const yourRatingRaw = yourRatingIndex !== undefined ? row[yourRatingIndex] || "" : "";
                 const dateRatedValue = dateRatedIndex !== undefined ? row[dateRatedIndex] || "" : "";
                 const parsedDate = parseImdbDate(dateRatedValue);
+                const releaseYearValue = parseYearValue(releaseYearRaw);
+                const imdbRatingValue = parseRatingValue(imdbRatingRaw, 0, 10);
+                const userRatingValue = parseRatingValue(yourRatingRaw, 1, 10);
+                const mediaType = mapImdbType(typeValue);
+                const imageRaw = imageIndex !== undefined ? row[imageIndex] || "" : "";
 
-                const rating = Number.isFinite(yourRatingValue)
-                    ? yourRatingValue
-                    : Number.isFinite(imdbRatingValue)
-                        ? imdbRatingValue
-                        : null;
+                const metadata = await fetchFullMetadata(title, releaseYearValue, mediaType);
 
+                const finalImage = imageRaw && imageRaw.trim() ? imageRaw.trim() : (metadata?.image ?? null);
+                const finalDescription = metadata?.description ?? "";
+                const finalReleaseYear = releaseYearValue || metadata?.year || null;
+                const finalLengthMinutes = Number.isFinite(runtimeValue as number) ? runtimeValue : (metadata?.lengthMinutes ?? null);
+                const finalImdbRating = imdbRatingValue ?? metadata?.imdbRating ?? null;
+                const finalGenres = genresValue
+                    ? genresValue.split(",").map((g: string) => g.trim()).filter(Boolean)
+                    : (metadata?.genresThemes ?? []);
+
+                const rating = userRatingValue ?? finalImdbRating ?? null;
                 const status: EntryStatus = parsedDate ? "completed" : "plan_to_watch";
                 const completionDateUnknown = status === "completed" && !parsedDate;
                 const completedAt = parsedDate ? Timestamp.fromMillis(parsedDate) : null;
@@ -485,20 +596,21 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 const entryRef = doc(collection(db, "users", user.uid, "entries"));
                 batch.set(entryRef, {
                     title,
-                    mediaType: mapImdbType(typeValue),
+                    mediaType,
                     status,
+                    userRating: userRatingValue,
+                    imdbRating: finalImdbRating,
                     rating,
-                    lengthMinutes: Number.isFinite(runtimeValue as number) ? runtimeValue : null,
-                    episodeCount: null,
-                    chapterCount: null,
-                    genresThemes: genresValue
-                        ? genresValue.split(",").map((g) => g.trim()).filter(Boolean)
-                        : [],
-                    description: "",
+                    lengthMinutes: finalLengthMinutes,
+                    episodeCount: metadata?.episodeCount ?? null,
+                    chapterCount: metadata?.chapterCount ?? null,
+                    genresThemes: finalGenres,
+                    description: finalDescription,
                     notes: "",
                     externalId: null,
-                    image: null,
-                    year: yearValue || null,
+                    image: finalImage,
+                    releaseYear: finalReleaseYear,
+                    year: finalReleaseYear,
                     completedAt,
                     completionDateUnknown,
                     createdAt: serverTimestamp(),
@@ -681,6 +793,7 @@ export function Navbar() {
     const [isMyListsOpen, setIsMyListsOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isLogOpen, setIsLogOpen] = useState(false);
+    const [isNewListOpen, setIsNewListOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isImportExportOpen, setIsImportExportOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -728,6 +841,14 @@ export function Navbar() {
                 icon: UserCircle,
                 onClick: () => {
                     setIsProfileOpen(true);
+                    setIsProfileMenuOpen(false);
+                },
+            },
+            {
+                label: "My Lists",
+                icon: List,
+                onClick: () => {
+                    setIsMyListsOpen(true);
                     setIsProfileMenuOpen(false);
                 },
             },
@@ -860,22 +981,27 @@ export function Navbar() {
                         </div>
 
                         {user && (
-                            <button
-                                onClick={() => setIsMyListsOpen(true)}
-                                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white"
-                            >
-                                <List size={16} />
-                                <span>Lists</span>
-                            </button>
+                            <div className="hidden md:flex items-center gap-2">
+                                <GlobalSearch />
+                                <button
+                                    onClick={() => {
+                                        setPendingItem(null);
+                                        setIsLogOpen(true);
+                                    }}
+                                    className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
+                                >
+                                    <Plus size={14} />
+                                    Log entry
+                                </button>
+                                <button
+                                    onClick={() => setIsNewListOpen(true)}
+                                    className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
+                                >
+                                    <ListPlus size={14} />
+                                    New list
+                                </button>
+                            </div>
                         )}
-
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white"
-                        >
-                            <Search size={16} />
-                            <span>Search</span>
-                        </button>
 
                         {userLabel ? (
                             <div className="relative hidden md:flex items-center">
@@ -886,7 +1012,8 @@ export function Navbar() {
                                     onKeyDown={handleTriggerKeyDown}
                                     aria-haspopup="menu"
                                     aria-expanded={isProfileMenuOpen}
-                                    className="flex items-center gap-3 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-900/60"
+                                    aria-label={userLabel || "Profile"}
+                                    className="flex items-center rounded-full border border-white/10 bg-neutral-900/40 p-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-900/60"
                                 >
                                     <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-neutral-900/50 text-xs font-semibold text-neutral-300">
                                         {avatarUrl ? (
@@ -895,8 +1022,6 @@ export function Navbar() {
                                             (userLabel || "U").slice(0, 1).toUpperCase()
                                         )}
                                     </div>
-                                    <span className="max-w-[140px] truncate">{userLabel}</span>
-                                    <ChevronDown size={16} className={cn("text-neutral-400 transition-transform", isProfileMenuOpen ? "rotate-180" : "")} />
                                 </button>
                                 <AnimatePresence>
                                     {isProfileMenuOpen && (
@@ -939,7 +1064,10 @@ export function Navbar() {
 
                         <MobileMenu
                             onAuthOpen={() => setIsAuthOpen(true)}
-                            onSearchOpen={() => setIsSearchOpen(true)}
+                            onSearchOpen={() => {
+                                setPendingItem(null);
+                                setIsLogOpen(true);
+                            }}
                             onListsOpen={() => setIsMyListsOpen(true)}
                             onProfileOpen={() => setIsProfileOpen(true)}
                             onImportExportOpen={() => setIsImportExportOpen(true)}
@@ -951,11 +1079,6 @@ export function Navbar() {
             </motion.header>
 
             <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-            <SearchModal
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-                onOpenLogModal={handleLogFromSearch}
-            />
             <LogEntryModal
                 isOpen={isLogOpen}
                 onClose={() => {
@@ -972,6 +1095,11 @@ export function Navbar() {
                 }}
                 initialItem={pendingItem}
                 mediaType={getMediaTypeFromSection()}
+            />
+            <NewListModal
+                isOpen={isNewListOpen}
+                onClose={() => setIsNewListOpen(false)}
+                defaultType={getMediaTypeFromSection()}
             />
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
             <ImportExportModal isOpen={isImportExportOpen} onClose={() => setIsImportExportOpen(false)} />

@@ -13,7 +13,8 @@ interface MediaCardProps {
     type?: string;
     className?: string;
     aspectRatio?: "poster" | "video";
-    rating?: number; // 0-10 or 0-5
+    userRating?: number | null;
+    imdbRating?: number | null;
     status?: "watching" | "completed" | "plan_to_watch" | "dropped";
     onClick?: () => void;
     onView?: () => void;
@@ -29,7 +30,8 @@ export function MediaCard({
     type,
     className,
     aspectRatio = "poster",
-    rating,
+    userRating,
+    imdbRating,
     status,
     onClick,
     onView,
@@ -45,6 +47,14 @@ export function MediaCard({
             default: return 'hidden';
         }
     };
+
+    const displayRating = typeof userRating === "number" ? userRating : typeof imdbRating === "number" ? imdbRating : null;
+    const displayRatingText =
+        displayRating !== null && Number.isFinite(displayRating)
+            ? Number.isInteger(displayRating)
+                ? String(displayRating)
+                : displayRating.toFixed(1)
+            : "";
 
     const content = (
         <GlassCard
@@ -76,13 +86,13 @@ export function MediaCard({
                 </div>
             )}
 
-            {rating && (
+            {displayRating !== null ? (
                 <div className="absolute top-3 left-3 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-neutral-950/80 backdrop-blur-md border border-white/10 text-xs font-bold text-white">
-                        {rating}
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-xs font-bold text-white shadow-[0_4px_12px_rgba(0,0,0,0.5)] ring-1 ring-white/5">
+                        {displayRatingText}
                     </div>
                 </div>
-            )}
+            ) : null}
 
             <div className="absolute bottom-0 left-0 right-0 p-4 transition-all duration-300 translate-y-0 opacity-100 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
                 <h3 className="font-medium text-white line-clamp-2 text-shadow-sm">{title}</h3>

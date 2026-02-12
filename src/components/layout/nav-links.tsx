@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
+import { BookOpen, Film, Gamepad2, Home, Sparkles, Tv } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSection, type SectionKey } from "@/context/section-context";
 
-const links: Array<{ href: string; label: string; section: SectionKey }> = [
-    { href: "/", label: "Home", section: "home" },
-    { href: "/#movies", label: "Movies", section: "movies" },
-    { href: "/#series", label: "Series", section: "series" },
-    { href: "/#anime", label: "Anime", section: "anime" },
-    { href: "/#manga", label: "Manga", section: "manga" },
-    { href: "/#games", label: "Games", section: "games" },
+const links: Array<{ href: string; label: string; section: SectionKey; icon: typeof Home }> = [
+    { href: "/", label: "Home", section: "home", icon: Home },
+    { href: "/#movies", label: "Movies", section: "movies", icon: Film },
+    { href: "/#series", label: "Series", section: "series", icon: Tv },
+    { href: "/#anime", label: "Anime", section: "anime", icon: Sparkles },
+    { href: "/#manga", label: "Manga", section: "manga", icon: BookOpen },
+    { href: "/#games", label: "Games", section: "games", icon: Gamepad2 },
 ];
 
 export function NavLinks({ className }: { className?: string }) {
@@ -29,6 +30,8 @@ export function NavLinks({ className }: { className?: string }) {
             {links.map((link) => {
                 const isActive = activeSection === link.section;
 
+                const Icon = link.icon;
+
                 return (
                     <Link
                         key={link.href}
@@ -36,7 +39,7 @@ export function NavLinks({ className }: { className?: string }) {
                         scroll={false}
                         onClick={() => setActiveSection(link.section)}
                         className={cn(
-                            "relative px-4 py-2 text-sm font-medium transition-colors duration-300",
+                            "relative flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-colors duration-300",
                             isActive ? "text-white" : "text-neutral-400 hover:text-white"
                         )}
                     >
@@ -50,6 +53,7 @@ export function NavLinks({ className }: { className?: string }) {
                                 className="absolute inset-0 rounded-full bg-neutral-800"
                             />
                         )}
+                        <Icon size={14} className={cn("relative z-10", isActive ? "text-white" : "text-neutral-400")} />
                         <span className="relative z-10">{link.label}</span>
                     </Link>
                 );

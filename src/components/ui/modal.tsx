@@ -13,9 +13,11 @@ interface ModalProps {
     children: React.ReactNode;
     title?: string;
     className?: string;
+    containerClassName?: string;
+    overlayClassName?: string;
 }
 
-export function Modal({ isOpen, onClose, children, title, className }: ModalProps) {
+export function Modal({ isOpen, onClose, children, title, className, containerClassName, overlayClassName }: ModalProps) {
     // Handle ESC key
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
@@ -45,7 +47,7 @@ export function Modal({ isOpen, onClose, children, title, className }: ModalProp
     return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                <div className={cn("fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6", overlayClassName)}>
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
@@ -63,11 +65,11 @@ export function Modal({ isOpen, onClose, children, title, className }: ModalProp
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ duration: 0.3, type: "spring", bounce: 0.3 }}
-                        className="relative w-full max-w-lg"
+                        className={cn("relative w-full max-w-lg", containerClassName)}
                     >
-                        <GlassCard className={cn("overflow-hidden border-white/10 p-0 shadow-2xl", className)}>
+                        <GlassCard className={cn("flex flex-col overflow-hidden border-white/10 p-0 shadow-2xl", className)}>
                             {/* Header */}
-                            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+                            <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
                                 <h3 className="text-lg font-semibold text-white">{title}</h3>
                                 <button
                                     onClick={onClose}
@@ -78,7 +80,7 @@ export function Modal({ isOpen, onClose, children, title, className }: ModalProp
                             </div>
 
                             {/* Body */}
-                            <div className="p-6">{children}</div>
+                            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">{children}</div>
                         </GlassCard>
                     </motion.div>
                 </div>

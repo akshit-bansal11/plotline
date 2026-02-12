@@ -18,6 +18,7 @@ export function Spotlight({
     const divRef = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [opacity, setOpacity] = useState(0);
+    const [spotlightSize, setSpotlightSize] = useState(0);
 
     const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
         if (!divRef.current) return;
@@ -26,6 +27,8 @@ export function Spotlight({
         const rect = div.getBoundingClientRect();
 
         setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        const nextSize = Math.max(rect.width, rect.height) + 6;
+        setSpotlightSize(nextSize);
     };
 
     const handleMouseEnter = () => {
@@ -46,10 +49,10 @@ export function Spotlight({
             {...props}
         >
             <div
-                className="pointer-events-none absolute -inset-px transition duration-300 z-10"
+                className="pointer-events-none absolute inset-[2px] rounded-[inherit] transition duration-300 z-10"
                 style={{
                     opacity,
-                    background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)`,
+                    background: `radial-gradient(${spotlightSize || 160}px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 60%)`,
                 }}
             />
             {children}
