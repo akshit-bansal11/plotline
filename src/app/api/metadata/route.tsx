@@ -15,6 +15,7 @@ type MetadataResult = {
   episodeCount?: number | null;
   chapterCount?: number | null;
   genresThemes?: string[];
+  genreIds?: number[];
 };
 
 type FetchResult = { ok: true; data: unknown } | { ok: false; error: string };
@@ -25,6 +26,8 @@ const igdbTokenCache = { token: null as string | null, expiresAt: 0 };
 const RATE_LIMIT_WINDOW = 60_000;
 const RATE_LIMIT_MAX = 60;
 const CACHE_TTL = 1000 * 60 * 5;
+const FETCH_RETRY_COUNT = 2;
+const FETCH_RETRY_DELAY_MS = 250;
 
 const getClientKey = (request: Request) => {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -45,19 +48,37 @@ const checkRateLimit = (key: string) => {
 };
 
 const safeFetchJson = async (url: string, init?: RequestInit): Promise<FetchResult> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-  try {
-    const res = await fetch(url, { ...init, signal: controller.signal });
-    if (!res.ok) return { ok: false, error: `Request failed with status ${res.status}` };
-    const data = await res.json();
-    return { ok: true, data };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Request failed";
-    return { ok: false, error: message };
-  } finally {
-    clearTimeout(timeout);
+  const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay));
+  for (let attempt = 0; attempt <= FETCH_RETRY_COUNT; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      if (res.ok) {
+        const data = await res.json();
+        return { ok: true, data };
+      }
+      const error = `Request failed with status ${res.status}`;
+      const shouldRetry = res.status === 429 || res.status >= 500;
+      if (shouldRetry && attempt < FETCH_RETRY_COUNT) {
+        await sleep(FETCH_RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      console.warn("[metadata] fetch failed", { url, error });
+      return { ok: false, error };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Request failed";
+      if (attempt < FETCH_RETRY_COUNT) {
+        await sleep(FETCH_RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      console.warn("[metadata] fetch failed", { url, error: message });
+      return { ok: false, error: message };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+  return { ok: false, error: "Request failed" };
 };
 
 const parseYear = (value?: string | null) => (value ? value.split("-")[0] : undefined);
@@ -70,6 +91,54 @@ const parseRuntimeMinutes = (value?: string | null) => {
   return Number.isFinite(minutes) ? minutes : null;
 };
 
+const parseOmdbYear = (value?: string | null) => {
+  if (!value) return undefined;
+  const match = value.match(/\d{4}/);
+  return match ? match[0] : undefined;
+};
+
+const isValidNumber = (value?: number | null) => typeof value === "number" && Number.isFinite(value);
+
+const getMissingFields = (data: MetadataResult | null, mediaType: MediaType) => {
+  const required =
+    mediaType === "movie"
+      ? ["title", "type", "lengthMinutes", "year", "rating", "genresThemes", "genreIds", "description"]
+      : ["title", "type", "episodeCount", "year", "rating", "genresThemes", "genreIds", "description"];
+  if (!data) return required;
+  const missing: string[] = [];
+  if (!data.title || data.title.trim().length === 0) missing.push("title");
+  if (!data.type || data.type !== mediaType) missing.push("type");
+  if (!data.description || data.description.trim().length === 0) missing.push("description");
+  if (!data.year || data.year.trim().length === 0) missing.push("year");
+  if (!isValidNumber(data.rating)) missing.push("rating");
+  if (!Array.isArray(data.genresThemes) || data.genresThemes.length === 0) missing.push("genresThemes");
+  if (!Array.isArray(data.genreIds) || data.genreIds.length === 0) missing.push("genreIds");
+  if (mediaType === "movie") {
+    if (!isValidNumber(data.lengthMinutes) || (data.lengthMinutes ?? 0) <= 0) missing.push("lengthMinutes");
+  } else {
+    if (!isValidNumber(data.episodeCount) || (data.episodeCount ?? 0) <= 0) missing.push("episodeCount");
+  }
+  return missing;
+};
+
+const logMissingFields = (
+  source: string,
+  data: MetadataResult | null,
+  mediaType: MediaType,
+  context: { id?: string | null; title?: string | null; year?: string | null }
+) => {
+  const missing = getMissingFields(data, mediaType);
+  if (missing.length === 0) return;
+  console.warn("[metadata] missing fields", {
+    source,
+    mediaType,
+    id: context.id || null,
+    title: context.title || null,
+    year: context.year || null,
+    missing,
+  });
+};
+
 const mergeMetadata = (primary: MetadataResult | null, secondary: MetadataResult | null): MetadataResult | null => {
   if (!primary && !secondary) return null;
   if (!primary) return secondary;
@@ -77,6 +146,7 @@ const mergeMetadata = (primary: MetadataResult | null, secondary: MetadataResult
   const primaryDesc = primary.description || "";
   const secondaryDesc = secondary.description || "";
   const genres = Array.from(new Set([...(primary.genresThemes || []), ...(secondary.genresThemes || [])]));
+  const genreIds = Array.from(new Set([...(primary.genreIds || []), ...(secondary.genreIds || [])]));
   return {
     title: primary.title || secondary.title,
     description: primaryDesc.length >= secondaryDesc.length ? primaryDesc : secondaryDesc,
@@ -95,6 +165,7 @@ const mergeMetadata = (primary: MetadataResult | null, secondary: MetadataResult
     episodeCount: primary.episodeCount ?? secondary.episodeCount ?? null,
     chapterCount: primary.chapterCount ?? secondary.chapterCount ?? null,
     genresThemes: genres,
+    genreIds,
   };
 };
 
@@ -144,7 +215,7 @@ const fetchTmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
     number_of_episodes?: number;
     poster_path?: string | null;
     vote_average?: number;
-    genres?: Array<{ name?: string }>;
+    genres?: Array<{ id?: number; name?: string }>;
   };
 
   const lengthMinutes =
@@ -167,12 +238,15 @@ const fetchTmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
     lengthMinutes,
     episodeCount: mediaType === "series" && typeof data.number_of_episodes === "number" ? data.number_of_episodes : null,
     genresThemes: Array.isArray(data.genres) ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v)) : [],
+    genreIds: Array.isArray(data.genres)
+      ? data.genres.map((g) => g.id).filter((v): v is number => typeof v === "number" && Number.isFinite(v))
+      : [],
   };
 };
 
 const fetchTmdbMetadata = async (id: string | null, title: string | null, mediaType: MediaType, year?: string | null) => {
   if (mediaType !== "movie" && mediaType !== "series") return null;
-  const resolvedId = id || (title ? await searchTmdbIdByTitle(title, mediaType, year) : null);
+  const resolvedId = id && /^\d+$/.test(id) ? id : title ? await searchTmdbIdByTitle(title, mediaType, year) : null;
   if (!resolvedId) return null;
   return fetchTmdbMetadataById(resolvedId, mediaType);
 };
@@ -196,16 +270,18 @@ const fetchOmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
   if (data.Response === "False") return null;
 
   const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
+  const genresThemes =
+    data.Genre && data.Genre !== "N/A" ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [];
   return {
     title: data.Title || "",
-    description: data.Plot || "",
-    year: data.Year,
+    description: data.Plot && data.Plot !== "N/A" ? data.Plot : "",
+    year: parseOmdbYear(data.Year),
     type: mediaType,
     image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
     rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
     imdbRating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
-    genresThemes: data.Genre ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [],
+    genresThemes,
   };
 };
 
@@ -230,16 +306,18 @@ const fetchOmdbMetadataByTitle = async (title: string, mediaType: MediaType, yea
   if (data.Response === "False") return null;
 
   const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
+  const genresThemes =
+    data.Genre && data.Genre !== "N/A" ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [];
   return {
     title: data.Title || "",
-    description: data.Plot || "",
-    year: data.Year,
+    description: data.Plot && data.Plot !== "N/A" ? data.Plot : "",
+    year: parseOmdbYear(data.Year),
     type: mediaType,
     image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
     rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
     imdbRating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
-    genresThemes: data.Genre ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [],
+    genresThemes,
   };
 };
 
@@ -408,6 +486,16 @@ export async function GET(request: Request) {
       fetchOmdbMetadata(id, title, type, year),
     ]);
     data = mergeMetadata(tmdbData, omdbData);
+    logMissingFields("tmdb", tmdbData, type, { id, title, year });
+    logMissingFields("omdb", omdbData, type, { id, title, year });
+    logMissingFields("merged", data, type, { id, title, year });
+    const missing = getMissingFields(data, type);
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { data: null, error: "Metadata missing required fields.", missingFields: missing },
+        { status: 422 }
+      );
+    }
   } else if (type === "anime" || type === "manga") {
     if (id) data = await fetchMalMetadata(id, type);
   } else if (type === "game") {

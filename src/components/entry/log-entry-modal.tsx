@@ -12,7 +12,7 @@ import { useAuth } from "@/context/auth-context";
 import { NewListModal } from "@/components/lists/new-list-modal";
 
 export type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
-export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
+export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified";
 
 export type LoggableMedia = {
   id: string | number;
@@ -64,7 +64,9 @@ const statusLabels: Record<EntryStatus, string> = {
   watching: "Watching",
   completed: "Completed",
   plan_to_watch: "Plan to watch",
+  on_hold: "On hold",
   dropped: "Dropped",
+  unspecified: "Unspecified",
 };
 
 const mediaTypeLabels: Record<EntryMediaType, string> = {
@@ -160,7 +162,7 @@ export function LogEntryModal({
   // Form state
   const [title, setTitle] = useState("");
   const [mediaType, setMediaType] = useState<EntryMediaType>("movie");
-  const [status, setStatus] = useState<EntryStatus>("watching");
+  const [status, setStatus] = useState<EntryStatus>("unspecified");
   const [userRating, setUserRating] = useState<string>("");
   const [imdbRating, setImdbRating] = useState<string>("");
   const [releaseYear, setReleaseYear] = useState<string>("");
@@ -394,7 +396,7 @@ export function LogEntryModal({
       setActiveTab("manual");
       setTitle(normalizedInitial.title);
       setMediaType(normalizedInitial.inferredType);
-      setStatus(normalizedInitial.status || "watching");
+      setStatus(normalizedInitial.status || "unspecified");
       
       const initialUserRating =
         typeof normalizedInitial.userRating === "number"
@@ -463,7 +465,7 @@ export function LogEntryModal({
       setActiveTab("search"); // Default to search for new entries
       setTitle("");
       setMediaType("movie");
-      setStatus("watching");
+      setStatus("unspecified");
       setUserRating("");
       setImdbRating("");
       setReleaseYear("");
@@ -916,7 +918,7 @@ export function LogEntryModal({
                   onChange={(e) => setStatus(e.target.value as EntryStatus)}
                   className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                 >
-                  {(["watching", "completed", "plan_to_watch", "dropped"] as EntryStatus[]).map((value) => (
+                  {(["watching", "completed", "plan_to_watch", "on_hold", "dropped", "unspecified"] as EntryStatus[]).map((value) => (
                     <option key={value} value={value}>
                       {statusLabels[value]}
                     </option>

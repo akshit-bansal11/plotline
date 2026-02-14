@@ -43,7 +43,7 @@ import { useData } from "@/context/data-context";
 import { NewListModal } from "@/components/lists/new-list-modal";
 
 type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
-type EntryStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
+type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified";
 
 type EntryExportRow = {
     title: string;
@@ -173,7 +173,7 @@ const MenuItem = ({
         ref={buttonRef}
         className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-neutral-200 transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
     >
-        <Icon size={16} className="text-neutral-400" />
+        <Icon size={16} className="text-neutral-400" suppressHydrationWarning />
         <span>{label}</span>
     </button>
 );
@@ -589,9 +589,9 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                     : (metadata?.genresThemes ?? []);
 
                 const rating = userRatingValue ?? finalImdbRating ?? null;
-                const status: EntryStatus = parsedDate ? "completed" : "plan_to_watch";
-                const completionDateUnknown = status === "completed" && !parsedDate;
-                const completedAt = parsedDate ? Timestamp.fromMillis(parsedDate) : null;
+                const status: EntryStatus = "unspecified";
+                const completionDateUnknown = false;
+                const completedAt = null;
 
                 const entryRef = doc(collection(db, "users", user.uid, "entries"));
                 batch.set(entryRef, {
@@ -648,7 +648,7 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                                 Upload your IMDB list export to bring items into Plotline.
                             </div>
                         </div>
-                        <Upload size={20} className="text-neutral-500" />
+                        <Upload size={20} className="text-neutral-500" suppressHydrationWarning />
                     </div>
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                         <input
@@ -680,7 +680,7 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                             <div className="text-sm font-semibold text-white">Export to CSV</div>
                             <div className="mt-1 text-xs text-neutral-500">Download a CSV of your current items.</div>
                         </div>
-                        <Download size={20} className="text-neutral-500" />
+                        <Download size={20} className="text-neutral-500" suppressHydrationWarning />
                     </div>
                     <div className="mt-4">
                         <button
@@ -740,7 +740,7 @@ function SettingsModal({ isOpen, onClose, onSignOut }: { isOpen: boolean; onClos
                             <div className="text-sm font-semibold text-white">Account</div>
                             <div className="mt-1 text-xs text-neutral-500">Manage your account access.</div>
                         </div>
-                        <Settings size={20} className="text-neutral-500" />
+                        <Settings size={20} className="text-neutral-500" suppressHydrationWarning />
                     </div>
                     <div className="mt-4 flex flex-col gap-3">
                         {canChangePassword ? (
@@ -754,7 +754,7 @@ function SettingsModal({ isOpen, onClose, onSignOut }: { isOpen: boolean; onClos
                                 )}
                             >
                                 <span className="flex items-center gap-2">
-                                    <KeyRound size={16} className="text-neutral-400" />
+                                    <KeyRound size={16} className="text-neutral-400" suppressHydrationWarning />
                                     Change password
                                 </span>
                                 <span className="text-xs text-neutral-500">Email reset</span>
@@ -770,7 +770,7 @@ function SettingsModal({ isOpen, onClose, onSignOut }: { isOpen: boolean; onClos
                             className="flex items-center justify-between rounded-xl border border-white/10 bg-neutral-800/50 px-4 py-3 text-left text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-800"
                         >
                             <span className="flex items-center gap-2">
-                                <LogOut size={16} className="text-neutral-400" />
+                                <LogOut size={16} className="text-neutral-400" suppressHydrationWarning />
                                 Sign out
                             </span>
                         </button>
@@ -990,14 +990,14 @@ export function Navbar() {
                                     }}
                                     className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
                                 >
-                                    <Plus size={14} />
+                                    <Plus size={14} suppressHydrationWarning />
                                     Log entry
                                 </button>
                                 <button
                                     onClick={() => setIsNewListOpen(true)}
                                     className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
                                 >
-                                    <ListPlus size={14} />
+                                    <ListPlus size={14} suppressHydrationWarning />
                                     New list
                                 </button>
                             </div>
@@ -1057,7 +1057,7 @@ export function Navbar() {
                                 onClick={() => setIsAuthOpen(true)}
                                 className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white"
                             >
-                                <LogIn size={16} />
+                                <LogIn size={16} suppressHydrationWarning />
                                 <span>Sign In</span>
                             </button>
                         )}

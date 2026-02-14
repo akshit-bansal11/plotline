@@ -7,6 +7,7 @@ module.exports = {
       { protocol: "https", hostname: "img.omdbapi.com" },
       { protocol: "https", hostname: "cdn.myanimelist.net" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "images.igdb.com" },
     ],
   },
   async redirects() {

@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 
 export type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
-export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
+export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified";
 
 export type EntryDoc = {
   id: string;
@@ -49,8 +49,8 @@ const coerceMediaType = (value: unknown): EntryMediaType => {
 };
 
 const coerceStatus = (value: unknown): EntryStatus => {
-  if (value === "watching" || value === "completed" || value === "plan_to_watch" || value === "dropped") return value;
-  return "watching";
+  if (value === "watching" || value === "completed" || value === "plan_to_watch" || value === "on_hold" || value === "dropped" || value === "unspecified") return value;
+  return "unspecified";
 };
 
 const toNumber = (value: unknown): number | null => {

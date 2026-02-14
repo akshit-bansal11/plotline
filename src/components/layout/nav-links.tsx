@@ -53,7 +53,11 @@ export function NavLinks({ className }: { className?: string }) {
                                 className="absolute inset-0 rounded-full bg-neutral-800"
                             />
                         )}
-                        <Icon size={14} className={cn("relative z-10", isActive ? "text-white" : "text-neutral-400")} />
+                        <Icon
+                            size={18}
+                            className={cn("relative z-10", isActive ? "text-white" : "text-neutral-400")}
+                            suppressHydrationWarning
+                        />
                         <span className="relative z-10">{link.label}</span>
                     </Link>
                 );

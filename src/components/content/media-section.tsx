@@ -16,6 +16,7 @@ interface MediaSectionProps<TItem> {
     className?: string;
     filterRaw?: string;
     onFilterRawChange?: (next: string) => void;
+    showFilterInput?: boolean;
 }
 
 export function MediaSection<TItem>({
@@ -28,6 +29,7 @@ export function MediaSection<TItem>({
     className,
     filterRaw,
     onFilterRawChange,
+    showFilterInput = true,
 }: MediaSectionProps<TItem>) {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, margin: "-100px" });
@@ -71,16 +73,18 @@ export function MediaSection<TItem>({
             ref={ref}
             className={cn("py-8 md:py-12 space-y-6", className)}
         >
-            <div className="container px-4 md:px-6 flex flex-col gap-4">
-                <div className="space-y-2">
-                    <input
-                        value={resolvedFilterRaw}
-                        onChange={(e) => setResolvedFilterRaw(e.target.value)}
-                        placeholder="e.g. dark_fantasy, 2024, 7.8"
-                        className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
-                    />
+            {showFilterInput ? (
+                <div className="container px-4 md:px-6 flex flex-col gap-4">
+                    <div className="space-y-2">
+                        <input
+                            value={resolvedFilterRaw}
+                            onChange={(e) => setResolvedFilterRaw(e.target.value)}
+                            placeholder="e.g. dark_fantasy, 2024, 7.8"
+                            className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+                        />
+                    </div>
                 </div>
-            </div>
+            ) : null}
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}

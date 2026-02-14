@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Search, Filter, X, ChevronRight } from "lucide-react";
+import { Search, Filter, X } from "lucide-react";
 import Image from "next/image";
 import { useData, EntryDoc, EntryMediaType, EntryStatus } from "@/context/data-context";
 import { AnimatePresence, motion } from "motion/react";
@@ -19,7 +19,9 @@ const statusLabels: Record<EntryStatus, string> = {
   watching: "Watching",
   completed: "Completed",
   plan_to_watch: "Plan to Watch",
+  on_hold: "On hold",
   dropped: "Dropped",
+  unspecified: "Unspecified",
 };
 
 export function GlobalSearch() {
@@ -34,6 +36,8 @@ export function GlobalSearch() {
   const [selectedTypes, setSelectedTypes] = useState<EntryMediaType[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<EntryStatus[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [userRatingValue, setUserRatingValue] = useState<number | null>(null);
+  const [imdbRatingValue, setImdbRatingValue] = useState<number | null>(null);
 
   const allGenres = useMemo(() => {
     const genres = new Set<string>();
@@ -63,9 +67,17 @@ export function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const isUserRatingActive = userRatingValue !== null;
+  const isImdbRatingActive = imdbRatingValue !== null;
+  const hasActiveFilters =
+    selectedTypes.length > 0 ||
+    selectedStatus.length > 0 ||
+    selectedGenres.length > 0 ||
+    isUserRatingActive ||
+    isImdbRatingActive;
+
   const filteredEntries = useMemo(() => {
-    if (!debouncedQuery && selectedTypes.length === 0 && selectedStatus.length === 0 && selectedGenres.length === 0)
-      return [];
+    if (!debouncedQuery && !hasActiveFilters) return [];
 
     const lowerQuery = debouncedQuery.toLowerCase();
     return entries
@@ -90,10 +102,31 @@ export function GlobalSearch() {
           if (!hasGenre) return false;
         }
 
+        if (isUserRatingActive && userRatingValue !== null) {
+          if (typeof entry.userRating !== "number") return false;
+          if (entry.userRating < userRatingValue) return false;
+        }
+
+        if (isImdbRatingActive && imdbRatingValue !== null) {
+          if (typeof entry.imdbRating !== "number") return false;
+          if (entry.imdbRating < imdbRatingValue) return false;
+        }
+
         return true;
       })
       .slice(0, 10); // Limit results
-  }, [entries, debouncedQuery, selectedTypes, selectedStatus, selectedGenres]);
+  }, [
+    entries,
+    debouncedQuery,
+    hasActiveFilters,
+    isImdbRatingActive,
+    isUserRatingActive,
+    selectedGenres,
+    selectedStatus,
+    selectedTypes,
+    userRatingValue,
+    imdbRatingValue,
+  ]);
 
   const toggleType = (type: EntryMediaType) => {
     setSelectedTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
@@ -117,7 +150,7 @@ export function GlobalSearch() {
     <div ref={containerRef} className="relative z-50">
       <div className="relative flex items-center">
         <div className="relative flex items-center bg-white/5 rounded-full border border-white/5 focus-within:bg-white/10 focus-within:border-white/20 transition-all overflow-hidden w-64 focus-within:w-80 transition-width duration-300">
-          <Search size={16} className="text-neutral-400 ml-3 shrink-0" />
+          <Search size={16} className="text-neutral-400 ml-3 shrink-0" suppressHydrationWarning />
           <input
             type="text"
             value={query}
@@ -134,7 +167,7 @@ export function GlobalSearch() {
               onClick={() => setQuery("")}
               className="p-1 mr-1 text-neutral-400 hover:text-white rounded-full hover:bg-white/10"
             >
-              <X size={14} />
+              <X size={14} suppressHydrationWarning />
             </button>
           )}
           <button
@@ -142,9 +175,9 @@ export function GlobalSearch() {
               setShowFilters(!showFilters);
               setIsOpen(true);
             }}
-            className={`p-2 mr-1 rounded-full transition-colors ${showFilters || selectedTypes.length > 0 || selectedStatus.length > 0 ? 'text-blue-400 bg-blue-400/10' : 'text-neutral-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-2 mr-1 rounded-full transition-colors ${showFilters || hasActiveFilters ? 'text-blue-400 bg-blue-400/10' : 'text-neutral-400 hover:text-white hover:bg-white/10'}`}
           >
-            <Filter size={14} />
+            <Filter size={14} suppressHydrationWarning />
           </button>
         </div>
       </div>
@@ -212,6 +245,65 @@ export function GlobalSearch() {
                           {genre}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Ratings</div>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs text-neutral-400">
+                          <span>Your rating</span>
+                          <span>{userRatingValue !== null ? `${userRatingValue}+` : "Any"}</span>
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            type="range"
+                            min={1}
+                            max={10}
+                            step={1}
+                            value={userRatingValue ?? 1}
+                            onChange={(event) => {
+                              const next = Number(event.target.value);
+                              setUserRatingValue(next);
+                            }}
+                            aria-label="Minimum user rating"
+                            className="w-full"
+                            list="user-rating-ticks"
+                          />
+                          <div className="flex justify-between text-[10px] text-neutral-500">
+                            {Array.from({ length: 10 }, (_, index) => (
+                              <span key={index + 1}>{index + 1}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs text-neutral-400">
+                          <span>IMDb rating</span>
+                          <span>{imdbRatingValue !== null ? `${imdbRatingValue.toFixed(1)}+` : "Any"}</span>
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            type="range"
+                            min={1}
+                            max={10}
+                            step={0.1}
+                            value={imdbRatingValue ?? 1}
+                            onChange={(event) => {
+                              const next = Number(event.target.value);
+                              setImdbRatingValue(next);
+                            }}
+                            aria-label="Minimum IMDb rating"
+                            className="w-full"
+                            list="imdb-rating-ticks"
+                          />
+                          <div className="flex justify-between text-[10px] text-neutral-500">
+                            {Array.from({ length: 10 }, (_, index) => (
+                              <span key={index + 1}>{index + 1}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

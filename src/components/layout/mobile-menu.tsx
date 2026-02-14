@@ -107,7 +107,7 @@ export function MobileMenu({
                                 }}
                                 className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
                             >
-                                <Search size={16} />
+                                <Search size={16} suppressHydrationWarning />
                                 <span>Search</span>
                             </button>
                             {userLabel ? (
@@ -119,7 +119,7 @@ export function MobileMenu({
                                         }}
                                         className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
                                     >
-                                        <List size={16} />
+                                        <List size={16} suppressHydrationWarning />
                                         <span>Lists</span>
                                     </button>
                                     <button
@@ -129,7 +129,7 @@ export function MobileMenu({
                                         }}
                                         className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
                                     >
-                                        <UserCircle size={16} />
+                                        <UserCircle size={16} suppressHydrationWarning />
                                         <span>Profile</span>
                                     </button>
                                     <button
@@ -139,7 +139,7 @@ export function MobileMenu({
                                         }}
                                         className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
                                     >
-                                        <Upload size={16} />
+                                        <Upload size={16} suppressHydrationWarning />
                                         <span>Import/Export</span>
                                     </button>
                                     <button
@@ -149,7 +149,7 @@ export function MobileMenu({
                                         }}
                                         className="w-full flex items-center justify-center gap-2 rounded-full bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white"
                                     >
-                                        <Settings size={16} />
+                                        <Settings size={16} suppressHydrationWarning />
                                         <span>Settings</span>
                                     </button>
                                 </>
@@ -161,7 +161,7 @@ export function MobileMenu({
                                     }}
                                     className="w-full flex items-center justify-center gap-2 rounded-full bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white"
                                 >
-                                    <LogIn size={16} />
+                                    <LogIn size={16} suppressHydrationWarning />
                                     <span>Sign in</span>
                                 </button>
                             )}

@@ -22,7 +22,9 @@ const statusLabels: Record<EntryStatus, string> = {
   watching: "Watching",
   completed: "Completed",
   plan_to_watch: "Plan to watch",
+  on_hold: "On hold",
   dropped: "Dropped",
+  unspecified: "Unspecified",
 };
 
 const mediaTypeLabels: Record<EntryMediaType, string> = {
@@ -409,6 +411,7 @@ function LibrarySection({
             title="Results"
             filterRaw={filterRaw}
             onFilterRawChange={onFilterRawChange}
+            showFilterInput={false}
           >
             {(filteredEntries) => {
               const filteredById = new Map(filteredEntries.map((entry) => [entry.id, entry]));
@@ -483,6 +486,7 @@ function LibrarySection({
                             year: entry.releaseYear || undefined,
                             userRating: entry.userRating,
                             imdbRating: entry.imdbRating,
+                            status: entry.status,
                             type: gridType,
                             onClick: () => onSelectEntry(entry),
                             showActions: true,
@@ -521,6 +525,7 @@ function LibrarySection({
                           year: entry.releaseYear || undefined,
                           userRating: entry.userRating,
                           imdbRating: entry.imdbRating,
+                          status: entry.status,
                           type: gridType,
                           onClick: () => onSelectEntry(entry),
                           showActions: true,

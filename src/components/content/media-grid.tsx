@@ -12,6 +12,7 @@ interface MediaGridProps {
         year?: string;
         userRating?: number | null;
         imdbRating?: number | null;
+        status?: import("@/context/data-context").EntryStatus;
         type?: string;
         onClick?: () => void;
         onView?: () => void;

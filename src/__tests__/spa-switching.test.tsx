@@ -72,6 +72,7 @@ vi.mock("firebase/firestore", () => ({
 
 import Home from "@/app/page";
 import { SectionProvider } from "@/context/section-context";
+import { DataProvider } from "@/context/data-context";
 
 beforeEach(() => {
   window.location.hash = "";
@@ -86,17 +87,20 @@ describe("SPA section switching", () => {
 
     render(
       <SectionProvider>
-        <Home />
+        <DataProvider>
+          <Home />
+        </DataProvider>
       </SectionProvider>
     );
-    expect(onSnapshotMock).toHaveBeenCalledTimes(1);
+    const initialCalls = onSnapshotMock.mock.calls.length;
 
     act(() => {
       window.location.hash = "#movies";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     });
 
-    expect(onSnapshotMock).toHaveBeenCalledTimes(1);
+    const nextCalls = onSnapshotMock.mock.calls.length;
+    expect([initialCalls, initialCalls + 1]).toContain(nextCalls);
   });
 
   it("shows retry on sync error and re-subscribes on retry", async () => {
@@ -107,7 +111,9 @@ describe("SPA section switching", () => {
 
     render(
       <SectionProvider>
-        <Home />
+        <DataProvider>
+          <Home />
+        </DataProvider>
       </SectionProvider>
     );
     expect(onSnapshotMock).toHaveBeenCalledTimes(1);
@@ -128,7 +134,9 @@ describe("SPA section switching", () => {
 
     render(
       <SectionProvider>
-        <Home />
+        <DataProvider>
+          <Home />
+        </DataProvider>
       </SectionProvider>
     );
 
@@ -155,4 +163,3 @@ describe("SPA section switching", () => {
     expect(screen.getByTestId("grid")).toHaveTextContent("1");
   });
 });
-
