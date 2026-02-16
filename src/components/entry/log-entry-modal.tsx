@@ -195,14 +195,16 @@ export function LogEntryModal({
     const q = query(collection(db, "users", uid, "lists"), orderBy("updatedAt", "desc"), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setLists(snapshot.docs.map((doc) => {
-        const data = doc.data() as { name?: unknown; type?: unknown; types?: unknown };
-        const singleType = data.type === "movie" || data.type === "series" || data.type === "anime" || data.type === "manga" || data.type === "game"
+        const data = doc.data() as { name?: string; type?: string; types?: string[] };
+        const singleType = (data.type === "movie" || data.type === "series" || data.type === "anime" || data.type === "manga" || data.type === "game"
           ? data.type
-          : "movie";
-        const types = Array.isArray(data.types) ? (data.types as ListMediaType[]) : [singleType];
+          : "movie") as ListMediaType;
+        const types = (Array.isArray(data.types)
+          ? data.types.filter((t): t is ListMediaType => ["movie", "series", "anime", "manga", "game"].includes(t))
+          : [singleType]) as ListMediaType[];
         return {
           id: doc.id,
-          name: typeof data.name === "string" ? data.name : "Untitled List",
+          name: data.name || "Untitled List",
           type: singleType,
           types
         };
