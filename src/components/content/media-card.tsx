@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ChevronDown, Star } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
-import { cn } from "@/lib/utils";
+import { cn, entryStatusLabels } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 import type { EntryStatus } from "@/context/data-context";
+
+const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
 
 interface MediaCardProps {
     id?: string | number;
@@ -38,7 +40,6 @@ export function MediaCard({
     className,
     aspectRatio = "poster",
     userRating,
-    imdbRating: _imdbRating,
     status,
     onClick,
     onView,
@@ -74,15 +75,6 @@ export function MediaCard({
             typeof userRating === "number" && Number.isFinite(userRating) ? userRating : null;
         setLocalRating(next);
     }, [userRating]);
-
-    const statusLabels: Record<EntryStatus, string> = {
-        watching: "Watching",
-        completed: "Completed",
-        plan_to_watch: "Plan to watch",
-        on_hold: "On hold",
-        dropped: "Dropped",
-        unspecified: "Unspecified",
-    };
 
     const statusOptions: EntryStatus[] = ["watching", "completed", "plan_to_watch", "on_hold", "dropped", "unspecified"];
 
@@ -191,7 +183,7 @@ export function MediaCard({
                         onKeyDown={(event) => event.stopPropagation()}
                         disabled={isStatusUpdating}
                         className={cn(
-                            "group/status flex items-center gap-2 rounded-full border backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
+                            "group/status flex items-center gap-2 rounded-full border backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 media-card-status-button",
                             getStatusBadgeClass(status),
                             isStatusUpdating ? "cursor-not-allowed opacity-70" : "cursor-pointer"
                         )}
@@ -201,7 +193,7 @@ export function MediaCard({
                     >
                         <span>{isStatusUpdating ? "Updating..." : statusLabels[status]}</span>
                         <ChevronDown
-                            size={14}
+                            size={11}
                             className={cn(
                                 "transition-transform duration-300 ease-in-out text-current/70 group-hover/status:text-current",
                                 isStatusOpen ? "rotate-180" : ""
@@ -257,14 +249,14 @@ export function MediaCard({
             >
                 <div
                     className={cn(
-                        "flex items-center justify-center w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border text-xs font-bold shadow-[0_4px_12px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition-colors",
+                        "flex items-center justify-center w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border text-xs font-bold shadow-[0_4px_12px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition-colors media-card-rating-badge",
                         displayRating !== null ? getRatingAccent(displayRating) : "border-neutral-400/40 text-neutral-200"
                     )}
                 >
                     {displayRating !== null ? (
                         displayRatingText
                     ) : (
-                        <Star size={14} className="text-neutral-300" suppressHydrationWarning />
+                        <Star size={11} className="text-neutral-300" suppressHydrationWarning />
                     )}
                 </div>
                 <AnimatePresence>
@@ -274,7 +266,7 @@ export function MediaCard({
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 6, scale: 0.96 }}
                             transition={{ duration: 0.15 }}
-                            className="mt-2 rounded-xl border border-white/10 bg-neutral-950/95 px-3 py-2 shadow-xl backdrop-blur-xl"
+                            className="mt-2 rounded-xl border border-white/10 bg-neutral-950/95 px-3 py-2 shadow-xl backdrop-blur-xl media-card-rating-menu"
                         >
                             <div className="flex items-center gap-1">
                                 {Array.from({ length: 10 }, (_, index) => {
@@ -290,11 +282,11 @@ export function MediaCard({
                                                 void handleRatingChange(value);
                                             }}
                                             onMouseEnter={() => setHoverRating(value)}
-                                            className="flex h-5 w-5 items-center justify-center transition-transform duration-150 hover:scale-110"
+                                            className="flex h-5 w-5 items-center justify-center transition-transform duration-150 hover:scale-110 media-card-rating-option"
                                             aria-label={`Set rating to ${value}`}
                                         >
                                             <Star
-                                                size={16}
+                                                size={13}
                                                 className={cn(
                                                     "transition-colors",
                                                     isActive
@@ -312,9 +304,9 @@ export function MediaCard({
                 </AnimatePresence>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 p-4 transition-all duration-300 translate-y-0 opacity-100 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
-                <h3 className="font-medium text-white line-clamp-2 text-shadow-sm">{title}</h3>
-                <div className="flex items-center gap-2 mt-1 text-xs text-neutral-300">
+            <div className="absolute bottom-0 left-0 right-0 p-4 transition-all duration-300 translate-y-0 opacity-100 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 media-card-info">
+                <h3 className="font-medium text-white line-clamp-2 text-shadow-sm media-card-title">{title}</h3>
+                <div className="flex items-center gap-2 mt-1 text-xs text-neutral-300 media-card-meta">
                     {year && <span>{year}</span>}
                     {type && (
                         <>
@@ -324,7 +316,7 @@ export function MediaCard({
                     )}
                 </div>
                 {showActions && (
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2 mt-2 media-card-actions">
                         {onView && (
                             <button
                                 type="button"
@@ -332,7 +324,7 @@ export function MediaCard({
                                     e.stopPropagation();
                                     onView();
                                 }}
-                                className="px-2 py-1 text-xs rounded-md bg-white/10 text-white hover:bg-white/20 transition-colors"
+                                className="px-2 py-1 text-xs rounded-md bg-white/10 text-white hover:bg-white/20 transition-colors media-card-action-button"
                             >
                                 View
                             </button>
@@ -344,7 +336,7 @@ export function MediaCard({
                                     e.stopPropagation();
                                     onEdit();
                                 }}
-                                className="px-2 py-1 text-xs rounded-md bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                                className="px-2 py-1 text-xs rounded-md bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors media-card-action-button"
                             >
                                 Edit
                             </button>
@@ -356,7 +348,7 @@ export function MediaCard({
                                     e.stopPropagation();
                                     onDelete();
                                 }}
-                                className="px-2 py-1 text-xs rounded-md bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                                className="px-2 py-1 text-xs rounded-md bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors media-card-action-button"
                             >
                                 Delete
                             </button>
@@ -372,7 +364,7 @@ export function MediaCard({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.3 }}
-            className={cn("group relative", className)}
+            className={cn("group relative media-card", className)}
         >
             {onClick ? (
                 <div

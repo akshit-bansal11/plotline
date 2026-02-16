@@ -4,19 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion, useScroll, useMotionValueEvent } from "motion/react";
-import {
-    Search,
-    LogOut,
-    List,
-    Settings,
-    Upload,
-    Download,
-    LogIn,
-    UserCircle,
-    KeyRound,
-    Plus,
-    ListPlus,
-} from "lucide-react";
+import { LogOut, List, Settings, Upload, Download, LogIn, UserCircle, KeyRound, Plus, ListPlus } from "lucide-react";
 import {
     Timestamp,
     collection,
@@ -39,7 +27,6 @@ import { useAuth } from "@/context/auth-context";
 import { useSection } from "@/context/section-context";
 import { db, storage } from "@/lib/firebase";
 import { GlobalSearch } from "@/components/search/global-search";
-import { useData } from "@/context/data-context";
 import { NewListModal } from "@/components/lists/new-list-modal";
 
 type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
@@ -109,13 +96,6 @@ const parseCsv = (text: string) => {
 };
 
 const normalizeHeader = (value: string) => value.trim().toLowerCase();
-
-const parseImdbDate = (value: string) => {
-    if (!value) return null;
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return parsed.getTime();
-};
 
 const parseYearValue = (value: string | null | undefined) => {
     if (!value) return null;
@@ -485,7 +465,6 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             const genresIndex = headerIndex.get("genres");
             const imdbRatingIndex = headerIndex.get("imdb rating") ?? headerIndex.get("imdb");
             const yourRatingIndex = headerIndex.get("your rating") ?? headerIndex.get("rating");
-            const dateRatedIndex = headerIndex.get("date rated");
             const imageIndex =
                 headerIndex.get("image") ??
                 headerIndex.get("image url") ??
@@ -569,8 +548,6 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 const genresValue = genresIndex !== undefined ? row[genresIndex] || "" : "";
                 const imdbRatingRaw = imdbRatingIndex !== undefined ? row[imdbRatingIndex] || "" : "";
                 const yourRatingRaw = yourRatingIndex !== undefined ? row[yourRatingIndex] || "" : "";
-                const dateRatedValue = dateRatedIndex !== undefined ? row[dateRatedIndex] || "" : "";
-                const parsedDate = parseImdbDate(dateRatedValue);
                 const releaseYearValue = parseYearValue(releaseYearRaw);
                 const imdbRatingValue = parseRatingValue(imdbRatingRaw, 0, 10);
                 const userRatingValue = parseRatingValue(yourRatingRaw, 1, 10);
@@ -791,7 +768,6 @@ export function Navbar() {
     const [lastScrollY, setLastScrollY] = useState(0);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isMyListsOpen, setIsMyListsOpen] = useState(false);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isLogOpen, setIsLogOpen] = useState(false);
     const [isNewListOpen, setIsNewListOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -803,7 +779,6 @@ export function Navbar() {
     const triggerRef = useRef<HTMLButtonElement | null>(null);
     const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-    // Map section to media type for filtering lists
     const getMediaTypeFromSection = () => {
         switch (activeSection) {
             case "movies": return "movie";
@@ -817,16 +792,6 @@ export function Navbar() {
     const { user, signOut } = useAuth();
     const userLabel = user?.displayName || user?.email;
     const avatarUrl = user?.photoURL || null;
-
-    const handleLogFromSearch = (item: LoggableMedia) => {
-        if (!user) {
-            setIsAuthOpen(true);
-            return;
-        }
-        setPendingItem(item);
-        setIsSearchOpen(false);
-        setIsLogOpen(true);
-    };
 
     const handleSignOut = async () => {
         await signOut();

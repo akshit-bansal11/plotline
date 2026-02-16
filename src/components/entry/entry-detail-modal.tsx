@@ -6,28 +6,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Modal } from "@/components/ui/modal";
-import { cn } from "@/lib/utils";
+import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
 import { EntryDoc, EntryMediaType, EntryStatus } from "@/context/data-context";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 
-const statusLabels: Record<EntryStatus, string> = {
-  watching: "Watching",
-  completed: "Completed",
-  plan_to_watch: "Plan to watch",
-  on_hold: "On hold",
-  dropped: "Dropped",
-  unspecified: "Unspecified",
-};
-
-const mediaTypeLabels: Record<EntryMediaType, string> = {
-  movie: "Movie",
-  series: "Series",
-  anime: "Anime",
-  anime_movie: "Anime movie",
-  manga: "Manga",
-  game: "Game",
-};
+const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
+const mediaTypeLabels: Record<EntryMediaType, string> = entryMediaTypeLabels;
 
 const formatDate = (value: number | null) => {
   if (!value) return "";

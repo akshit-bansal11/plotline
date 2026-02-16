@@ -25,7 +25,6 @@ const normalizeSection = (hash: string): SectionKey => {
 export function SectionProvider({ children }: { children: ReactNode }) {
   const [activeSection, setActiveSection] = useState<SectionKey>("home");
 
-  // Sync with URL hash on mount and changes
   useEffect(() => {
     const syncFromHash = () => {
       const currentHash = window.location.hash;
@@ -33,15 +32,10 @@ export function SectionProvider({ children }: { children: ReactNode }) {
       setActiveSection(normalized);
     };
 
-    // Initial sync
     syncFromHash();
 
-    // Listen for hash changes (e.g. back button, or manual hash updates)
-    // Note: Next.js Link pushState does NOT trigger hashchange/popstate on its own in all cases,
-    // so we rely on explicit setActiveSection calls from NavLinks for click interactions.
-    // But popstate handles browser Back/Forward navigation.
     window.addEventListener("hashchange", syncFromHash);
-    window.addEventListener("popstate", syncFromHash); // Important for history navigation
+    window.addEventListener("popstate", syncFromHash);
 
     return () => {
       window.removeEventListener("hashchange", syncFromHash);

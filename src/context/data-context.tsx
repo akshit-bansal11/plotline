@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
-import { collection, limit, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 
@@ -105,7 +105,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!uid) return;
 
-    // Check cache first
     const cached = entriesCache.get(uid);
     if (cached) {
       queueMicrotask(() => {

@@ -21,14 +21,14 @@ interface NewListModalProps {
     isOpen: boolean;
     onClose: () => void;
     defaultType?: EntryMediaType | null;
-    onCreated?: (list: { id: string; name: string; type: EntryMediaType; description: string }) => void;
+    onCreated?: (list: { id: string; name: string; type: EntryMediaType; types: EntryMediaType[]; description: string }) => void;
 }
 
 export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewListModalProps) {
     const { user } = useAuth();
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [type, setType] = useState<EntryMediaType | "">("");
+    const [types, setTypes] = useState<EntryMediaType[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [info, setInfo] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -45,8 +45,18 @@ export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewLis
         setIsSaving(false);
         setName("");
         setDescription("");
-        setType(normalizedDefaultType || "movie");
+        setTypes(normalizedDefaultType ? [normalizedDefaultType] : ["movie"]);
     }, [isOpen, normalizedDefaultType]);
+
+    const handleTypeToggle = (value: EntryMediaType) => {
+        setTypes((prev) => {
+            if (prev.includes(value)) {
+                if (prev.length === 1) return prev;
+                return prev.filter((t) => t !== value);
+            }
+            return [...prev, value];
+        });
+    };
 
     const handleCreateList = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -58,8 +68,8 @@ export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewLis
             setError("List name is required.");
             return;
         }
-        if (!type) {
-            setError("Please choose a category.");
+        if (types.length === 0) {
+            setError("Please choose at least one category.");
             return;
         }
         setError(null);
@@ -69,7 +79,8 @@ export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewLis
             const docRef = await addDoc(collection(db, "users", user.uid, "lists"), {
                 name: name.trim(),
                 description: description.trim(),
-                type,
+                type: types[0],
+                types,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
@@ -77,7 +88,8 @@ export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewLis
                 id: docRef.id,
                 name: name.trim(),
                 description: description.trim(),
-                type,
+                type: types[0],
+                types,
             });
             setInfo("List created.");
             onClose();
@@ -119,12 +131,12 @@ export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewLis
                             <button
                                 key={option.value}
                                 type="button"
-                                onClick={() => setType(option.value)}
+                                onClick={() => handleTypeToggle(option.value)}
                                 className={cn(
-                                    "rounded-full border px-4 py-2 text-xs font-semibold transition-colors",
-                                    type === option.value
-                                        ? "border-white/40 bg-white/10 text-white"
-                                        : "border-white/10 bg-neutral-900/40 text-neutral-300 hover:border-white/30"
+                                    "rounded-xl border px-4 py-3 text-sm font-semibold transition-colors",
+                                    types.includes(option.value)
+                                        ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
+                                        : "border-white/10 bg-neutral-800/50 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200",
                                 )}
                             >
                                 {option.label}

@@ -60,7 +60,6 @@ export function Drawer({
         <AnimatePresence>
             {isOpen && (
                 <div className="fixed inset-0 z-[100] flex justify-end">
-                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -70,7 +69,6 @@ export function Drawer({
                         className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm"
                     />
 
-                    {/* Drawer Content */}
                     <motion.div
                         variants={variants}
                         initial="initial"

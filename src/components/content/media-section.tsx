@@ -2,8 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
-import { ChevronRight } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface MediaSectionProps<TItem> {
@@ -20,8 +18,6 @@ interface MediaSectionProps<TItem> {
 }
 
 export function MediaSection<TItem>({
-    title,
-    href,
     items,
     getGenresThemes,
     getFilterValues,

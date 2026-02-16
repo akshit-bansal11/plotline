@@ -32,7 +32,6 @@ export function GlobalSearch() {
   const [showFilters, setShowFilters] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter states
   const [selectedTypes, setSelectedTypes] = useState<EntryMediaType[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<EntryStatus[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -82,7 +81,6 @@ export function GlobalSearch() {
     const lowerQuery = debouncedQuery.toLowerCase();
     return entries
       .filter((entry) => {
-        // Text match
         const matchesText =
           !lowerQuery ||
           entry.title.toLowerCase().includes(lowerQuery) ||
@@ -90,13 +88,10 @@ export function GlobalSearch() {
 
         if (!matchesText) return false;
 
-        // Type filter
         if (selectedTypes.length > 0 && !selectedTypes.includes(entry.mediaType)) return false;
 
-        // Status filter
         if (selectedStatus.length > 0 && !selectedStatus.includes(entry.status)) return false;
 
-        // Genre filter
         if (selectedGenres.length > 0) {
           const hasGenre = entry.genresThemes?.some((g) => selectedGenres.includes(g));
           if (!hasGenre) return false;

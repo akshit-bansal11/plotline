@@ -15,10 +15,10 @@ interface ModalProps {
     className?: string;
     containerClassName?: string;
     overlayClassName?: string;
+    hideHeader?: boolean;
 }
 
-export function Modal({ isOpen, onClose, children, title, className, containerClassName, overlayClassName }: ModalProps) {
-    // Handle ESC key
+export function Modal({ isOpen, onClose, children, title, className, containerClassName, overlayClassName, hideHeader }: ModalProps) {
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
             if (e.key === "Escape") {
@@ -40,15 +40,12 @@ export function Modal({ isOpen, onClose, children, title, className, containerCl
         };
     }, [isOpen, handleKeyDown]);
 
-    // Use a portal to render outside the DOM hierarchy
-    // Using a simple check for document to avoid SSR issues
     if (typeof document === "undefined") return null;
 
     return createPortal(
         <AnimatePresence>
             {isOpen && (
                 <div className={cn("fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6", overlayClassName)}>
-                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
                         animate={{ opacity: 1, backdropFilter: "blur(8px)" }}
@@ -69,15 +66,17 @@ export function Modal({ isOpen, onClose, children, title, className, containerCl
                     >
                         <GlassCard className={cn("flex flex-col overflow-hidden border-white/10 p-0 shadow-2xl", className)}>
                             {/* Header */}
-                            <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
-                                <h3 className="text-lg font-semibold text-white">{title}</h3>
-                                <button
-                                    onClick={onClose}
-                                    className="rounded-full p-2 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
+                            {!hideHeader && (
+                                <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
+                                    <h3 className="text-lg font-semibold text-white">{title}</h3>
+                                    <button
+                                        onClick={onClose}
+                                        className="rounded-full p-2 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            )}
 
                             {/* Body */}
                             <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">{children}</div>
