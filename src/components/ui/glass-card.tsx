@@ -16,7 +16,7 @@ export function GlassCard({
     const CardContent = (
         <div
             className={cn(
-                "glass rounded-2xl p-6 relative z-20", // added relative z-20 to ensure content is above spotlight if needed
+                "glass rounded-2xl p-1 relative z-20", // added relative z-20 to ensure content is above spotlight if needed
                 hoverEffect && "glass-hover",
                 className
             )}

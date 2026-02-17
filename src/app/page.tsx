@@ -38,7 +38,6 @@ const contentTypeLabels: Record<EntryMediaType, string> = {
   movie: "Movies",
   series: "Series",
   anime: "Anime",
-  anime_movie: "Anime movies",
   manga: "Manga",
   game: "Games",
 };
@@ -60,10 +59,10 @@ type ListItemRow = {
   year: string | null;
 };
 
-type ListModalType = Exclude<EntryMediaType, "anime_movie">;
+type ListModalType = EntryMediaType;
 
 const coerceListType = (value: unknown): EntryMediaType => {
-  if (value === "movie" || value === "series" || value === "anime" || value === "manga" || value === "game" || value === "anime_movie") {
+  if (value === "movie" || value === "series" || value === "anime" || value === "manga" || value === "game") {
     return value;
   }
   return "movie";
@@ -85,7 +84,14 @@ function DashboardSection({
   const { user } = useAuth();
   const uid = user?.uid || null;
 
-  const completedEntries = useMemo(() => entries.filter((e) => e.status === "completed"), [entries]);
+  const completedEntries = useMemo(() => {
+    return entries.filter((entry) => {
+      if (entry.status === "completed") return true;
+      // Game specific completion statuses
+      if (entry.mediaType === "game" && (entry.status === "main_story_completed" || entry.status === "fully_completed")) return true;
+      return false;
+    });
+  }, [entries]);
 
   const metricsByType = useMemo(() => {
     const now = new Date();
@@ -97,7 +103,6 @@ function DashboardSection({
       movie: { month: 0, year: 0, total: 0 },
       series: { month: 0, year: 0, total: 0 },
       anime: { month: 0, year: 0, total: 0 },
-      anime_movie: { month: 0, year: 0, total: 0 },
       manga: { month: 0, year: 0, total: 0 },
       game: { month: 0, year: 0, total: 0 },
     };
@@ -120,7 +125,7 @@ function DashboardSection({
     () => ({
       movies: metricsByType.movie.total,
       series: metricsByType.series.total,
-      anime: metricsByType.anime.total + metricsByType.anime_movie.total,
+      anime: metricsByType.anime.total,
       manga: metricsByType.manga.total,
       games: metricsByType.game.total,
     }),
@@ -128,8 +133,15 @@ function DashboardSection({
   );
 
   const recentByType = useMemo(() => {
-    const grouped: Record<EntryMediaType, EntryDoc[]> = { movie: [], series: [], anime: [], anime_movie: [], manga: [], game: [] };
-    for (const entry of completedEntries) grouped[entry.mediaType].push(entry);
+    const grouped: Record<EntryMediaType, EntryDoc[]> = { movie: [], series: [], anime: [], manga: [], game: [] };
+    const thirtyDaysAgo = new Date().getTime() - 30 * 24 * 60 * 60 * 1000;
+
+    for (const entry of completedEntries) {
+      const finishedDate = entry.completedAtMs ?? entry.createdAtMs ?? 0;
+      if (finishedDate >= thirtyDaysAgo) {
+        grouped[entry.mediaType].push(entry);
+      }
+    }
 
     const sortKey = (e: EntryDoc) => e.completedAtMs ?? e.createdAtMs ?? 0;
     (Object.keys(grouped) as EntryMediaType[]).forEach((key) => grouped[key].sort((a, b) => sortKey(b) - sortKey(a)));
@@ -311,7 +323,7 @@ function LibrarySection({
         const types = Array.isArray(data.types) ? (data.types as EntryMediaType[]) : [singleType];
 
         // Normalize types for filtering: if it has anime or anime_movie, it counts for both
-        const normalizedTypes = types.map(t => t === "anime_movie" ? "anime" : t);
+        const normalizedTypes = types.map(t => (t as string) === "anime_movie" ? "anime" : t);
 
         return {
           id: snap.id,
@@ -461,7 +473,7 @@ function LibrarySection({
 
     if (targetList) {
       const normalizedEntryType: EntryMediaType =
-        entry.mediaType === "anime_movie" ? "anime" : entry.mediaType;
+        (entry.mediaType as string) === "anime_movie" ? "anime" : entry.mediaType;
       if (!targetList.types.includes(normalizedEntryType)) {
         setDragAnnouncement(`This list only accepts ${targetList.types.map((t) => entryMediaTypeLabels[t]).join(", ")} items.`);
         setActiveDrag(null);
@@ -829,14 +841,14 @@ export default function Home() {
 
   const handleEditList = useCallback((list: ListRow) => {
     setListsModalListId(list.id);
-    setListsModalType(list.type === "anime_movie" ? "anime" : list.type);
+    setListsModalType((list.type as string) === "anime_movie" ? "anime" : list.type);
     setListsModalMode("edit");
     setIsListsModalOpen(true);
   }, []);
 
   const handleDeleteList = useCallback((list: ListRow) => {
     setListsModalListId(list.id);
-    setListsModalType(list.type === "anime_movie" ? "anime" : list.type);
+    setListsModalType((list.type as string) === "anime_movie" ? "anime" : list.type);
     setListsModalMode("delete");
     setIsListsModalOpen(true);
   }, []);

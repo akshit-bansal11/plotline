@@ -12,6 +12,15 @@ export const entryStatusLabels = {
     on_hold: "On hold",
     dropped: "Dropped",
     unspecified: "Unspecified",
+    // Game specific
+    main_story_completed: "Main Story Completed",
+    fully_completed: "Fully Completed",
+    backlogged: "Backlogged",
+    bored: "Bored",
+    own: "Own",
+    wishlist: "Wishlist",
+    not_committed: "Not Committed",
+    committed: "Committed",
 };
 
 export const entryMediaTypeLabels = {

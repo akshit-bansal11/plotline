@@ -344,12 +344,14 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     const [importInfo, setImportInfo] = useState<string | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
 
     useEffect(() => {
         if (!isOpen) return;
         setImportFile(null);
         setImportError(null);
         setImportInfo(null);
+        setImportProgress(null);
     }, [isOpen]);
 
     const handleExport = async () => {
@@ -445,6 +447,7 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         setIsImporting(true);
         setImportError(null);
         setImportInfo(null);
+        setImportProgress(null);
         try {
             const text = await importFile.text();
             const rows = parseCsv(text);
@@ -534,7 +537,10 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             let batch = writeBatch(db);
             let batchCount = 0;
 
+            setImportProgress({ current: 0, total: rows.length - 1 });
+
             for (let i = 1; i < rows.length; i += 1) {
+                setImportProgress({ current: i, total: rows.length - 1 });
                 const row = rows[i];
                 const rawTitle = row[titleIndex] || "";
                 const title = rawTitle.trim();
@@ -627,28 +633,57 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                         </div>
                         <Upload size={20} className="text-neutral-500" suppressHydrationWarning />
                     </div>
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <input
-                            type="file"
-                            accept=".csv,text/csv"
-                            onChange={(event) => {
-                                setImportFile(event.target.files?.[0] || null);
-                                setImportError(null);
-                                setImportInfo(null);
-                            }}
-                            className="w-full rounded-xl border border-white/5 bg-neutral-800/50 px-3 py-2 text-sm text-neutral-200 file:mr-3 file:rounded-full file:border-0 file:bg-neutral-700 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleImport}
-                            disabled={!importFile || isImporting}
-                            className={cn(
-                                "rounded-full bg-neutral-100/90 px-5 py-2 text-xs font-semibold text-neutral-950 transition-all hover:bg-neutral-100",
-                                !importFile || isImporting ? "cursor-not-allowed opacity-70" : ""
-                            )}
-                        >
-                            {isImporting ? "Importing..." : "Import"}
-                        </button>
+                    <div className="flex flex-col gap-2 w-full sm:w-auto flex-1">
+                        <div className="flex gap-3 sm:items-center">
+                            <input
+                                type="file"
+                                accept=".csv,text/csv"
+                                onChange={(event) => {
+                                    setImportFile(event.target.files?.[0] || null);
+                                    setImportError(null);
+                                    setImportInfo(null);
+                                    setImportProgress(null);
+                                }}
+                                className="w-full rounded-xl border border-white/5 bg-neutral-800/50 px-3 py-2 text-sm text-neutral-200 file:mr-3 file:rounded-full file:border-0 file:bg-neutral-700 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleImport}
+                                disabled={!importFile || isImporting}
+                                className={cn(
+                                    "rounded-full bg-neutral-100/90 px-5 py-2 text-xs font-semibold text-neutral-950 transition-all hover:bg-neutral-100 min-w-[100px] flex items-center justify-center gap-2",
+                                    !importFile || isImporting ? "cursor-not-allowed opacity-70" : ""
+                                )}
+                            >
+                                {isImporting ? (
+                                    <>
+                                        <span>Importing</span>
+                                        <span className="flex gap-0.5">
+                                            <span className="h-1 w-1 rounded-full bg-neutral-950 animate-[bounce_1s_infinite_0ms]"></span>
+                                            <span className="h-1 w-1 rounded-full bg-neutral-950 animate-[bounce_1s_infinite_200ms]"></span>
+                                            <span className="h-1 w-1 rounded-full bg-neutral-950 animate-[bounce_1s_infinite_400ms]"></span>
+                                        </span>
+                                    </>
+                                ) : (
+                                    "Import"
+                                )}
+                            </button>
+                        </div>
+                        {isImporting && importProgress ? (
+                            <div className="space-y-1 pt-1">
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+                                    <div
+                                        className="h-full bg-neutral-200 transition-all duration-300 ease-out"
+                                        style={{
+                                            width: `${(importProgress.current / importProgress.total) * 100}%`,
+                                        }}
+                                    />
+                                </div>
+                                <div className="text-[10px] text-neutral-500 text-right">
+                                    {importProgress.current} / {importProgress.total} items
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
                 <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-5">

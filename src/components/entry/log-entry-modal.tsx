@@ -2,17 +2,46 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { motion } from "motion/react";
+
 import { Timestamp, addDoc, collection, serverTimestamp, query, orderBy, limit, onSnapshot, updateDoc, doc, getDocs, where, deleteDoc } from "firebase/firestore";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Plus, Gamepad2, Monitor, Smartphone, Disc, HardDrive, Hexagon, Tablet, Laptop, Terminal, Loader2, Search, ChevronDown } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { NewListModal } from "@/components/lists/new-list-modal";
 
-export type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
-export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified";
+export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
+export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified" | "main_story_completed" | "fully_completed" | "backlogged" | "bored" | "own" | "wishlist" | "not_committed" | "committed";
+
+export const PLATFORM_OPTIONS = [
+  { id: "Steam", label: "Steam", icon: Monitor },
+  { id: "Epic Games", label: "Epic Games", icon: Hexagon },
+  { id: "PC Local", label: "PC Local", icon: HardDrive },
+  { id: "Physical Disc", label: "Physical Disc", icon: Disc },
+  { id: "PS5", label: "PS5", icon: Gamepad2 },
+  { id: "PS4", label: "PS4", icon: Gamepad2 },
+  { id: "PS3", label: "PS3", icon: Gamepad2 },
+  { id: "PS2", label: "PS2", icon: Gamepad2 },
+  { id: "PS", label: "PS", icon: Gamepad2 },
+  { id: "PSP", label: "PSP", icon: Gamepad2 },
+  { id: "PS5 Pro", label: "PS5 Pro", icon: Gamepad2 },
+  { id: "Xbox Series X", label: "Xbox Series X", icon: Gamepad2 },
+  { id: "Xbox Series S", label: "Xbox Series S", icon: Gamepad2 },
+  { id: "Xbox One X", label: "Xbox One X", icon: Gamepad2 },
+  { id: "Xbox One S", label: "Xbox One S", icon: Gamepad2 },
+  { id: "Xbox One", label: "Xbox One", icon: Gamepad2 },
+  { id: "Xbox 360", label: "Xbox 360", icon: Gamepad2 },
+  { id: "Xbox", label: "Xbox", icon: Gamepad2 },
+  { id: "Switch", label: "Switch", icon: Tablet },
+  { id: "Steam Deck", label: "Steam Deck", icon: Tablet },
+  { id: "GOG", label: "GOG", icon: Monitor },
+  { id: "Android", label: "Android", icon: Smartphone },
+  { id: "iOS", label: "iOS", icon: Smartphone },
+  { id: "MacOS", label: "MacOS", icon: Laptop },
+  { id: "Linux", label: "Linux", icon: Terminal },
+];
+
 
 export type LoggableMedia = {
   id: string | number;
@@ -20,7 +49,7 @@ export type LoggableMedia = {
   image: string | null;
   year?: string;
   releaseYear?: string;
-  type: "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
+  type: EntryMediaType | "anime_movie"; // Keep anime_movie for legacy handling if needed, or normalize early
   description?: string;
   userRating?: number | null;
   imdbRating?: number | null;
@@ -28,6 +57,15 @@ export type LoggableMedia = {
   lengthMinutes?: number | null;
   episodeCount?: number | null;
   chapterCount?: number | null;
+  // Game specific
+  playTime?: number | null;
+  achievements?: number | null;
+  totalAchievements?: number | null;
+  platform?: string | null;
+
+  isMovie?: boolean;
+  listIds?: string[]; // IDs of lists this item belongs to
+
   genresThemes?: string[];
   status?: EntryStatus;
   completedAt?: number | null;
@@ -36,13 +74,7 @@ export type LoggableMedia = {
 
 type ListMediaType = "movie" | "series" | "anime" | "manga" | "game";
 
-const listTypeLabels: Record<ListMediaType, string> = {
-  movie: "Movie",
-  series: "Series",
-  anime: "Anime",
-  manga: "Manga",
-  game: "Game",
-};
+
 
 type SearchResult = {
   id: string;
@@ -62,6 +94,19 @@ interface SearchResponse {
 
 const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
 const mediaTypeLabels: Record<EntryMediaType, string> = entryMediaTypeLabels;
+
+const STANDARD_STATUS_OPTIONS: EntryStatus[] = ["watching", "completed", "plan_to_watch", "on_hold", "dropped"];
+const GAME_STATUS_OPTIONS: EntryStatus[] = [
+  "main_story_completed",
+  "fully_completed",
+  "backlogged",
+  "bored",
+  "own",
+  "wishlist",
+  "not_committed",
+  "committed",
+  "dropped"
+];
 
 const todayISODate = () => {
   const now = new Date();
@@ -142,6 +187,7 @@ export function LogEntryModal({
 
   const [title, setTitle] = useState("");
   const [mediaType, setMediaType] = useState<EntryMediaType>("movie");
+  const [isMovie, setIsMovie] = useState(false); // For "Anime" -> "Movie" checkbox
   const [status, setStatus] = useState<EntryStatus>("unspecified");
   const [userRating, setUserRating] = useState<string>("");
   const [imdbRating, setImdbRating] = useState<string>("");
@@ -149,6 +195,14 @@ export function LogEntryModal({
   const [lengthMinutes, setLengthMinutes] = useState<string>("");
   const [episodeCount, setEpisodeCount] = useState<string>("");
   const [chapterCount, setChapterCount] = useState<string>("");
+
+  // Game fields
+  const [playTime, setPlayTime] = useState<string>("");
+  const [achievements, setAchievements] = useState<string>("");
+  const [totalAchievements, setTotalAchievements] = useState<string>("");
+  const [platform, setPlatform] = useState("");
+  const [isCustomPlatform, setIsCustomPlatform] = useState(false);
+
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState<string>("");
   const [description, setDescription] = useState("");
@@ -162,29 +216,23 @@ export function LogEntryModal({
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
 
   const [lists, setLists] = useState<{ id: string; name: string; type: ListMediaType; types: ListMediaType[] }[]>([]);
-  const [selectedListId, setSelectedListId] = useState<string>("");
+
+  // Multi-list support
+  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(new Set());
+  const [initialListIds, setInitialListIds] = useState<Set<string>>(new Set()); // For tracking changes
+
   const [isNewListOpen, setIsNewListOpen] = useState(false);
-  const [currentListId, setCurrentListId] = useState<string | null>(null);
-  const [currentListName, setCurrentListName] = useState("");
-  const [currentListItemId, setCurrentListItemId] = useState<string | null>(null);
-  const [showListChange, setShowListChange] = useState(false);
+  // Remnants of old logic, might remove or repurpose if needed
+  // const [currentListId, setCurrentListId] = useState<string | null>(null);
+  // const [currentListName, setCurrentListName] = useState("");
+  // const [currentListItemId, setCurrentListItemId] = useState<string | null>(null);
+  // const [showListChange, setShowListChange] = useState(false);
 
   const uid = user?.uid || null;
 
-  const manualTabRef = useRef<HTMLButtonElement>(null);
-  const searchTabRef = useRef<HTMLButtonElement>(null);
-  const [indicatorX, setIndicatorX] = useState(0);
-  const [indicatorWidth, setIndicatorWidth] = useState(0);
+  /* Tabs removed */
 
   const initializedRef = useRef<string | number | null>(null);
-
-  useEffect(() => {
-    const activeRef = activeTab === "manual" ? manualTabRef : searchTabRef;
-    if (activeRef.current) {
-      setIndicatorX(activeRef.current.offsetLeft);
-      setIndicatorWidth(activeRef.current.offsetWidth);
-    }
-  }, [activeTab]);
 
   useEffect(() => {
     if (!uid || !isOpen) {
@@ -304,6 +352,9 @@ export function LogEntryModal({
             setTags(data.genresThemes.slice(0, 10));
           }
           if (data.image) setImage(data.image);
+          if (data.type === "movie" && data.genresThemes?.includes("Anime")) {
+            // Heuristic for anime movie if needed
+          }
         }
       }
     } catch (err) {
@@ -319,7 +370,7 @@ export function LogEntryModal({
       initialMedia.type === "anime"
         ? "anime"
         : initialMedia.type === "anime_movie"
-          ? "anime_movie"
+          ? "anime" // Normalize to anime
           : initialMedia.type === "manga"
             ? "manga"
             : initialMedia.type === "game"
@@ -327,37 +378,49 @@ export function LogEntryModal({
               : initialMedia.type === "series"
                 ? "series"
                 : "movie";
-    return { ...initialMedia, inferredType };
+
+    // Check if it was anime_movie to set isMovie flag
+    const isMovieFlag = initialMedia.type === "anime_movie" || initialMedia.isMovie;
+
+    return { ...initialMedia, inferredType, inferredIsMovie: isMovieFlag };
   }, [initialMedia]);
 
-  const listDefaultType = useMemo<"movie" | "series" | "anime" | "manga" | "game" | null>(() => {
-    if (!mediaType) return null;
-    return mediaType === "anime_movie" ? "anime" : mediaType;
-  }, [mediaType]);
-
-  const listMediaType = useMemo<ListMediaType>(() => {
-    return mediaType === "anime_movie" ? "anime" : mediaType;
-  }, [mediaType]);
+  const listMediaType = mediaType;
+  const listDefaultType = mediaType;
 
   const availableLists = useMemo(() => {
-    let result = lists;
-    if (showListChange && currentListId) {
-      result = result.filter((list) => list.id !== currentListId);
-    }
-    return result.filter((list) => list.types.includes(listMediaType));
-  }, [lists, showListChange, currentListId, listMediaType]);
+    // Show all lists that accept this media type
+    return lists.filter((list) => list.types.includes(listMediaType));
+  }, [lists, listMediaType]);
 
+  // Effect to find which lists this item is in
   useEffect(() => {
     if (!uid || !isOpen || !isEditing || !normalizedInitial?.id || lists.length === 0) {
-      setCurrentListId(null);
-      setCurrentListName("");
-      setCurrentListItemId(null);
+      setSelectedListIds(new Set());
+      setInitialListIds(new Set());
       return;
     }
+
     let cancelled = false;
     const entryId = String(normalizedInitial.id);
-    const findCurrentList = async () => {
-      for (const list of lists) {
+
+    const findLists = async () => {
+      // If we have listIds from the entry itself (future proof), use them
+      if (normalizedInitial.listIds && normalizedInitial.listIds.length > 0) {
+        if (cancelled) return;
+        const ids = new Set(normalizedInitial.listIds);
+        setSelectedListIds(ids);
+        setInitialListIds(ids);
+        return;
+      }
+
+      // Backward compatibility: check all lists
+      const foundIds = new Set<string>();
+
+      // We can parallelize this
+      const checks = lists.map(async (list) => {
+        // Optimization: Checking all lists might be heavy if user has many lists.
+        // But for < 50 lists it's probably fine.
         const itemsQuery = query(
           collection(db, "users", uid, "lists", list.id, "items"),
           where("externalId", "==", entryId),
@@ -365,29 +428,28 @@ export function LogEntryModal({
         );
         const snapshot = await getDocs(itemsQuery);
         if (!snapshot.empty) {
-          if (cancelled) return;
-          const itemDoc = snapshot.docs[0];
-          setCurrentListId(list.id);
-          setCurrentListName(list.name);
-          setCurrentListItemId(itemDoc.id);
-          if (!showListChange) {
-            setSelectedListId(list.id);
-          }
-          return;
+          return list.id;
         }
-      }
-      if (!cancelled) {
-        setCurrentListId(null);
-        setCurrentListName("");
-        setCurrentListItemId(null);
-        if (!showListChange) setSelectedListId("");
-      }
+        return null;
+      });
+
+      const results = await Promise.all(checks);
+      if (cancelled) return;
+
+      results.forEach(id => {
+        if (id) foundIds.add(id);
+      });
+
+      setSelectedListIds(foundIds);
+      setInitialListIds(foundIds);
     };
-    findCurrentList();
+
+    findLists();
+
     return () => {
       cancelled = true;
     };
-  }, [uid, isOpen, isEditing, normalizedInitial?.id, lists, showListChange]);
+  }, [uid, isOpen, isEditing, normalizedInitial?.id, lists]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -411,9 +473,10 @@ export function LogEntryModal({
       setSearchResults([]);
       setSearchError(null);
 
-      setActiveTab("manual");
+      setActiveTab(isEditing ? "manual" : "search"); // Default: Search for new, Manual for edit
       setTitle(normalizedInitial.title);
       setMediaType(normalizedInitial.inferredType);
+      setIsMovie(!!normalizedInitial.inferredIsMovie);
       setStatus(normalizedInitial.status || "unspecified");
 
       const initialUserRating =
@@ -444,6 +507,18 @@ export function LogEntryModal({
       setLengthMinutes(normalizedInitial.lengthMinutes ? String(normalizedInitial.lengthMinutes) : "");
       setEpisodeCount(normalizedInitial.episodeCount ? String(normalizedInitial.episodeCount) : "");
       setChapterCount(normalizedInitial.chapterCount ? String(normalizedInitial.chapterCount) : "");
+
+      setPlayTime(normalizedInitial.playTime ? String(normalizedInitial.playTime) : "");
+      setAchievements(normalizedInitial.achievements ? String(normalizedInitial.achievements) : "");
+      setTotalAchievements(normalizedInitial.totalAchievements ? String(normalizedInitial.totalAchievements) : "");
+      const isPredefined = PLATFORM_OPTIONS.some(p => p.id === normalizedInitial.platform);
+      if (normalizedInitial.platform && !isPredefined) {
+        setIsCustomPlatform(true);
+      } else {
+        setIsCustomPlatform(false);
+      }
+      setPlatform(normalizedInitial.platform || "");
+
       setTags(Array.isArray(normalizedInitial.genresThemes) ? normalizedInitial.genresThemes.slice(0, 10) : []);
       setTagInput("");
       setDescription(normalizedInitial.description || "");
@@ -465,11 +540,7 @@ export function LogEntryModal({
         setCompletionDate("");
         setCompletionUnknown(false);
       }
-      setSelectedListId("");
-      setCurrentListId(null);
-      setCurrentListName("");
-      setCurrentListItemId(null);
-      setShowListChange(false);
+      // List IDs set by other effect
     } else if (initializedRef.current !== "new") {
       // Only reset if we haven't initialized "new" state yet
       initializedRef.current = "new";
@@ -483,6 +554,7 @@ export function LogEntryModal({
       setActiveTab("search"); // Default to search for new entries
       setTitle("");
       setMediaType("movie");
+      setIsMovie(false);
       setStatus("unspecified");
       setUserRating("");
       setImdbRating("");
@@ -490,6 +562,10 @@ export function LogEntryModal({
       setLengthMinutes("");
       setEpisodeCount("");
       setChapterCount("");
+      setPlayTime("");
+      setAchievements("");
+      setTotalAchievements("");
+      setPlatform("");
       setTags([]);
       setTagInput("");
       setDescription("");
@@ -497,7 +573,8 @@ export function LogEntryModal({
       setCompletionUnknown(false);
       setImage(null);
       setExternalId(null);
-      setSelectedListId("");
+      setSelectedListIds(new Set());
+      setInitialListIds(new Set());
     }
   }, [isOpen, normalizedInitial]);
 
@@ -542,11 +619,12 @@ export function LogEntryModal({
   }, [releaseYear]);
 
   const numericField = useMemo(() => {
-    if (mediaType === "movie" || mediaType === "anime_movie") return { key: "lengthMinutes" as const, label: "Length (minutes)", value: lengthMinutes };
+    if (mediaType === "movie" || (mediaType === "anime" && isMovie)) return { key: "lengthMinutes" as const, label: "Length (minutes)", value: lengthMinutes };
     if (mediaType === "series" || mediaType === "anime") return { key: "episodeCount" as const, label: "Number of episodes", value: episodeCount };
     if (mediaType === "manga") return { key: "chapterCount" as const, label: "Number of chapters", value: chapterCount };
+    // Games handled separately now
     return null;
-  }, [chapterCount, episodeCount, lengthMinutes, mediaType]);
+  }, [chapterCount, episodeCount, lengthMinutes, mediaType, isMovie]);
 
   const numericFieldError = useMemo(() => {
     if (!numericField) return null;
@@ -591,7 +669,7 @@ export function LogEntryModal({
       return;
     }
     const lengthMinutesValue =
-      mediaType === "movie" || mediaType === "anime_movie"
+      mediaType === "movie" || (mediaType === "anime" && isMovie)
         ? lengthMinutes.trim()
           ? Number(lengthMinutes.trim())
           : null
@@ -600,15 +678,21 @@ export function LogEntryModal({
       mediaType === "series" || mediaType === "anime" ? (episodeCount.trim() ? Number(episodeCount.trim()) : null) : null;
     const chapterCountValue = mediaType === "manga" ? (chapterCount.trim() ? Number(chapterCount.trim()) : null) : null;
 
+    // Game fields
+    const playTimeValue = mediaType === "game" ? (playTime.trim() ? Number(playTime.trim()) : null) : null;
+    const achievementsValue = mediaType === "game" ? (achievements.trim() ? Number(achievements.trim()) : null) : null;
+    const totalAchievementsValue = mediaType === "game" ? (totalAchievements.trim() ? Number(totalAchievements.trim()) : null) : null;
+    const platformValue = mediaType === "game" ? (platform.trim() ? platform.trim() : null) : null;
+
     if (tags.length > 10) {
       setError("You can only add up to 10 genres/themes.");
       return;
     }
 
     let completedAt: Timestamp | null = null;
-    let completionDateUnknown = false;
+    let completionDateUnknownValue = false;
     if (status === "completed") {
-      completionDateUnknown = completionUnknown;
+      completionDateUnknownValue = completionUnknown;
       if (!completionUnknown) {
         const parsed = parseISODate(completionDate.trim());
         if (!parsed) {
@@ -625,142 +709,142 @@ export function LogEntryModal({
       }
     }
 
-    const targetListId = isEditing ? (showListChange ? selectedListId : currentListId || "") : selectedListId;
-    const targetList = targetListId ? lists.find((list) => list.id === targetListId) || null : null;
-    if (targetListId && !targetList) {
-      setError("Select a valid list.");
-      return;
-    }
-    if (targetList && !targetList.types.includes(listMediaType)) {
-      setError(`This list only accepts ${targetList.types.map((t) => listTypeLabels[t]).join(", ")} items.`);
-      return;
-    }
-    if (isEditing && showListChange && targetListId !== (currentListId || "")) {
-      const confirmed = confirm("Changing the list can affect categorization and filters. Continue?");
-      if (!confirmed) return;
+    // Validate lists
+    if (selectedListIds.size > 0) {
+      for (const id of selectedListIds) {
+        const list = lists.find(l => l.id === id);
+        if (list && !list.types.includes(listMediaType)) {
+          // Allow saving but maybe warn? Or just filter out?
+          // Strict mode:
+          setError(`List "${list.name}" does not accept ${listMediaType} items.`);
+          return;
+        }
+      }
     }
 
     setIsSaving(true);
     try {
-      if (isEditing && normalizedInitial?.id) {
-        // Update existing entry
-        const entryRef = doc(db, "users", uid, "entries", String(normalizedInitial.id));
-        await updateDoc(entryRef, {
-          title: trimmedTitle,
-          mediaType,
-          status,
-          userRating: userRatingValue,
-          imdbRating: imdbRatingValue,
-          releaseYear: releaseYearValue,
-          lengthMinutes: lengthMinutesValue,
-          episodeCount: episodeCountValue,
-          chapterCount: chapterCountValue,
-          genresThemes: tags,
-          description: description.trim(),
-          // externalId: normalizedInitial ? String(normalizedInitial.id) : null, // Don't overwrite externalId if not needed, or keep it?
-          // If we are editing, we probably shouldn't change externalId unless we re-linked it (not supported yet)
-          // image: normalizedInitial?.image || null, // Allow image update?
-          image: image, // Use current image state
-          // year: releaseYearValue || normalizedInitial?.year || null,
-          year: releaseYearValue,
-          completedAt,
-          completionDateUnknown,
-          updatedAt: serverTimestamp(),
-        });
-        const entryId = String(normalizedInitial.id);
-        if (currentListId && currentListId !== targetListId) {
-          if (currentListItemId) {
-            await deleteDoc(doc(db, "users", uid, "lists", currentListId, "items", currentListItemId));
-          } else {
-            const currentQuery = query(
-              collection(db, "users", uid, "lists", currentListId, "items"),
-              where("externalId", "==", entryId),
-              limit(1),
-            );
-            const currentSnap = await getDocs(currentQuery);
-            if (!currentSnap.empty) {
-              await deleteDoc(doc(db, "users", uid, "lists", currentListId, "items", currentSnap.docs[0].id));
-            }
-          }
-          await updateDoc(doc(db, "users", uid, "lists", currentListId), {
-            updatedAt: serverTimestamp(),
-          });
-        }
-        if (targetListId) {
-          if (targetListId === currentListId && currentListItemId) {
-            await updateDoc(doc(db, "users", uid, "lists", targetListId, "items", currentListItemId), {
-              title: trimmedTitle,
-              mediaType: listMediaType,
-              image: image,
-              year: releaseYearValue,
-            });
-          } else {
-            const itemsQuery = query(
-              collection(db, "users", uid, "lists", targetListId, "items"),
-              where("externalId", "==", entryId),
-              limit(1),
-            );
-            const snapshot = await getDocs(itemsQuery);
-            if (snapshot.empty) {
-              await addDoc(collection(db, "users", uid, "lists", targetListId, "items"), {
-                title: trimmedTitle,
-                mediaType: listMediaType,
-                externalId: entryId,
-                image: image,
-                year: releaseYearValue,
-                addedAt: serverTimestamp(),
-              });
-            } else {
-              await updateDoc(doc(db, "users", uid, "lists", targetListId, "items", snapshot.docs[0].id), {
-                title: trimmedTitle,
-                mediaType: listMediaType,
-                image: image,
-                year: releaseYearValue,
-              });
-            }
-          }
-          await updateDoc(doc(db, "users", uid, "lists", targetListId), {
-            updatedAt: serverTimestamp(),
-          });
-        }
+      const entryId = isEditing && normalizedInitial?.id ? String(normalizedInitial.id) : null;
+
+      // 1. Save/Update Entry
+      const entryData = {
+        title: trimmedTitle,
+        mediaType,
+        status,
+        userRating: userRatingValue,
+        imdbRating: imdbRatingValue,
+        releaseYear: releaseYearValue,
+        lengthMinutes: lengthMinutesValue,
+        episodeCount: episodeCountValue,
+        chapterCount: chapterCountValue,
+        // New game fields
+        playTime: playTimeValue,
+        achievements: achievementsValue,
+        totalAchievements: totalAchievementsValue,
+        platform: platformValue,
+        isMovie: isMovie,
+
+        genresThemes: tags,
+        description: description.trim(),
+        image: image,
+        year: releaseYearValue,
+        completedAt,
+        completionDateUnknown: completionDateUnknownValue,
+        updatedAt: serverTimestamp(),
+        listIds: Array.from(selectedListIds), // Save list relationships in entry
+      };
+
+      let finalEntryId = entryId;
+
+      if (isEditing && entryId) {
+        const entryRef = doc(db, "users", uid, "entries", entryId);
+        await updateDoc(entryRef, entryData);
         setInfo("Updated.");
       } else {
-        // Create new entry
         const entryRef = await addDoc(collection(db, "users", uid, "entries"), {
-          title: trimmedTitle,
-          mediaType,
-          status,
-          userRating: userRatingValue,
-          imdbRating: imdbRatingValue,
-          releaseYear: releaseYearValue,
-          lengthMinutes: lengthMinutesValue,
-          episodeCount: episodeCountValue,
-          chapterCount: chapterCountValue,
-          genresThemes: tags,
-          description: description.trim(),
-          externalId: externalId,
-          image: image,
-          year: releaseYearValue,
-          completedAt,
-          completionDateUnknown,
+          ...entryData,
+          externalId: externalId, // Only for new entries
           createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
         });
-
-        if (selectedListId) {
-          await addDoc(collection(db, "users", uid, "lists", selectedListId, "items"), {
-            title: trimmedTitle,
-            mediaType: listMediaType,
-            externalId: entryRef.id, // Use the new entry ID
-            image: image,
-            year: releaseYearValue,
-            addedAt: serverTimestamp(),
-          });
-        }
+        finalEntryId = entryRef.id;
         setInfo("Saved.");
       }
 
+      if (!finalEntryId) throw new Error("Failed to get entry ID");
+
+      // 2. Handle Lists (Add/Remove)
+      const addedIds = Array.from(selectedListIds).filter(id => !initialListIds.has(id));
+      const removedIds = Array.from(initialListIds).filter(id => !selectedListIds.has(id));
+      const commonIds = Array.from(selectedListIds).filter(id => initialListIds.has(id));
+
+      // Batch or Parallel processing? Parallel is fine for Firestore
+      const promises = [];
+
+      // Add to new lists
+      for (const listId of addedIds) {
+        promises.push(
+          addDoc(collection(db, "users", uid, "lists", listId, "items"), {
+            title: trimmedTitle,
+            mediaType: listMediaType,
+            externalId: finalEntryId,
+            image: image,
+            year: releaseYearValue,
+            addedAt: serverTimestamp(),
+          }).then(() => {
+            return updateDoc(doc(db, "users", uid, "lists", listId), {
+              updatedAt: serverTimestamp(),
+            });
+          })
+        );
+      }
+
+      // Remove from old lists
+      for (const listId of removedIds) {
+        // We need to find the item ID in that list using externalId
+        promises.push(
+          (async () => {
+            const q = query(
+              collection(db, "users", uid, "lists", listId, "items"),
+              where("externalId", "==", finalEntryId),
+              limit(1)
+            );
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+              await deleteDoc(doc(db, "users", uid, "lists", listId, "items", snapshot.docs[0].id));
+              await updateDoc(doc(db, "users", uid, "lists", listId), {
+                updatedAt: serverTimestamp(),
+              });
+            }
+          })()
+        );
+      }
+
+      // Update existing items in lists (commonIds) to reflect title/image changes
+      for (const listId of commonIds) {
+        promises.push(
+          (async () => {
+            const q = query(
+              collection(db, "users", uid, "lists", listId, "items"),
+              where("externalId", "==", finalEntryId),
+              limit(1)
+            );
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+              await updateDoc(doc(db, "users", uid, "lists", listId, "items", snapshot.docs[0].id), {
+                title: trimmedTitle,
+                mediaType: listMediaType,
+                image: image,
+                year: releaseYearValue,
+              });
+            }
+          })()
+        );
+      }
+
+      await Promise.all(promises);
+
       if (!isEditing) {
+        // Reset form
         setTitle("");
         setUserRating("");
         setImdbRating("");
@@ -768,23 +852,31 @@ export function LogEntryModal({
         setLengthMinutes("");
         setEpisodeCount("");
         setChapterCount("");
+
+        setPlayTime("");
+        setAchievements("");
+        setTotalAchievements("");
+        setPlatform("");
+        setIsMovie(false);
+
         setTags([]);
         setTagInput("");
         setDescription("");
         setCompletionDate("");
         setCompletionUnknown(false);
-        setSelectedListId("");
-        setCurrentListId(null);
-        setCurrentListName("");
-        setCurrentListItemId(null);
-        setShowListChange(false);
+
+        setSelectedListIds(new Set());
+        setInitialListIds(new Set());
+
         setImage(null);
         setExternalId(null);
+
+        // Don't close immediately allows adding more
       } else {
-        // If editing, close modal after short delay?
         setTimeout(() => onClose(), 1000);
       }
     } catch (err) {
+      console.error(err);
       setError(err instanceof Error ? err.message : "Failed to save entry.");
     } finally {
       setIsSaving(false);
@@ -794,42 +886,8 @@ export function LogEntryModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit entry" : "Log entry"} className="max-w-5xl bg-neutral-900/60">
       <div className="w-full">
-        <div className="flex border-b border-white/5 mb-4 relative">
-          <button
-            type="button"
-            ref={manualTabRef}
-            className={cn(
-              "relative flex-1 py-2 text-center text-sm font-medium transition-colors",
-              activeTab === "manual" ? "text-white" : "text-neutral-400 hover:text-neutral-300",
-            )}
-            onClick={() => setActiveTab("manual")}
-          >
-            Manual Entry
-          </button>
-          <button
-            type="button"
-            ref={searchTabRef}
-            className={cn(
-              "relative flex-1 py-2 text-center text-sm font-medium transition-colors",
-              activeTab === "search" ? "text-white" : "text-neutral-400 hover:text-neutral-300",
-            )}
-            onClick={() => setActiveTab("search")}
-          >
-            Search Online
-          </button>
-          {indicatorWidth > 0 && (
-            <motion.div
-              layoutId="activeTabIndicator"
-              className="absolute bottom-0 h-0.5 bg-white"
-              initial={false}
-              animate={{ x: indicatorX, width: indicatorWidth }}
-              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-            />
-          )}
-        </div>
-
         {activeTab === "search" ? (
-          <div className="flex flex-col h-[500px]">
+          <div className="flex flex-col h-[600px]">
             <div className="flex gap-2 mb-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
@@ -853,7 +911,7 @@ export function LogEntryModal({
                 }}
                 className="rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-2 px-3 text-sm text-neutral-100 focus:outline-none focus:border-neutral-100/20 transition-all"
               >
-                {(["movie", "series", "anime", "anime_movie", "manga", "game"] as EntryMediaType[]).map((t) => (
+                {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map((t) => (
                   <option key={t} value={t}>{mediaTypeLabels[t]}</option>
                 ))}
               </select>
@@ -900,9 +958,19 @@ export function LogEntryModal({
                 </div>
               )}
             </div>
+
+            <div className="pt-4 mt-auto border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setActiveTab("manual")}
+                className="w-full rounded-xl border border-white/10 bg-neutral-800/40 py-3 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+              >
+                Enter manually
+              </button>
+            </div>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="flex max-h-[500px] flex-col">
+          <form onSubmit={onSubmit} className="flex max-h-[600px] flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto pr-1 scroll-smooth">
               {isFetchingMetadata && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs animate-pulse">
@@ -928,84 +996,86 @@ export function LogEntryModal({
                     onChange={(e) => setMediaType(e.target.value as EntryMediaType)}
                     className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                   >
-                    {(["movie", "series", "anime", "anime_movie", "manga", "game"] as EntryMediaType[]).map((value) => (
+                    {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map((value) => (
                       <option key={value} value={value}>
                         {mediaTypeLabels[value]}
                       </option>
                     ))}
                   </select>
+                  {mediaType === "anime" && (
+                    <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={isMovie}
+                        onChange={(e) => setIsMovie(e.target.checked)}
+                        className="h-3 w-3 rounded border border-neutral-100/10 bg-neutral-800/50"
+                      />
+                      Is a Movie?
+                    </label>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-neutral-400">Status</div>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as EntryStatus)}
-                    className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                  >
-                    {(["watching", "completed", "plan_to_watch", "on_hold", "dropped", "unspecified"] as EntryStatus[]).map((value) => (
-                      <option key={value} value={value}>
-                        {statusLabels[value]}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                      <ChevronDown size={14} />
+                    </div>
+                    <select
+                      value={status}
+                      onChange={(e) => {
+                        const next = e.target.value as EntryStatus;
+                        setStatus(next);
+                        if ((next === "completed" || next === "main_story_completed" || next === "fully_completed") && !completionDate && !completionUnknown) {
+                          setCompletionDate(todayISODate());
+                        }
+                      }}
+                      className="w-full appearance-none rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 pl-4 pr-10 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
+                    >
+                      <option value="unspecified">Select status...</option>
+                      {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map((s) => (
+                        <option key={s} value={s}>
+                          {statusLabels[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-neutral-400">Add to List (Optional)</div>
+                  <div className="text-xs font-medium text-neutral-400">Add to Lists</div>
                   <button
                     type="button"
                     onClick={() => setIsNewListOpen(true)}
                     className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
                   >
                     <Plus size={12} />
-                    Create new list
+                    New List
                   </button>
                 </div>
-                {isEditing && currentListId && !showListChange ? (
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-neutral-400">Current List</div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <input
-                        value={currentListName}
-                        readOnly
-                        className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowListChange(true);
-                          setSelectedListId("");
-                        }}
-                        className="rounded-xl border border-white/10 bg-neutral-800/40 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white"
-                      >
-                        Change
-                      </button>
-                    </div>
-                  </div>
-                ) : availableLists.length > 0 ? (
-                  <select
-                    value={selectedListId}
-                    onChange={(e) => setSelectedListId(e.target.value)}
-                    className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                  >
-                    <option value="">Select a list...</option>
-                    {availableLists.map((list) => (
-                      <option key={list.id} value={list.id}>
-                        {list.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsNewListOpen(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-800 bg-neutral-900/50 py-3 text-sm text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors"
-                  >
-                    <Plus size={16} /> Create your first list
-                  </button>
-                )}
+                <div className="max-h-32 overflow-y-auto rounded-xl bg-neutral-800/30 border border-neutral-100/5 p-2 space-y-1">
+                  {availableLists.length > 0 ? (
+                    availableLists.map((list) => (
+                      <label key={list.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedListIds.has(list.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedListIds);
+                            if (e.target.checked) next.add(list.id);
+                            else next.delete(list.id);
+                            setSelectedListIds(next);
+                          }}
+                          className="h-4 w-4 rounded border border-neutral-100/10 bg-neutral-800/50"
+                        />
+                        <span className="text-sm text-neutral-200">{list.name}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <div className="text-xs text-neutral-500 p-2 text-center">No compatible lists found.</div>
+                  )}
+                </div>
               </div>
 
               {numericField ? (
@@ -1029,6 +1099,99 @@ export function LogEntryModal({
                   {numericFieldError ? <div className="text-xs text-red-400">{numericFieldError}</div> : null}
                 </div>
               ) : null}
+
+              {/* Game Fields */}
+              {mediaType === "game" && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-neutral-400">Play Time (hours)</div>
+                    <input
+                      type="number"
+                      value={playTime}
+                      onChange={(e) => setPlayTime(e.target.value)}
+                      placeholder="Optional"
+                      className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-1 sm:col-span-2">
+                    <div className="text-xs font-medium text-neutral-400">Platform</div>
+                    {!isCustomPlatform ? (
+                      <div className="space-y-3">
+                        <div className="max-h-48 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-2 custom-scrollbar">
+                          {PLATFORM_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setPlatform(opt.id)}
+                              className={cn(
+                                "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
+                                platform === opt.id
+                                  ? "bg-neutral-100 border-neutral-100 text-neutral-950"
+                                  : "bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                              )}
+                            >
+                              <opt.icon size={14} />
+                              <span className="truncate">{opt.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomPlatform(true);
+                            setPlatform("");
+                          }}
+                          className="flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                        >
+                          <Plus size={12} />
+                          <span>Other platform...</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <input
+                            value={platform}
+                            onChange={(e) => setPlatform(e.target.value)}
+                            placeholder="e.g. Ouya"
+                            className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCustomPlatform(false);
+                              setPlatform("");
+                            }}
+                            className="px-4 rounded-xl border border-white/10 bg-neutral-800/50 text-xs font-semibold text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-neutral-400">Achievements</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={achievements}
+                        onChange={(e) => setAchievements(e.target.value)}
+                        placeholder="Unlocked"
+                        className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
+                      />
+                      <span className="text-neutral-500">/</span>
+                      <input
+                        type="number"
+                        value={totalAchievements}
+                        onChange={(e) => setTotalAchievements(e.target.value)}
+                        placeholder="Total"
+                        className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="text-xs font-medium text-neutral-400">Release year</div>
@@ -1064,7 +1227,9 @@ export function LogEntryModal({
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-medium text-neutral-400">IMDb rating</div>
+                    <div className="text-xs font-medium text-neutral-400">
+                      {mediaType === "game" ? "IGDB Rating" : mediaType === "anime" || mediaType === "manga" ? "MAL Rating" : "IMDb Rating"}
+                    </div>
                     <div className="text-xs text-neutral-500">0–10</div>
                   </div>
                   <input
@@ -1089,10 +1254,10 @@ export function LogEntryModal({
                     <button
                       type="button"
                       onClick={() => setCompletionDate(todayISODate())}
-                      disabled={status !== "completed" || completionUnknown || isSaving}
+                      disabled={(status !== "completed" && status !== "main_story_completed" && status !== "fully_completed") || completionUnknown || isSaving}
                       className={cn(
                         "rounded-full border border-neutral-100/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-neutral-100",
-                        status !== "completed" || completionUnknown || isSaving ? "cursor-not-allowed opacity-70" : ""
+                        (status !== "completed" && status !== "main_story_completed" && status !== "fully_completed") || completionUnknown || isSaving ? "cursor-not-allowed opacity-70" : ""
                       )}
                     >
                       Today
@@ -1105,9 +1270,9 @@ export function LogEntryModal({
                           const next = e.target.checked;
                           setCompletionUnknown(next);
                           if (next) setCompletionDate("");
-                          if (!next && status === "completed" && !completionDate) setCompletionDate(todayISODate());
+                          if (!next && (status === "completed" || status === "main_story_completed" || status === "fully_completed") && !completionDate) setCompletionDate(todayISODate());
                         }}
-                        disabled={status !== "completed" || isSaving}
+                        disabled={(status !== "completed" && status !== "main_story_completed" && status !== "fully_completed") || isSaving}
                         className="h-4 w-4 rounded border border-neutral-100/10 bg-neutral-800/50"
                       />
                       Unknown
@@ -1118,10 +1283,10 @@ export function LogEntryModal({
                   type="date"
                   value={completionDate}
                   onChange={(e) => setCompletionDate(e.target.value)}
-                  disabled={status !== "completed" || completionUnknown || isSaving}
+                  disabled={(status !== "completed" && status !== "main_story_completed" && status !== "fully_completed") || completionUnknown || isSaving}
                   className={cn(
                     "w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all",
-                    status !== "completed" || completionUnknown || isSaving ? "cursor-not-allowed opacity-70" : ""
+                    (status !== "completed" && status !== "main_story_completed" && status !== "fully_completed") || completionUnknown || isSaving ? "cursor-not-allowed opacity-70" : ""
                   )}
                 />
               </div>
@@ -1256,8 +1421,10 @@ export function LogEntryModal({
         onClose={() => setIsNewListOpen(false)}
         defaultType={listDefaultType}
         onCreated={(list) => {
-          setSelectedListId(list.id);
-          setInfo("List created.");
+          const next = new Set(selectedListIds);
+          next.add(list.id);
+          setSelectedListIds(next);
+          setInfo("List created and selected.");
         }}
       />
     </Modal>

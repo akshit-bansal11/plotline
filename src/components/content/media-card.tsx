@@ -167,7 +167,7 @@ export function MediaCard({
 
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-            {status && status !== "unspecified" ? (
+            {status ? (
                 <div
                     className="absolute top-3 right-3 z-10"
                     ref={statusMenuRef}

@@ -209,7 +209,7 @@ export function MyListsModal({
     );
 
     return () => unsubscribe();
-  }, [isOpen, uid, mediaType]);
+  }, [isOpen, uid, mediaType, selectedListId]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -5,8 +5,8 @@ import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestor
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 
-export type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
-export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified";
+export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
+export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified" | "main_story_completed" | "fully_completed" | "backlogged" | "bored" | "own" | "wishlist" | "not_committed" | "committed";
 
 export type EntryDoc = {
   id: string;
@@ -22,6 +22,15 @@ export type EntryDoc = {
   lengthMinutes: number | null;
   episodeCount: number | null;
   chapterCount: number | null;
+  // Game specific
+  playTime: number | null;
+  achievements: number | null;
+  totalAchievements: number | null;
+  platform: string | null;
+
+  isMovie: boolean;
+  listIds: string[];
+
   createdAtMs: number | null;
   completedAtMs: number | null;
   completionDateUnknown: boolean;
@@ -44,12 +53,13 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 const entriesCache = new Map<string, { entries: EntryDoc[]; updatedAt: number }>();
 
 const coerceMediaType = (value: unknown): EntryMediaType => {
-  if (value === "movie" || value === "series" || value === "anime" || value === "anime_movie" || value === "manga" || value === "game") return value;
+  if (value === "movie" || value === "series" || value === "anime" || value === "manga" || value === "game") return value;
+  if (value === "anime_movie") return "anime"; // Output as anime, input should handle isMovie
   return "movie";
 };
 
 const coerceStatus = (value: unknown): EntryStatus => {
-  if (value === "watching" || value === "completed" || value === "plan_to_watch" || value === "on_hold" || value === "dropped" || value === "unspecified") return value;
+  if (value === "watching" || value === "completed" || value === "plan_to_watch" || value === "on_hold" || value === "dropped" || value === "unspecified" || value === "main_story_completed" || value === "fully_completed" || value === "backlogged" || value === "bored" || value === "own" || value === "wishlist" || value === "not_committed" || value === "committed") return value;
   return "unspecified";
 };
 
@@ -70,10 +80,21 @@ const toMillis = (value: unknown): number | null => {
 
 const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
   const genresThemes = Array.isArray(raw.genresThemes) ? raw.genresThemes.filter((v): v is string => typeof v === "string") : [];
+  const listIds = Array.isArray(raw.listIds) ? raw.listIds.filter((v): v is string => typeof v === "string") : [];
+
+  // Handle legacy anime_movie type from DB if present
+  let mediaType = coerceMediaType(raw.mediaType);
+  let isMovie = !!raw.isMovie;
+
+  if (raw.mediaType === "anime_movie") {
+    mediaType = "anime";
+    isMovie = true;
+  }
+
   return {
     id,
     title: String(raw.title || ""),
-    mediaType: coerceMediaType(raw.mediaType),
+    mediaType,
     status: coerceStatus(raw.status),
     userRating: typeof raw.userRating === "number" ? raw.userRating : typeof raw.rating === "number" ? raw.rating : null,
     imdbRating: typeof raw.imdbRating === "number" ? raw.imdbRating : null,
@@ -84,6 +105,12 @@ const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
     lengthMinutes: toNumber(raw.lengthMinutes),
     episodeCount: toNumber(raw.episodeCount),
     chapterCount: toNumber(raw.chapterCount),
+    playTime: toNumber(raw.playTime),
+    achievements: toNumber(raw.achievements),
+    totalAchievements: toNumber(raw.totalAchievements),
+    platform: raw.platform ? String(raw.platform) : null,
+    isMovie,
+    listIds,
     createdAtMs: toMillis(raw.createdAt),
     completedAtMs: toMillis(raw.completedAt),
     completionDateUnknown: Boolean(raw.completionDateUnknown),
