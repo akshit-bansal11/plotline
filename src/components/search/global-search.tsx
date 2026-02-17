@@ -5,32 +5,11 @@ import { Search, Filter, X } from "lucide-react";
 import Image from "next/image";
 import { useData, EntryDoc, EntryMediaType, EntryStatus } from "@/context/data-context";
 import { AnimatePresence, motion } from "motion/react";
+import { entryStatusLabels, entryMediaTypeLabels } from "@/lib/utils";
 
-const mediaTypeLabels: Record<EntryMediaType, string> = {
-  movie: "Movie",
-  series: "Series",
-  anime: "Anime",
-  // anime_movie: "Anime Movie",
-  manga: "Manga",
-  game: "Game",
-};
+const mediaTypeLabels: Record<EntryMediaType, string> = entryMediaTypeLabels;
 
-const statusLabels: Record<EntryStatus, string> = {
-  watching: "Watching",
-  completed: "Completed",
-  plan_to_watch: "Plan to Watch",
-  on_hold: "On hold",
-  dropped: "Dropped",
-  unspecified: "Unspecified",
-  main_story_completed: "Main Story Completed",
-  fully_completed: "Fully Completed",
-  backlogged: "Backlogged",
-  bored: "Bored",
-  own: "Own",
-  wishlist: "Wishlist",
-  not_committed: "Not Committed",
-  committed: "Committed",
-};
+const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
 
 export function GlobalSearch() {
   const { entries, setSelectedEntry } = useData();
