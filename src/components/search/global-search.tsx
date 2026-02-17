@@ -10,7 +10,7 @@ const mediaTypeLabels: Record<EntryMediaType, string> = {
   movie: "Movie",
   series: "Series",
   anime: "Anime",
-  anime_movie: "Anime Movie",
+  // anime_movie: "Anime Movie",
   manga: "Manga",
   game: "Game",
 };
@@ -195,11 +195,10 @@ export function GlobalSearch() {
                         <button
                           key={type}
                           onClick={() => toggleType(type)}
-                          className={`px-2 py-1 rounded-md text-xs border transition-colors ${
-                            selectedTypes.includes(type) 
-                              ? 'bg-blue-500/20 border-blue-500/50 text-blue-200' 
+                          className={`px-2 py-1 rounded-md text-xs border transition-colors ${selectedTypes.includes(type)
+                              ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
                               : 'bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
-                          }`}
+                            }`}
                         >
                           {mediaTypeLabels[type]}
                         </button>
@@ -213,11 +212,10 @@ export function GlobalSearch() {
                         <button
                           key={status}
                           onClick={() => toggleStatus(status)}
-                          className={`px-2 py-1 rounded-md text-xs border transition-colors ${
-                            selectedStatus.includes(status) 
-                              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200' 
+                          className={`px-2 py-1 rounded-md text-xs border transition-colors ${selectedStatus.includes(status)
+                              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
                               : 'bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
-                          }`}
+                            }`}
                         >
                           {statusLabels[status]}
                         </button>
@@ -231,11 +229,10 @@ export function GlobalSearch() {
                         <button
                           key={genre}
                           onClick={() => toggleGenre(genre)}
-                          className={`px-2 py-1 rounded-md text-xs border transition-colors ${
-                            selectedGenres.includes(genre)
+                          className={`px-2 py-1 rounded-md text-xs border transition-colors ${selectedGenres.includes(genre)
                               ? "bg-purple-500/20 border-purple-500/50 text-purple-200"
                               : "bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-                          }`}
+                            }`}
                         >
                           {genre}
                         </button>
@@ -332,11 +329,10 @@ export function GlobalSearch() {
                         </div>
                       </div>
                       <div className="shrink-0">
-                        <div className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                          entry.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                          entry.status === 'watching' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-                          'bg-neutral-800 border-white/10 text-neutral-400'
-                        }`}>
+                        <div className={`text-[10px] px-2 py-0.5 rounded-full border ${entry.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                            entry.status === 'watching' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                              'bg-neutral-800 border-white/10 text-neutral-400'
+                          }`}>
                           {statusLabels[entry.status]}
                         </div>
                       </div>
