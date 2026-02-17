@@ -22,6 +22,14 @@ const statusLabels: Record<EntryStatus, string> = {
   on_hold: "On hold",
   dropped: "Dropped",
   unspecified: "Unspecified",
+  main_story_completed: "Main Story Completed",
+  fully_completed: "Fully Completed",
+  backlogged: "Backlogged",
+  bored: "Bored",
+  own: "Own",
+  wishlist: "Wishlist",
+  not_committed: "Not Committed",
+  committed: "Committed",
 };
 
 export function GlobalSearch() {
@@ -196,8 +204,8 @@ export function GlobalSearch() {
                           key={type}
                           onClick={() => toggleType(type)}
                           className={`px-2 py-1 rounded-md text-xs border transition-colors ${selectedTypes.includes(type)
-                              ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
-                              : 'bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+                            ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
+                            : 'bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
                             }`}
                         >
                           {mediaTypeLabels[type]}
@@ -213,8 +221,8 @@ export function GlobalSearch() {
                           key={status}
                           onClick={() => toggleStatus(status)}
                           className={`px-2 py-1 rounded-md text-xs border transition-colors ${selectedStatus.includes(status)
-                              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
-                              : 'bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
+                            : 'bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
                             }`}
                         >
                           {statusLabels[status]}
@@ -230,8 +238,8 @@ export function GlobalSearch() {
                           key={genre}
                           onClick={() => toggleGenre(genre)}
                           className={`px-2 py-1 rounded-md text-xs border transition-colors ${selectedGenres.includes(genre)
-                              ? "bg-purple-500/20 border-purple-500/50 text-purple-200"
-                              : "bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                            ? "bg-purple-500/20 border-purple-500/50 text-purple-200"
+                            : "bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
                             }`}
                         >
                           {genre}
@@ -330,8 +338,8 @@ export function GlobalSearch() {
                       </div>
                       <div className="shrink-0">
                         <div className={`text-[10px] px-2 py-0.5 rounded-full border ${entry.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                            entry.status === 'watching' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-                              'bg-neutral-800 border-white/10 text-neutral-400'
+                          entry.status === 'watching' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                            'bg-neutral-800 border-white/10 text-neutral-400'
                           }`}>
                           {statusLabels[entry.status]}
                         </div>
