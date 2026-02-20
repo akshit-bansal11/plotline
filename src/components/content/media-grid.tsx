@@ -22,7 +22,6 @@ interface MediaGridProps {
         imdbRating?: number | null;
         status?: import("@/context/data-context").EntryStatus;
         type?: string;
-        onClick?: () => void;
         onView?: () => void;
         onEdit?: () => void;
         onDelete?: () => void;

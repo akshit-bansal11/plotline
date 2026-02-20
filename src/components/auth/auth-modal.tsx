@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { motion, AnimatePresence } from "motion/react";
-import { Mail, Lock, User, Chrome, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { GoogleLogo } from "@/assets/Logos";
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -169,7 +170,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     disabled={isSubmitting}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                    <Chrome size={20} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={GoogleLogo} alt="Google" width={20} height={20} />
                     <span>Google</span>
                 </button>
 

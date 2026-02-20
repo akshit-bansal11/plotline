@@ -45,6 +45,8 @@ interface DataContextType {
   error: string | null;
   selectedEntry: EntryDoc | null;
   setSelectedEntry: (entry: EntryDoc | null) => void;
+  selectedCountry: string | null;
+  setSelectedCountry: (country: string | null) => void;
   refresh: () => void;
 }
 
@@ -126,6 +128,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState(0);
   const [selectedEntry, setSelectedEntry] = useState<EntryDoc | null>(null);
+  const [selectedCountry, setSelectedCountryState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("plotline_selected_country") ?? null;
+    } catch {
+      return null;
+    }
+  });
+
+  const setSelectedCountry = (country: string | null) => {
+    setSelectedCountryState(country);
+    try {
+      if (country) {
+        localStorage.setItem("plotline_selected_country", country);
+      } else {
+        localStorage.removeItem("plotline_selected_country");
+      }
+    } catch { /* localStorage unavailable */ }
+  };
 
   const refresh = () => setToken((prev) => prev + 1);
 
@@ -177,10 +197,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         error: safeError,
         selectedEntry: safeSelectedEntry,
         setSelectedEntry,
+        selectedCountry,
+        setSelectedCountry,
         refresh,
       };
     },
-    [uid, entries, status, error, selectedEntry],
+    [uid, entries, status, error, selectedEntry, selectedCountry],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

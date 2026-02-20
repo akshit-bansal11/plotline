@@ -8,7 +8,9 @@ import { ChevronDown, Star } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn, entryStatusLabels } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { useData } from "@/context/data-context";
 import { db } from "@/lib/firebase";
+import { getOTTAvailability } from "@/lib/ott";
 import type { EntryStatus } from "@/context/data-context";
 
 const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
@@ -24,7 +26,6 @@ interface MediaCardProps {
     userRating?: number | null;
     imdbRating?: number | null;
     status?: EntryStatus;
-    onClick?: () => void;
     onView?: () => void;
     onEdit?: () => void;
     onDelete?: () => void;
@@ -41,7 +42,6 @@ export function MediaCard({
     aspectRatio = "poster",
     userRating,
     status,
-    onClick,
     onView,
     onEdit,
     onDelete,
@@ -58,6 +58,9 @@ export function MediaCard({
     const [isRatingMenuOpen, setIsRatingMenuOpen] = useState(false);
     const [hoverRating, setHoverRating] = useState<number | null>(null);
     const [isRatingUpdating, setIsRatingUpdating] = useState(false);
+
+    const { selectedCountry } = useData();
+    const ottProviders = getOTTAvailability(title, selectedCountry, type);
 
     useEffect(() => {
         if (!isStatusOpen) return;
@@ -149,7 +152,7 @@ export function MediaCard({
         <GlassCard
             className={cn(
                 "relative overflow-hidden p-0 border-white/5 bg-neutral-900/20",
-                aspectRatio === "poster" ? "aspect-[2/3]" : "aspect-video"
+                aspectRatio === "poster" ? "aspect-[5/7]" : "aspect-video"
             )}
             hoverEffect
         >
@@ -304,6 +307,29 @@ export function MediaCard({
                 </AnimatePresence>
             </div>
 
+
+
+            {/* OTT Badges */}
+            {ottProviders.length > 0 && (
+                <div className="absolute bottom-20 left-3 flex items-center gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    {ottProviders.map((provider) => (
+                        <div
+                            key={provider.name}
+                            className="relative h-10 w-10 overflow-hidden rounded-full bg-black/40 ring-1 ring-white/10 backdrop-blur-sm p-4 shadow-lg "
+                            title={`Available on ${provider.name}`}
+                        >
+                            <Image
+                                src={provider.logo}
+                                alt={provider.name}
+                                fill
+                                className="object-contain p-1.5"
+                                sizes="28px"
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <div className="absolute bottom-0 left-0 right-0 p-4 transition-all duration-300 translate-y-0 opacity-100 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 media-card-info">
                 <h3 className="font-medium text-white line-clamp-2 text-shadow-sm media-card-title">{title}</h3>
                 <div className="flex items-center gap-2 mt-1 text-xs text-neutral-300 media-card-meta">
@@ -356,29 +382,16 @@ export function MediaCard({
                     </div>
                 )}
             </div>
-        </GlassCard>
+        </GlassCard >
     );
 
     return (
         <motion.div
             whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.3 }}
             className={cn("group relative media-card", className)}
         >
-            {onClick ? (
-                <div
-                    onClick={onClick}
-                    aria-label={title}
-                    role="button"
-                    tabIndex={0}
-                    className="block w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-neutral-100/40"
-                >
-                    {content}
-                </div>
-            ) : (
-                <div className="block w-full rounded-2xl">{content}</div>
-            )}
+            <div className="block w-full rounded-2xl">{content}</div>
         </motion.div>
     );
 }

@@ -27,6 +27,8 @@ import { AuthProvider } from "@/context/auth-context";
 import { SectionProvider } from "@/context/section-context";
 import { DataProvider } from "@/context/data-context";
 
+import { AvailabilityInfographic } from "@/components/layout/availability-infographic";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,6 +47,7 @@ export default function RootLayout({
           <SectionProvider>
             <DataProvider>
               <Navbar />
+              <AvailabilityInfographic />
               <main className="relative z-0 min-h-screen flex flex-col pt-24 pb-12">
                 {children}
               </main>

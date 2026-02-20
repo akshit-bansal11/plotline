@@ -4,7 +4,7 @@ import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { Hero } from "@/components/content/hero";
 import { GlassCard } from "@/components/ui/glass-card";
 import { MediaGrid } from "@/components/content/media-grid";
@@ -346,7 +346,7 @@ function LibrarySection({
       setOpenLists((prev) => {
         const next = { ...prev };
         filteredLists.forEach((list) => {
-          if (next[list.id] === undefined) next[list.id] = true;
+          if (next[list.id] === undefined) next[list.id] = false;
         });
         return next;
       });
@@ -583,225 +583,223 @@ function LibrarySection({
                   .map((item) => filteredById.get(item.externalId))
                   .filter((entry): entry is EntryDoc => Boolean(entry));
                 listEntries.forEach((entry) => listedIds.add(entry.id));
-                const isOpen = openLists[list.id] ?? true;
-
-                return (
-                  <div key={list.id} className="space-y-3">
-                    <div
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-xl border border-white/5 bg-neutral-900/40 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-900/60",
-                        activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list" ? "media-card-drop-target" : "",
-                      )}
-                      onDragEnter={(event) => {
-                        if (!activeDrag) return;
-                        event.preventDefault();
-                        setActiveDropTarget({ listId: list.id, bucket: "list" });
-                        clearExpandTimeout();
-                        if (!isOpen) {
-                          const timeoutId = window.setTimeout(() => {
-                            setOpenLists((prev) => ({ ...prev, [list.id]: true }));
-                          }, 300);
-                          expandTimeoutRef.current = timeoutId;
-                        }
-                      }}
-                      onDragOver={(event) => {
-                        if (!activeDrag) return;
-                        event.preventDefault();
-                      }}
-                      onDragLeave={(event) => {
-                        if (!activeDrag) return;
-                        const related = event.relatedTarget as HTMLElement | null;
-                        if (!related || !event.currentTarget.contains(related)) {
-                          if (activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list") {
-                            setActiveDropTarget(null);
-                          }
-                        }
-                      }}
-                      onDrop={(event) => {
-                        if (!activeDrag) return;
-                        event.preventDefault();
-                        handleDropOnList(list.id);
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (activeDrag) {
-                            handleDropOnList(list.id);
-                            return;
-                          }
-                          setOpenLists((prev) => ({ ...prev, [list.id]: !isOpen }));
-                        }}
-                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                        aria-label={isOpen ? "Collapse list" : "Expand list"}
-                      >
-                        <div className="p-1.5 rounded-full bg-white/5">
-                          {isOpen ? <ChevronDown size={18} className="text-white" /> : <ChevronRight size={18} className="text-white" />}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate">{list.name || "Untitled list"}</div>
-                          {list.description ? <div className="text-xs text-neutral-500 truncate">{list.description}</div> : null}
-                        </div>
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <div className="text-xs text-neutral-400">{listEntries.length} items</div>
-                        {isOpen ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onEditList(list)}
-                              disabled={!uid}
-                              className={cn(
-                                "rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-[11px] font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white",
-                                !uid ? "cursor-not-allowed opacity-70" : "",
-                              )}
-                              aria-label="Edit list"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onDeleteList(list)}
-                              disabled={!uid}
-                              className={cn(
-                                "rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-[11px] font-semibold text-red-200 transition-colors hover:bg-red-500/20",
-                                !uid ? "cursor-not-allowed opacity-70" : "",
-                              )}
-                              aria-label="Delete list"
-                            >
-                              Delete
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                    {isOpen ? (
-                      listEntries.length === 0 ? (
-                        <div className="text-sm text-neutral-400">No items in this list.</div>
-                      ) : (
-                        <div
-                          onDragEnter={(event) => {
-                            if (!activeDrag) return;
-                            event.preventDefault();
-                            setActiveDropTarget({ listId: list.id, bucket: "list" });
-                          }}
-                          onDragOver={(event) => {
-                            if (!activeDrag) return;
-                            event.preventDefault();
-                          }}
-                          onDrop={(event) => {
-                            if (!activeDrag) return;
-                            event.preventDefault();
-                            handleDropOnList(list.id);
-                          }}
-                        >
-                          <MediaGrid
-                            items={listEntries.map((entry) => ({
-                              id: entry.id,
-                              title: entry.title,
-                              image: entry.image,
-                              year: entry.releaseYear || undefined,
-                              userRating: entry.userRating,
-                              imdbRating: entry.imdbRating,
-                              status: entry.status,
-                              type: gridType,
-                              onClick: () => onSelectEntry(entry),
-                              showActions: true,
-                              onView: () => onSelectEntry(entry),
-                              onEdit: () => onEditEntry(entry),
-                              onDelete: () => onDeleteEntry(entry),
-                            }))}
-                            sourceListId={list.id}
-                            activeDragEntryId={activeDrag?.entryId ?? null}
-                            onItemDragStart={handleItemDragStart}
-                            onItemDragEnd={handleItemDragEnd}
-                          />
-                        </div>
-                      )
-                    ) : null}
-                  </div>
-                );
+                return { list, listEntries, isOpen: openLists[list.id] ?? false };
               });
 
+              const hasAnyOpen = listSections.some((s) => s.isOpen);
+              const hasAnyClosed = listSections.some((s) => !s.isOpen);
               const otherEntries = filteredEntries.filter((entry) => !listedIds.has(entry.id));
 
               return (
-                <div className="space-y-10">
-                  {listSections.length > 0 ? listSections : null}
-                  <div className="space-y-3">
-                    <div
-                      className={cn(
-                        "flex items-center justify-between rounded-xl border border-white/5 bg-neutral-900/40 px-4 py-3 text-sm font-semibold text-white",
-                        activeDropTarget?.listId === null && activeDropTarget?.bucket === "other" ? "media-card-drop-target" : "",
-                      )}
-                      onDragEnter={(event) => {
-                        if (!activeDrag) return;
-                        event.preventDefault();
-                        setActiveDropTarget({ listId: null, bucket: "other" });
-                      }}
-                      onDragOver={(event) => {
-                        if (!activeDrag) return;
-                        event.preventDefault();
-                      }}
-                      onDrop={(event) => {
-                        if (!activeDrag) return;
-                        event.preventDefault();
-                        handleDropOnList(null);
-                      }}
-                      onClick={() => {
-                        if (!activeDrag) return;
-                        handleDropOnList(null);
-                      }}
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate">Other</div>
-                        <div className="text-xs text-neutral-500 truncate">Items not in a list</div>
+                <div className="space-y-6">
+                  {listSections.length > 0 && (
+                    <div className="space-y-4">
+                      {/* Expand / Collapse All */}
+                      <div className="flex items-center gap-3">
+                        {hasAnyClosed && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next: Record<string, boolean> = {};
+                              lists.forEach((l) => { next[l.id] = true; });
+                              setOpenLists((prev) => ({ ...prev, ...next }));
+                            }}
+                            className="text-[11px] font-semibold text-neutral-400 hover:text-white transition-colors"
+                          >
+                            Expand all
+                          </button>
+                        )}
+                        {hasAnyOpen && hasAnyClosed && (
+                          <span className="text-neutral-700">·</span>
+                        )}
+                        {hasAnyOpen && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next: Record<string, boolean> = {};
+                              lists.forEach((l) => { next[l.id] = false; });
+                              setOpenLists((prev) => ({ ...prev, ...next }));
+                            }}
+                            className="text-[11px] font-semibold text-neutral-400 hover:text-white transition-colors"
+                          >
+                            Collapse all
+                          </button>
+                        )}
                       </div>
-                      <div className="text-xs text-neutral-400">{otherEntries.length} items</div>
+
+                      {/* List grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                        {listSections.map(({ list, listEntries, isOpen }) => {
+                          const isEmpty = listEntries.length === 0;
+                          return (
+                            <div key={list.id} className={cn(isOpen && !isEmpty ? "col-span-full" : "")}>
+                              {/* List header chip */}
+                              <div
+                                className={cn(
+                                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors select-none",
+                                  isEmpty
+                                    ? "border-white/5 bg-neutral-900/20 text-neutral-600 cursor-default"
+                                    : isOpen
+                                      ? "border-white/10 bg-neutral-800/60 text-white cursor-pointer"
+                                      : "border-white/5 bg-neutral-900/40 text-neutral-300 hover:bg-neutral-900/60 hover:text-white cursor-pointer",
+                                  activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list" ? "media-card-drop-target" : "",
+                                )}
+                                onDragEnter={(event) => {
+                                  if (!activeDrag) return;
+                                  event.preventDefault();
+                                  setActiveDropTarget({ listId: list.id, bucket: "list" });
+                                  clearExpandTimeout();
+                                  if (!isOpen && !isEmpty) {
+                                    const timeoutId = window.setTimeout(() => {
+                                      setOpenLists((prev) => ({ ...prev, [list.id]: true }));
+                                    }, 300);
+                                    expandTimeoutRef.current = timeoutId;
+                                  }
+                                }}
+                                onDragOver={(event) => {
+                                  if (!activeDrag) return;
+                                  event.preventDefault();
+                                }}
+                                onDragLeave={(event) => {
+                                  if (!activeDrag) return;
+                                  const related = event.relatedTarget as HTMLElement | null;
+                                  if (!related || !event.currentTarget.contains(related)) {
+                                    if (activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list") {
+                                      setActiveDropTarget(null);
+                                    }
+                                  }
+                                }}
+                                onDrop={(event) => {
+                                  if (!activeDrag) return;
+                                  event.preventDefault();
+                                  handleDropOnList(list.id);
+                                }}
+                                onClick={() => {
+                                  if (activeDrag) {
+                                    handleDropOnList(list.id);
+                                    return;
+                                  }
+                                  if (isEmpty) return;
+                                  setOpenLists((prev) => ({ ...prev, [list.id]: !isOpen }));
+                                }}
+                              >
+                                {isEmpty
+                                  ? <ChevronRight size={14} className="shrink-0 text-neutral-700" />
+                                  : isOpen
+                                    ? <ChevronDown size={14} className="shrink-0 text-neutral-400" />
+                                    : <ChevronRight size={14} className="shrink-0 text-neutral-400" />
+                                }
+                                <span className="truncate">{list.name || "Untitled list"}</span>
+                                <span className={cn("ml-auto shrink-0 text-[10px]", isEmpty ? "text-neutral-700" : "text-neutral-500")}>{listEntries.length}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); onEditList(list); }}
+                                  disabled={!uid}
+                                  className={cn("shrink-0 p-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed", isEmpty ? "text-neutral-700 hover:text-neutral-400 hover:bg-white/5" : "text-neutral-500 hover:text-white hover:bg-white/10")}
+                                  aria-label="Edit list"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); onDeleteList(list); }}
+                                  disabled={!uid}
+                                  className={cn("shrink-0 p-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed", isEmpty ? "text-neutral-700 hover:text-red-400/50 hover:bg-red-500/5" : "text-neutral-500 hover:text-red-400 hover:bg-red-500/10")}
+                                  aria-label="Delete list"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+
+                              {/* Expanded content */}
+                              <AnimatePresence initial={false}>
+                                {isOpen && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="pt-3 pb-2">
+
+                                      {listEntries.length === 0 ? (
+                                        <div className="text-sm text-neutral-400">No items in this list.</div>
+                                      ) : (
+                                        <div
+                                          onDragEnter={(event) => {
+                                            if (!activeDrag) return;
+                                            event.preventDefault();
+                                            setActiveDropTarget({ listId: list.id, bucket: "list" });
+                                          }}
+                                          onDragOver={(event) => {
+                                            if (!activeDrag) return;
+                                            event.preventDefault();
+                                          }}
+                                          onDrop={(event) => {
+                                            if (!activeDrag) return;
+                                            event.preventDefault();
+                                            handleDropOnList(list.id);
+                                          }}
+                                        >
+                                          <MediaGrid
+                                            items={listEntries.map((entry) => ({
+                                              id: entry.id,
+                                              title: entry.title,
+                                              image: entry.image,
+                                              year: entry.releaseYear || undefined,
+                                              userRating: entry.userRating,
+                                              imdbRating: entry.imdbRating,
+                                              status: entry.status,
+                                              type: gridType,
+                                              onClick: () => onSelectEntry(entry),
+                                              showActions: true,
+                                              onView: () => onSelectEntry(entry),
+                                              onEdit: () => onEditEntry(entry),
+                                              onDelete: () => onDeleteEntry(entry),
+                                            }))}
+                                            sourceListId={list.id}
+                                            activeDragEntryId={activeDrag?.entryId ?? null}
+                                            onItemDragStart={handleItemDragStart}
+                                            onItemDragEnd={handleItemDragEnd}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                    {otherEntries.length === 0 ? (
-                      <div className="text-sm text-neutral-400">No items found.</div>
-                    ) : (
-                      <div
-                        onDragEnter={(event) => {
-                          if (!activeDrag) return;
-                          event.preventDefault();
-                          setActiveDropTarget({ listId: null, bucket: "other" });
-                        }}
-                        onDragOver={(event) => {
-                          if (!activeDrag) return;
-                          event.preventDefault();
-                        }}
-                        onDrop={(event) => {
-                          if (!activeDrag) return;
-                          event.preventDefault();
-                          handleDropOnList(null);
-                        }}
-                      >
-                        <MediaGrid
-                          items={otherEntries.map((entry) => ({
-                            id: entry.id,
-                            title: entry.title,
-                            image: entry.image,
-                            year: entry.releaseYear || undefined,
-                            userRating: entry.userRating,
-                            imdbRating: entry.imdbRating,
-                            status: entry.status,
-                            type: gridType,
-                            onClick: () => onSelectEntry(entry),
-                            showActions: true,
-                            onView: () => onSelectEntry(entry),
-                            onEdit: () => onEditEntry(entry),
-                            onDelete: () => onDeleteEntry(entry),
-                          }))}
-                          sourceListId={null}
-                          activeDragEntryId={activeDrag?.entryId ?? null}
-                          onItemDragStart={handleItemDragStart}
-                          onItemDragEnd={handleItemDragEnd}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  )}
+
+                  {/* Unlisted entries */}
+                  {otherEntries.length > 0 && (
+                    <MediaGrid
+                      items={otherEntries.map((entry) => ({
+                        id: entry.id,
+                        title: entry.title,
+                        image: entry.image,
+                        year: entry.releaseYear || undefined,
+                        userRating: entry.userRating,
+                        imdbRating: entry.imdbRating,
+                        status: entry.status,
+                        type: gridType,
+                        onClick: () => onSelectEntry(entry),
+                        showActions: true,
+                        onView: () => onSelectEntry(entry),
+                        onEdit: () => onEditEntry(entry),
+                        onDelete: () => onDeleteEntry(entry),
+                      }))}
+                      sourceListId={null}
+                      activeDragEntryId={activeDrag?.entryId ?? null}
+                      onItemDragStart={handleItemDragStart}
+                      onItemDragEnd={handleItemDragEnd}
+                    />
+                  )}
                 </div>
               );
             }}
