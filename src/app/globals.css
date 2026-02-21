@@ -111,9 +111,9 @@ body {
 }
 
 .media-card .media-card-action-button {
-  padding: 3.2px 6.4px;
-  font-size: 9.6px;
-  border-radius: 4.8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
 }
 
 .media-card-dragging {

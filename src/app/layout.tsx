@@ -41,7 +41,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-[var(--background)] text-[var(--foreground)] antialiased relative overflow-x-hidden`}
       >
         {/* Background Gradients/Noise can be added here later */}
-        <div className="fixed inset-0 bg-[url('/noise.svg')] opacity-[0.03] pointer-events-none z-50 mix-blend-overlay"></div>
+        <div className="fixed inset-0 opacity-[0.03] pointer-events-none z-50 mix-blend-overlay"></div>
 
         <AuthProvider>
           <SectionProvider>

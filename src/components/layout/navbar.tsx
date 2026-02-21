@@ -10,12 +10,12 @@ import {
     collection,
     doc,
     getDocs,
+    limit,
     orderBy,
     query,
     serverTimestamp,
     writeBatch,
 } from "firebase/firestore";
-import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
 import { cn } from "@/lib/utils";
 import { NavLinks } from "./nav-links";
 import { MobileMenu } from "./mobile-menu";
@@ -26,9 +26,11 @@ import { MyListsModal } from "@/components/lists/my-lists-modal";
 import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/context/auth-context";
 import { useSection } from "@/context/section-context";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { GlobalSearch } from "@/components/search/global-search";
 import { NewListModal } from "@/components/lists/new-list-modal";
+import { createDuplicateEntryKey, resolveComparableRating } from "@/lib/duplicate-entry";
+import { InfographicToast } from "@/components/ui/infographic-toast";
 
 type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
 type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified";
@@ -230,16 +232,41 @@ function ProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
         try {
             let nextPhoto = removePhoto ? null : user.photoURL || null;
             if (selectedFile) {
-                const extension = selectedFile.name.split(".").pop() || "png";
-                const uploadRef = storageRef(storage, `users/${user.uid}/profile-${Date.now()}.${extension}`);
-                await uploadBytes(uploadRef, selectedFile);
-                nextPhoto = await getDownloadURL(uploadRef);
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+                formData.append("uid", user.uid);
+
+                const response = await fetch("/api/profile-image", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+                    throw new Error(payload?.error || "Failed to upload profile image.");
+                }
+
+                const payload = (await response.json()) as { url?: string };
+                if (!payload.url) {
+                    throw new Error("Profile image upload did not return a URL.");
+                }
+                nextPhoto = payload.url;
             }
             await updateUserProfile(trimmed, nextPhoto);
             setInfo("Profile updated.");
             setSelectedFile(null);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to update profile.");
+            const message = err instanceof Error ? err.message : "Failed to update profile.";
+            const normalized = message.toLowerCase();
+            if (
+                normalized.includes("blob") ||
+                normalized.includes("read_write_token") ||
+                normalized.includes("token")
+            ) {
+                setError("Profile upload failed because Vercel Blob is not configured. Set BLOB_READ_WRITE_TOKEN and redeploy/restart the app.");
+                return;
+            }
+            setError(message);
         } finally {
             setIsSaving(false);
         }
@@ -351,6 +378,7 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     const [isImporting, setIsImporting] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
+    const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(null);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -358,6 +386,7 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         setImportError(null);
         setImportInfo(null);
         setImportProgress(null);
+        setDuplicateToast(null);
     }, [isOpen]);
 
     const handleExport = async () => {
@@ -538,8 +567,42 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 }
             };
 
+            const existingEntriesSnapshot = await getDocs(
+                query(collection(db, "users", user.uid, "entries"), limit(1000)),
+            );
+            const existingEntryKeys = new Set<string>();
+            existingEntriesSnapshot.forEach((entryDoc) => {
+                const raw = entryDoc.data() as Record<string, unknown>;
+                const existingRating =
+                    typeof raw.rating === "number"
+                        ? raw.rating
+                        : typeof raw.imdbRating === "number"
+                            ? raw.imdbRating
+                            : null;
+                existingEntryKeys.add(
+                    createDuplicateEntryKey({
+                        name: typeof raw.title === "string" ? raw.title : "",
+                        yearOfRelease:
+                            typeof raw.releaseYear === "string"
+                                ? raw.releaseYear
+                                : typeof raw.year === "string"
+                                    ? raw.year
+                                    : null,
+                        type: typeof raw.mediaType === "string" ? raw.mediaType : "movie",
+                        rating: resolveComparableRating(
+                            typeof raw.userRating === "number" ? raw.userRating : null,
+                            existingRating,
+                        ),
+                        description: typeof raw.description === "string" ? raw.description : "",
+                        length: typeof raw.lengthMinutes === "number" ? raw.lengthMinutes : null,
+                        episodes: typeof raw.episodeCount === "number" ? raw.episodeCount : null,
+                    }),
+                );
+            });
+
             let imported = 0;
             let skipped = 0;
+            let duplicatesSkipped = 0;
             let batch = writeBatch(db);
             let batchCount = 0;
 
@@ -581,6 +644,21 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 const status: EntryStatus = "unspecified";
                 const completionDateUnknown = false;
                 const completedAt = null;
+                const duplicateKey = createDuplicateEntryKey({
+                    name: title,
+                    yearOfRelease: finalReleaseYear,
+                    type: mediaType,
+                    rating: resolveComparableRating(userRatingValue, finalImdbRating),
+                    description: finalDescription.trim(),
+                    length: finalLengthMinutes,
+                    episodes: metadata?.episodeCount ?? null,
+                });
+                if (existingEntryKeys.has(duplicateKey)) {
+                    skipped += 1;
+                    duplicatesSkipped += 1;
+                    continue;
+                }
+                existingEntryKeys.add(duplicateKey);
 
                 const entryRef = doc(collection(db, "users", user.uid, "entries"));
                 batch.set(entryRef, {
@@ -618,7 +696,17 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             if (batchCount > 0) {
                 await batch.commit();
             }
-            setImportInfo(`Imported ${imported} items. Skipped ${skipped}.`);
+            setImportInfo(
+                duplicatesSkipped > 0
+                    ? `Imported ${imported} items. Skipped ${skipped} (${duplicatesSkipped} duplicates).`
+                    : `Imported ${imported} items. Skipped ${skipped}.`,
+            );
+            if (duplicatesSkipped > 0) {
+                setDuplicateToast({
+                    id: Date.now(),
+                    message: `${duplicatesSkipped} item${duplicatesSkipped > 1 ? "s were" : " was"} skipped because it already exists.`,
+                });
+            }
         } catch (err) {
             setImportError(err instanceof Error ? err.message : "Failed to import.");
         } finally {
@@ -717,6 +805,12 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 {importError && <div className="text-sm text-red-400">{importError}</div>}
                 {importInfo && <div className="text-sm text-emerald-300">{importInfo}</div>}
             </div>
+            <InfographicToast
+                isOpen={Boolean(duplicateToast)}
+                title="Duplicate Detected"
+                message={duplicateToast?.message || ""}
+                onClose={() => setDuplicateToast(null)}
+            />
         </Modal>
     );
 }
@@ -803,7 +897,7 @@ function SettingsModal({ isOpen, onClose, onSignOut }: { isOpen: boolean; onClos
 
 export function Navbar() {
     const { scrollY } = useScroll();
-    const { activeSection } = useSection();
+    const { activeSection, setActiveSection } = useSection();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isHidden, setIsHidden] = useState(false);
     const [lastScrollY, setLastScrollY] = useState(0);
@@ -977,6 +1071,8 @@ export function Navbar() {
                 <div className="container mx-auto flex items-center justify-between px-4 md:px-6">
                     <Link
                         href="/"
+                        scroll={false}
+                        onClick={() => setActiveSection("home")}
                         className="relative z-50 text-3xl font-bold tracking-tight text-white"
                     >
                         Plotline<span className="text-neutral-600">.</span>

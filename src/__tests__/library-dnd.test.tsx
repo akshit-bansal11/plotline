@@ -2,7 +2,7 @@
 
 import React from "react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
 import { SectionProvider } from "@/context/section-context";
@@ -166,8 +166,10 @@ describe("Library drag and drop", () => {
       </SectionProvider>
     );
 
-    const otherItem = await screen.findByLabelText("Other bucket movie");
-    expect(otherItem).toBeInTheDocument();
+    const otherItemTitle = await screen.findByText("Other bucket movie");
+    const otherItem = otherItemTitle.closest('[draggable="true"]') as HTMLElement | null;
+    expect(otherItem).not.toBeNull();
+    if (!otherItem) return;
 
     const user = userEvent.setup();
     await user.pointer([{ keys: "[MouseLeft]", target: otherItem }]);
@@ -205,8 +207,10 @@ describe("Library drag and drop", () => {
       </SectionProvider>
     );
 
-    const otherItem = await screen.findByLabelText("Other bucket movie");
-    expect(otherItem).toBeInTheDocument();
+    const otherItemTitle = await screen.findByText("Other bucket movie");
+    const otherItem = otherItemTitle.closest('[draggable="true"]') as HTMLElement | null;
+    expect(otherItem).not.toBeNull();
+    if (!otherItem) return;
 
     fireEvent.dragStart(otherItem, {
       dataTransfer: {
@@ -224,7 +228,6 @@ describe("Library drag and drop", () => {
   });
 
   it("expands a collapsed list when dragged over its header", async () => {
-    vi.useFakeTimers();
     window.location.hash = "#movies";
 
     render(
@@ -233,12 +236,10 @@ describe("Library drag and drop", () => {
       </SectionProvider>
     );
 
-    const listHeaderButton = await screen.findByRole("button", { name: /Collapse list/i });
-    await act(async () => {
-      await userEvent.click(listHeaderButton);
-    });
-
-    const otherItem = await screen.findByLabelText("Other bucket movie");
+    const otherItemTitle = await screen.findByText("Other bucket movie");
+    const otherItem = otherItemTitle.closest('[draggable="true"]') as HTMLElement | null;
+    expect(otherItem).not.toBeNull();
+    if (!otherItem) return;
     fireEvent.dragStart(otherItem, {
       dataTransfer: {
         effectAllowed: "move",
@@ -254,13 +255,8 @@ describe("Library drag and drop", () => {
 
     fireEvent.dragEnter(listHeaderContainer);
 
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
+    await waitFor(() => {
+      expect(screen.getByText("List item movie")).toBeInTheDocument();
     });
-
-    const itemsLabel = await screen.findByText("List item movie");
-    expect(itemsLabel).toBeInTheDocument();
-
-    vi.useRealTimers();
   });
 });

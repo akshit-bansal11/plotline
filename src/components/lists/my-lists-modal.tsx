@@ -31,6 +31,9 @@ import {
   Globe,
   Filter
 } from "lucide-react";
+import { DescriptionTextarea } from "@/components/ui/description-textarea";
+import { DescriptionErrorWrapper } from "@/components/ui/description-error-wrapper";
+import { MAX_DESCRIPTION_LENGTH_MANUAL } from "@/lib/validation";
 
 type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 
@@ -159,7 +162,7 @@ export function MyListsModal({
 
     const listsQuery = query(
       collection(db, "users", uid, "lists"),
-      orderBy("updatedAt", "desc"),
+      orderBy("createdAt", "desc"),
       limit(50),
     );
     const unsubscribe = onSnapshot(
@@ -530,11 +533,12 @@ export function MyListsModal({
                         className="w-full bg-transparent text-2xl font-bold text-white placeholder-neutral-700 focus:outline-none border-b border-white/10 focus:border-white/30 transition-all pb-4"
                         autoFocus
                       />
-                      <input
+                      <DescriptionTextarea
                         value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
+                        onValueChange={setEditDescription}
                         placeholder="Add a description..."
-                        className="w-full bg-transparent text-base text-neutral-400 placeholder-neutral-700 focus:outline-none focus:text-neutral-200"
+                        className="w-full bg-transparent text-base text-neutral-400 placeholder-neutral-700 focus:outline-none focus:text-neutral-200 border-none px-0 py-0"
+                        rows={2}
                       />
                     </div>
 
@@ -565,26 +569,30 @@ export function MyListsModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight truncate drop-shadow-sm">
-                      {viewingList?.name || "Untitled List"}
-                    </h2>
-                    <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">
-                      <span className="text-neutral-300">Created by {user?.displayName || "User"}</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
-                      <span>{viewingList?.updatedAt ? new Date(viewingList.updatedAt).toLocaleDateString() : "Just now"}</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
-                      <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 text-neutral-300 border border-white/5 backdrop-blur-md">
-                        <Globe size={12} className="text-neutral-400" />
-                        Public List
-                      </span>
+                  <DescriptionErrorWrapper
+                    isInvalid={!!viewingList?.description && viewingList.description.length > MAX_DESCRIPTION_LENGTH_MANUAL}
+                  >
+                    <div className="space-y-4">
+                      <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight truncate drop-shadow-sm">
+                        {viewingList?.name || "Untitled List"}
+                      </h2>
+                      <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">
+                        <span className="text-neutral-300">Created by {user?.displayName || "User"}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
+                        <span>{viewingList?.updatedAt ? new Date(viewingList.updatedAt).toLocaleDateString() : "Just now"}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
+                        <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 text-neutral-300 border border-white/5 backdrop-blur-md">
+                          <Globe size={12} className="text-neutral-400" />
+                          Public List
+                        </span>
+                      </div>
+                      {viewingList?.description && (
+                        <p className="max-w-4xl text-lg text-neutral-400 leading-relaxed font-medium">
+                          {viewingList.description}
+                        </p>
+                      )}
                     </div>
-                    {viewingList?.description && (
-                      <p className="max-w-4xl text-lg text-neutral-400 leading-relaxed font-medium">
-                        {viewingList.description}
-                      </p>
-                    )}
-                  </div>
+                  </DescriptionErrorWrapper>
                 )}
               </div>
 
@@ -1054,46 +1062,70 @@ function ListCard({
   }, [uid, list.id]);
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-4 flex flex-col gap-4 transition-colors hover:bg-neutral-900/60">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-white truncate">{list.name}</div>
-          <div className="flex flex-wrap gap-1">
-            {list.types.map((type) => (
-              <span key={type} className="rounded-full border border-white/10 bg-neutral-900/70 px-2 py-0.5 text-[10px] text-neutral-300">
-                {listTypeLabels[type]}
-              </span>
-            ))}
-          </div>
-        </div>
-        {list.description && (
-          <div className="text-xs text-neutral-500 line-clamp-2">
-            {list.description}
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {previewItems.length > 0 ? (
-          previewItems.map((title, i) => (
-            <span
-              key={i}
-              className="rounded-full border border-white/10 bg-neutral-900/60 px-3 py-1 text-[10px] text-neutral-300"
-            >
-              {title}
-            </span>
-          ))
-        ) : (
-          <span className="text-xs text-neutral-600 italic">Empty list</span>
-        )}
-      </div>
-
-      <button
-        onClick={onClick}
-        className="mt-auto w-full rounded-xl border border-white/10 bg-neutral-800/40 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white"
+    <div className="rounded-2xl border border-white/5 bg-neutral-900/40 transition-colors hover:bg-neutral-900/60 overflow-hidden relative">
+      <DescriptionErrorWrapper
+        isInvalid={!!list.description && list.description.length > MAX_DESCRIPTION_LENGTH_MANUAL}
+        className="h-full"
+        actions={
+          !!list.description && list.description.length > MAX_DESCRIPTION_LENGTH_MANUAL && (
+            <div className="absolute inset-x-0 bottom-4 px-4 pointer-events-auto">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick();
+                }}
+                className="w-full rounded-xl border border-white/10 bg-neutral-800 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-700 hover:text-white"
+              >
+                View list
+              </button>
+            </div>
+          )
+        }
       >
-        View list
-      </button>
+        <div className="p-4 flex flex-col gap-4 h-full">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-white truncate">{list.name}</div>
+              <div className="flex flex-wrap gap-1">
+                {list.types.map((type) => (
+                  <span key={type} className="rounded-full border border-white/10 bg-neutral-900/70 px-2 py-0.5 text-[10px] text-neutral-300">
+                    {listTypeLabels[type]}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {list.description && (
+              <div className="text-xs text-neutral-500 line-clamp-2">
+                {list.description}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {previewItems.length > 0 ? (
+              previewItems.map((title, i) => (
+                <span
+                  key={i}
+                  className="rounded-full border border-white/10 bg-neutral-900/60 px-3 py-1 text-[10px] text-neutral-300"
+                >
+                  {title}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-neutral-600 italic">Empty list</span>
+            )}
+          </div>
+
+          {(!list.description || list.description.length <= MAX_DESCRIPTION_LENGTH_MANUAL) && (
+            <button
+              onClick={onClick}
+              className="mt-auto w-full rounded-xl border border-white/10 bg-neutral-800/40 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-white"
+            >
+              View list
+            </button>
+          )}
+        </div>
+      </DescriptionErrorWrapper>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/modal";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
+import { DescriptionTextarea } from "@/components/ui/description-textarea";
 
 type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 
@@ -148,12 +149,11 @@ export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewLis
                     <label className="block text-sm font-medium text-neutral-200 mb-2">
                         Description
                     </label>
-                    <textarea
+                    <DescriptionTextarea
                         value={description}
-                        onChange={(event) => setDescription(event.target.value)}
+                        onValueChange={setDescription}
                         rows={4}
                         placeholder="Optional description"
-                        className="w-full resize-none rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-3 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-white/20"
                     />
                 </div>
                 <div className="space-y-2">

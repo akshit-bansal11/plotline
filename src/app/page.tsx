@@ -4,7 +4,7 @@ import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, X } from "lucide-react";
 import { Hero } from "@/components/content/hero";
 import { GlassCard } from "@/components/ui/glass-card";
 import { MediaGrid } from "@/components/content/media-grid";
@@ -57,6 +57,8 @@ type ListItemRow = {
   externalId: string;
   image: string | null;
   year: string | null;
+  sortOrder: number | null;
+  addedAtMs: number | null;
 };
 
 type ListModalType = EntryMediaType;
@@ -66,6 +68,16 @@ const coerceListType = (value: unknown): EntryMediaType => {
     return value;
   }
   return "movie";
+};
+
+const toMillis = (value: unknown) => {
+  if (!value) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "object" && value && "toMillis" in value && typeof (value as { toMillis?: unknown }).toMillis === "function") {
+    const millis = (value as { toMillis: () => number }).toMillis();
+    return Number.isFinite(millis) ? millis : null;
+  }
+  return null;
 };
 
 function DashboardSection({
@@ -303,6 +315,8 @@ function LibrarySection({
   const [openLists, setOpenLists] = useState<Record<string, boolean>>({});
   const [activeDrag, setActiveDrag] = useState<{ entryId: string; sourceListId: string | null; isKeyboard: boolean } | null>(null);
   const [activeDropTarget, setActiveDropTarget] = useState<{ listId: string | null; bucket: "list" | "other" | null } | null>(null);
+  const [reorderIndicator, setReorderIndicator] = useState<{ listId: string; targetEntryId: string; position: "before" | "after" } | null>(null);
+  const [isRemoveTargetActive, setIsRemoveTargetActive] = useState(false);
   const [dragAnnouncement, setDragAnnouncement] = useState("");
   const expandTimeoutRef = useRef<number | null>(null);
 
@@ -315,7 +329,7 @@ function LibrarySection({
   useEffect(() => {
     if (!uid) return;
 
-    const listsQuery = query(collection(db, "users", uid, "lists"), orderBy("updatedAt", "desc"), limit(50));
+    const listsQuery = query(collection(db, "users", uid, "lists"), orderBy("createdAt", "desc"), limit(50));
     const unsubscribe = onSnapshot(listsQuery, (snapshot) => {
       const nextLists = snapshot.docs.map((snap) => {
         const data = snap.data() as { name?: unknown; description?: unknown; type?: unknown; types?: unknown };
@@ -343,13 +357,8 @@ function LibrarySection({
       );
 
       setLists(filteredLists);
-      setOpenLists((prev) => {
-        const next = { ...prev };
-        filteredLists.forEach((list) => {
-          if (next[list.id] === undefined) next[list.id] = false;
-        });
-        return next;
-      });
+      // Remove the strict false initialization to allow dynamic defaulting based on unlisted items
+      setOpenLists((prev) => ({ ...prev }));
     });
 
     return () => unsubscribe();
@@ -394,9 +403,19 @@ function LibrarySection({
               externalId: typeof data.externalId === "string" ? data.externalId : "",
               image: data.image ? String(data.image) : null,
               year: data.year ? String(data.year) : null,
+              sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : null,
+              addedAtMs: toMillis((data as Record<string, unknown>).addedAt),
             };
           });
-          setListItemsById((prev) => ({ ...prev, [list.id]: nextItems }));
+          const sortedItems = [...nextItems].sort((a, b) => {
+            const aSort = a.sortOrder;
+            const bSort = b.sortOrder;
+            if (typeof aSort === "number" && typeof bSort === "number") return aSort - bSort;
+            if (typeof aSort === "number") return -1;
+            if (typeof bSort === "number") return 1;
+            return (b.addedAtMs ?? 0) - (a.addedAtMs ?? 0);
+          });
+          setListItemsById((prev) => ({ ...prev, [list.id]: sortedItems }));
         });
         unsubscribersRef.current.set(list.id, unsub);
       }
@@ -430,6 +449,8 @@ function LibrarySection({
     const entryId = String(details.entryId);
     setActiveDrag({ entryId, sourceListId: details.sourceListId, isKeyboard: details.mode === "keyboard" });
     setDragAnnouncement(`Picked up ${details.title}. Navigate to a list and drop to move it.`);
+    setReorderIndicator(null);
+    setIsRemoveTargetActive(false);
   };
 
   const handleItemDragEnd = () => {
@@ -439,6 +460,74 @@ function LibrarySection({
     }
     setActiveDrag(null);
     setActiveDropTarget(null);
+    setReorderIndicator(null);
+    setIsRemoveTargetActive(false);
+  };
+
+  const saveListOrder = useCallback(async (listId: string, orderedItems: ListItemRow[]) => {
+    if (!uid) return;
+    const operations = orderedItems.map((item, index) =>
+      updateDoc(doc(db, "users", uid, "lists", listId, "items", item.id), {
+        sortOrder: index,
+        updatedAt: serverTimestamp(),
+      })
+    );
+    await Promise.all(operations);
+    await updateDoc(doc(db, "users", uid, "lists", listId), {
+      updatedAt: serverTimestamp(),
+    });
+  }, [uid]);
+
+  const handleDropOnItem = async (targetListId: string, targetEntryId: string, position: "before" | "after") => {
+    if (!uid || !activeDrag) return;
+
+    if (activeDrag.sourceListId !== targetListId) {
+      await handleDropOnList(targetListId);
+      return;
+    }
+
+    const sourceItems = listItemsById[targetListId] || [];
+    const sourceIndex = sourceItems.findIndex((item) => item.externalId === activeDrag.entryId);
+    const targetIndexRaw = sourceItems.findIndex((item) => item.externalId === targetEntryId);
+
+    if (sourceIndex < 0 || targetIndexRaw < 0) {
+      setDragAnnouncement("Could not determine a valid reorder position.");
+      setActiveDrag(null);
+      setActiveDropTarget(null);
+      setReorderIndicator(null);
+      return;
+    }
+
+    let targetIndex = position === "after" ? targetIndexRaw + 1 : targetIndexRaw;
+    if (sourceIndex < targetIndex) {
+      targetIndex -= 1;
+    }
+
+    if (sourceIndex === targetIndex) {
+      setDragAnnouncement("Item order unchanged.");
+      setActiveDrag(null);
+      setActiveDropTarget(null);
+      setReorderIndicator(null);
+      return;
+    }
+
+    const reorderedItems = [...sourceItems];
+    const [moved] = reorderedItems.splice(sourceIndex, 1);
+    reorderedItems.splice(targetIndex, 0, moved);
+
+    setListItemsById((prev) => ({ ...prev, [targetListId]: reorderedItems }));
+
+    try {
+      await saveListOrder(targetListId, reorderedItems);
+      setDragAnnouncement(`Reordered ${moved.title}.`);
+    } catch {
+      setDragAnnouncement("Failed to reorder item. Please try again.");
+    } finally {
+      setActiveDrag(null);
+      setActiveDropTarget(null);
+      setReorderIndicator(null);
+      setIsRemoveTargetActive(false);
+    }
   };
 
   const handleDropOnList = async (targetListId: string | null) => {
@@ -448,17 +537,22 @@ function LibrarySection({
       setDragAnnouncement("Could not find this item in the current view.");
       setActiveDrag(null);
       setActiveDropTarget(null);
+      setReorderIndicator(null);
+      setIsRemoveTargetActive(false);
       clearExpandTimeout();
       return;
     }
 
     const sourceListId = activeDrag.sourceListId;
     const targetList = targetListId ? lists.find((list) => list.id === targetListId) || null : null;
+    const targetItems = targetList ? (listItemsById[targetList.id] || []) : [];
 
     if (targetListId && !targetList) {
       setDragAnnouncement("Target list is not available.");
       setActiveDrag(null);
       setActiveDropTarget(null);
+      setReorderIndicator(null);
+      setIsRemoveTargetActive(false);
       clearExpandTimeout();
       return;
     }
@@ -467,6 +561,8 @@ function LibrarySection({
       setDragAnnouncement("This item is already in the selected list.");
       setActiveDrag(null);
       setActiveDropTarget(null);
+      setReorderIndicator(null);
+      setIsRemoveTargetActive(false);
       clearExpandTimeout();
       return;
     }
@@ -478,15 +574,18 @@ function LibrarySection({
         setDragAnnouncement(`This list only accepts ${targetList.types.map((t) => entryMediaTypeLabels[t]).join(", ")} items.`);
         setActiveDrag(null);
         setActiveDropTarget(null);
+        setReorderIndicator(null);
+        setIsRemoveTargetActive(false);
         clearExpandTimeout();
         return;
       }
-      const targetItems = listItemsById[targetList.id] || [];
       const alreadyInTarget = targetItems.some((item) => item.externalId === entry.id);
       if (alreadyInTarget) {
         setDragAnnouncement("This item is already in the target list.");
         setActiveDrag(null);
         setActiveDropTarget(null);
+        setReorderIndicator(null);
+        setIsRemoveTargetActive(false);
         clearExpandTimeout();
         return;
       }
@@ -494,6 +593,13 @@ function LibrarySection({
 
     try {
       if (targetList) {
+        const manualOrderValues = targetItems
+          .map((item) => item.sortOrder)
+          .filter((value): value is number => typeof value === "number");
+        const nextSortOrder =
+          manualOrderValues.length > 0
+            ? Math.max(...manualOrderValues) + 1
+            : null;
         await addDoc(
           collection(db, "users", uid, "lists", targetList.id, "items"),
           {
@@ -502,6 +608,7 @@ function LibrarySection({
             externalId: entry.id,
             image: entry.image || null,
             year: entry.releaseYear || null,
+            sortOrder: nextSortOrder,
             addedAt: serverTimestamp(),
           },
         );
@@ -523,13 +630,19 @@ function LibrarySection({
         }
       }
 
-      const targetName = targetList ? targetList.name || "List" : "Other";
-      setDragAnnouncement(`Moved ${entry.title} to ${targetName}.`);
+      if (!targetList && sourceListId) {
+        setDragAnnouncement(`Removed ${entry.title} from the list. It remains in Unspecified.`);
+      } else {
+        const targetName = targetList ? targetList.name || "List" : "Other";
+        setDragAnnouncement(`Moved ${entry.title} to ${targetName}.`);
+      }
     } catch {
       setDragAnnouncement("Failed to move item. Please try again.");
     } finally {
       setActiveDrag(null);
       setActiveDropTarget(null);
+      setReorderIndicator(null);
+      setIsRemoveTargetActive(false);
       clearExpandTimeout();
     }
   };
@@ -577,18 +690,33 @@ function LibrarySection({
               const filteredById = new Map(filteredEntries.map((entry) => [entry.id, entry]));
               const listedIds = new Set<string>();
 
-              const listSections = lists.map((list) => {
+              const listSectionsData = lists.map((list) => {
                 const listItems = listItemsById[list.id] || [];
                 const listEntries = listItems
                   .map((item) => filteredById.get(item.externalId))
                   .filter((entry): entry is EntryDoc => Boolean(entry));
                 listEntries.forEach((entry) => listedIds.add(entry.id));
-                return { list, listEntries, isOpen: openLists[list.id] ?? false };
+                return { list, listEntries };
               });
+
+              const otherEntries = filteredEntries.filter((entry) => !listedIds.has(entry.id));
+              const hasUnlistedItems = otherEntries.length > 0;
+
+              const listSections = listSectionsData
+                .map(({ list, listEntries }) => {
+                  const isEmpty = listEntries.length === 0;
+                  return { list, listEntries, isOpen: openLists[list.id] ?? (!hasUnlistedItems && !isEmpty) };
+                })
+                .sort((a, b) => {
+                  const aEmpty = a.listEntries.length === 0;
+                  const bEmpty = b.listEntries.length === 0;
+                  if (aEmpty && !bEmpty) return 1;
+                  if (!aEmpty && bEmpty) return -1;
+                  return 0;
+                });
 
               const hasAnyOpen = listSections.some((s) => s.isOpen);
               const hasAnyClosed = listSections.some((s) => !s.isOpen);
-              const otherEntries = filteredEntries.filter((entry) => !listedIds.has(entry.id));
 
               return (
                 <div className="space-y-6">
@@ -648,6 +776,7 @@ function LibrarySection({
                                   if (!activeDrag) return;
                                   event.preventDefault();
                                   setActiveDropTarget({ listId: list.id, bucket: "list" });
+                                  setReorderIndicator(null);
                                   clearExpandTimeout();
                                   if (!isOpen && !isEmpty) {
                                     const timeoutId = window.setTimeout(() => {
@@ -736,6 +865,15 @@ function LibrarySection({
                                             if (!activeDrag) return;
                                             event.preventDefault();
                                           }}
+                                          onDragLeave={(event) => {
+                                            if (!activeDrag) return;
+                                            const related = event.relatedTarget as HTMLElement | null;
+                                            if (!related || !event.currentTarget.contains(related)) {
+                                              if (reorderIndicator?.listId === list.id) {
+                                                setReorderIndicator(null);
+                                              }
+                                            }
+                                          }}
                                           onDrop={(event) => {
                                             if (!activeDrag) return;
                                             event.preventDefault();
@@ -746,6 +884,7 @@ function LibrarySection({
                                             items={listEntries.map((entry) => ({
                                               id: entry.id,
                                               title: entry.title,
+                                              description: entry.description,
                                               image: entry.image,
                                               year: entry.releaseYear || undefined,
                                               userRating: entry.userRating,
@@ -754,7 +893,6 @@ function LibrarySection({
                                               type: gridType,
                                               onClick: () => onSelectEntry(entry),
                                               showActions: true,
-                                              onView: () => onSelectEntry(entry),
                                               onEdit: () => onEditEntry(entry),
                                               onDelete: () => onDeleteEntry(entry),
                                             }))}
@@ -762,6 +900,24 @@ function LibrarySection({
                                             activeDragEntryId={activeDrag?.entryId ?? null}
                                             onItemDragStart={handleItemDragStart}
                                             onItemDragEnd={handleItemDragEnd}
+                                            onItemDragOverPosition={({ targetEntryId, position }) => {
+                                              if (!activeDrag) return;
+                                              if (activeDrag.sourceListId === list.id) {
+                                                setReorderIndicator({ listId: list.id, targetEntryId, position });
+                                              } else {
+                                                setReorderIndicator(null);
+                                              }
+                                              setActiveDropTarget({ listId: list.id, bucket: "list" });
+                                            }}
+                                            onItemDropPosition={({ targetEntryId, position }) => {
+                                              void handleDropOnItem(list.id, targetEntryId, position);
+                                            }}
+                                            dropIndicatorEntryId={
+                                              reorderIndicator?.listId === list.id ? reorderIndicator.targetEntryId : null
+                                            }
+                                            dropIndicatorPosition={
+                                              reorderIndicator?.listId === list.id ? reorderIndicator.position : null
+                                            }
                                           />
                                         </div>
                                       )}
@@ -782,6 +938,7 @@ function LibrarySection({
                       items={otherEntries.map((entry) => ({
                         id: entry.id,
                         title: entry.title,
+                        description: entry.description,
                         image: entry.image,
                         year: entry.releaseYear || undefined,
                         userRating: entry.userRating,
@@ -790,7 +947,6 @@ function LibrarySection({
                         type: gridType,
                         onClick: () => onSelectEntry(entry),
                         showActions: true,
-                        onView: () => onSelectEntry(entry),
                         onEdit: () => onEditEntry(entry),
                         onDelete: () => onDeleteEntry(entry),
                       }))}
@@ -804,6 +960,49 @@ function LibrarySection({
               );
             }}
           </MediaSection>
+          <AnimatePresence>
+            {activeDrag ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+              >
+                <div
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsRemoveTargetActive(true);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsRemoveTargetActive(true);
+                  }}
+                  onDragLeave={(event) => {
+                    const related = event.relatedTarget as HTMLElement | null;
+                    if (!related || !event.currentTarget.contains(related)) {
+                      setIsRemoveTargetActive(false);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setIsRemoveTargetActive(false);
+                    void handleDropOnList(null);
+                  }}
+                  className={cn(
+                    "flex h-16 w-16 items-center justify-center rounded-full border text-white shadow-2xl backdrop-blur-xl transition-colors",
+                    isRemoveTargetActive
+                      ? "border-red-300/80 bg-red-500/30"
+                      : "border-white/20 bg-neutral-900/70",
+                  )}
+                  title="Drop here to remove from list"
+                >
+                  <X size={24} />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
           <div aria-live="polite" className="sr-only">
             {dragAnnouncement}
           </div>

@@ -28,12 +28,12 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  signInWithGoogle: async () => {},
-  signInWithEmail: async () => {},
-  signUpWithEmail: async () => {},
-  sendPasswordReset: async () => {},
-  updateUserProfile: async () => {},
-  signOut: async () => {},
+  signInWithGoogle: async () => { },
+  signInWithEmail: async () => { },
+  signUpWithEmail: async () => { },
+  sendPasswordReset: async () => { },
+  updateUserProfile: async () => { },
+  signOut: async () => { },
 });
 
 const normalizeAuthError = (error: unknown) => {
@@ -48,10 +48,14 @@ const normalizeAuthError = (error: unknown) => {
   return "Something went wrong. Please try again.";
 };
 
-const buildProfile = (user: User, displayNameOverride?: string) => {
-  const displayName = displayNameOverride || user.displayName || "";
+const buildProfile = (
+  user: User,
+  overrides?: { displayName?: string; photoURL?: string | null }
+) => {
+  const displayName = overrides?.displayName ?? user.displayName ?? "";
   const email = user.email || "";
-  const photoURL = user.photoURL || "";
+  const hasPhotoOverride = Boolean(overrides && Object.prototype.hasOwnProperty.call(overrides, "photoURL"));
+  const photoURL = hasPhotoOverride ? (overrides?.photoURL ?? null) : (user.photoURL ?? "");
   if (!user.uid) {
     throw new Error("Missing user id.");
   }
@@ -69,8 +73,11 @@ const buildProfile = (user: User, displayNameOverride?: string) => {
   };
 };
 
-const saveUserProfile = async (user: User, displayNameOverride?: string) => {
-  const profile = buildProfile(user, displayNameOverride);
+const saveUserProfile = async (
+  user: User,
+  overrides?: { displayName?: string; photoURL?: string | null }
+) => {
+  const profile = buildProfile(user, overrides);
   await setDoc(
     doc(db, "users", profile.uid),
     {
@@ -127,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (displayName) {
           await updateProfile(result.user, { displayName });
         }
-        await saveUserProfile(result.user, displayName);
+        await saveUserProfile(result.user, { displayName });
       }
     } catch (error) {
       throw new Error(normalizeAuthError(error));
@@ -146,7 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth.currentUser) throw new Error("No active account.");
     try {
       await updateProfile(auth.currentUser, { displayName, photoURL: photoURL || null });
-      await saveUserProfile(auth.currentUser, displayName);
+      await saveUserProfile(auth.currentUser, { displayName, photoURL });
+      setUser(auth.currentUser);
     } catch (error) {
       throw new Error(normalizeAuthError(error));
     }

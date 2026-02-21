@@ -10,6 +10,10 @@ import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { NewListModal } from "@/components/lists/new-list-modal";
+import { DescriptionTextarea } from "@/components/ui/description-textarea";
+import { sanitizeImportedDescription } from "@/lib/validation";
+import { createDuplicateEntryKey, resolveComparableRating } from "@/lib/duplicate-entry";
+import { InfographicToast } from "@/components/ui/infographic-toast";
 
 export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified" | "main_story_completed" | "fully_completed" | "backlogged" | "bored" | "own" | "wishlist" | "not_committed" | "committed";
@@ -214,6 +218,7 @@ export function LogEntryModal({
   const [image, setImage] = useState<string | null>(null);
   const [externalId, setExternalId] = useState<string | null>(null);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(null);
 
   const [lists, setLists] = useState<{ id: string; name: string; type: ListMediaType; types: ListMediaType[] }[]>([]);
 
@@ -233,6 +238,7 @@ export function LogEntryModal({
   /* Tabs removed */
 
   const initializedRef = useRef<string | number | null>(null);
+  const fetchedListIdsForEntryRef = useRef<string | number | null>(null);
 
   useEffect(() => {
     if (!uid || !isOpen) {
@@ -240,7 +246,7 @@ export function LogEntryModal({
       return;
     }
 
-    const q = query(collection(db, "users", uid, "lists"), orderBy("updatedAt", "desc"), limit(50));
+    const q = query(collection(db, "users", uid, "lists"), orderBy("createdAt", "desc"), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setLists(snapshot.docs.map((doc) => {
         const data = doc.data() as { name?: string; type?: string; types?: string[] };
@@ -318,7 +324,7 @@ export function LogEntryModal({
     setTitle(result.title);
     setMediaType(result.type);
     setReleaseYear(result.year || "");
-    setDescription(result.overview || "");
+    setDescription(sanitizeImportedDescription(result.overview || ""));
     setImage(result.image || null);
     setExternalId(result.id);
     if (result.rating) {
@@ -342,7 +348,7 @@ export function LogEntryModal({
         const payload = await res.json();
         const data = payload.data;
         if (data) {
-          if (data.description) setDescription(data.description);
+          if (data.description) setDescription(sanitizeImportedDescription(data.description));
           if (data.year) setReleaseYear(data.year);
           if (data.rating) setImdbRating(data.rating.toFixed(1));
           if (data.lengthMinutes) setLengthMinutes(String(data.lengthMinutes));
@@ -395,11 +401,15 @@ export function LogEntryModal({
 
   // Effect to find which lists this item is in
   useEffect(() => {
-    if (!uid || !isOpen || !isEditing || !normalizedInitial?.id || lists.length === 0) {
-      setSelectedListIds(new Set());
-      setInitialListIds(new Set());
+    // Only run this synchronization logic if we are editing an existing item
+    if (!uid || !isOpen || !isEditing || !normalizedInitial?.id) {
       return;
     }
+
+    if (lists.length === 0) return;
+
+    // Only fetch once per entry ID to avoid clobbering new list selections
+    if (fetchedListIdsForEntryRef.current === normalizedInitial.id) return;
 
     let cancelled = false;
     const entryId = String(normalizedInitial.id);
@@ -442,6 +452,7 @@ export function LogEntryModal({
 
       setSelectedListIds(foundIds);
       setInitialListIds(foundIds);
+      fetchedListIdsForEntryRef.current = normalizedInitial.id;
     };
 
     findLists();
@@ -454,6 +465,8 @@ export function LogEntryModal({
   useEffect(() => {
     if (!isOpen) {
       initializedRef.current = null;
+      fetchedListIdsForEntryRef.current = null;
+      setDuplicateToast(null);
       return;
     }
 
@@ -722,6 +735,61 @@ export function LogEntryModal({
       }
     }
 
+    if (!isEditing) {
+      const candidateKey = createDuplicateEntryKey({
+        name: trimmedTitle,
+        yearOfRelease: releaseYearValue,
+        type: mediaType,
+        rating: resolveComparableRating(userRatingValue, imdbRatingValue),
+        description: description.trim(),
+        length: lengthMinutesValue,
+        episodes: episodeCountValue,
+      });
+
+      const existingEntriesSnapshot = await getDocs(
+        query(collection(db, "users", uid, "entries"), limit(1000)),
+      );
+
+      const duplicateExists = existingEntriesSnapshot.docs.some((entryDoc) => {
+        const raw = entryDoc.data() as Record<string, unknown>;
+        const existingRating =
+          typeof raw.rating === "number"
+            ? raw.rating
+            : typeof raw.imdbRating === "number"
+              ? raw.imdbRating
+              : null;
+
+        const existingKey = createDuplicateEntryKey({
+          name: typeof raw.title === "string" ? raw.title : "",
+          yearOfRelease:
+            typeof raw.releaseYear === "string"
+              ? raw.releaseYear
+              : typeof raw.year === "string"
+                ? raw.year
+                : null,
+          type: typeof raw.mediaType === "string" ? raw.mediaType : "movie",
+          rating: resolveComparableRating(
+            typeof raw.userRating === "number" ? raw.userRating : null,
+            existingRating,
+          ),
+          description: typeof raw.description === "string" ? raw.description : "",
+          length: typeof raw.lengthMinutes === "number" ? raw.lengthMinutes : null,
+          episodes: typeof raw.episodeCount === "number" ? raw.episodeCount : null,
+        });
+
+        return existingKey === candidateKey;
+      });
+
+      if (duplicateExists) {
+        setError("This item already exists.");
+        setDuplicateToast({
+          id: Date.now(),
+          message: `"${trimmedTitle}" already exists in your library.`,
+        });
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const entryId = isEditing && normalizedInitial?.id ? String(normalizedInitial.id) : null;
@@ -871,6 +939,7 @@ export function LogEntryModal({
         setImage(null);
         setExternalId(null);
 
+        setActiveTab("search");
         // Don't close immediately allows adding more
       } else {
         setTimeout(() => onClose(), 1000);
@@ -1387,13 +1456,12 @@ export function LogEntryModal({
               </div>
 
               <div className="space-y-2">
-                <div className="text-xs font-medium text-neutral-400">Description</div>
-                <textarea
+                <label className="text-sm font-medium text-neutral-300">Description</label>
+                <DescriptionTextarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onValueChange={setDescription}
+                  rows={4}
                   placeholder="What did you think?"
-                  rows={5}
-                  className="w-full resize-none rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                 />
               </div>
             </div>
@@ -1426,6 +1494,12 @@ export function LogEntryModal({
           setSelectedListIds(next);
           setInfo("List created and selected.");
         }}
+      />
+      <InfographicToast
+        isOpen={Boolean(duplicateToast)}
+        title="Duplicate Detected"
+        message={duplicateToast?.message || ""}
+        onClose={() => setDuplicateToast(null)}
       />
     </Modal>
   );

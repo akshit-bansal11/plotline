@@ -1,6 +1,6 @@
 "use client";
 
-import type { DragEvent } from "react";
+import { useRef, type DragEvent } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { MediaCard } from "./media-card";
@@ -16,13 +16,14 @@ interface MediaGridProps {
     items: Array<{
         id: string | number;
         title: string;
+        description?: string;
         image: string | null;
         year?: string;
         userRating?: number | null;
         imdbRating?: number | null;
         status?: import("@/context/data-context").EntryStatus;
         type?: string;
-        onView?: () => void;
+        onClick?: () => void;
         onEdit?: () => void;
         onDelete?: () => void;
         showActions?: boolean;
@@ -32,6 +33,18 @@ interface MediaGridProps {
     activeDragEntryId?: string | null;
     onItemDragStart?: (details: DragStartDetails) => void;
     onItemDragEnd?: () => void;
+    onItemDragOverPosition?: (details: {
+        targetEntryId: string;
+        position: "before" | "after";
+        sourceListId: string | null;
+    }) => void;
+    onItemDropPosition?: (details: {
+        targetEntryId: string;
+        position: "before" | "after";
+        sourceListId: string | null;
+    }) => void;
+    dropIndicatorEntryId?: string | null;
+    dropIndicatorPosition?: "before" | "after" | null;
 }
 
 const containerVariants = {
@@ -56,7 +69,13 @@ export function MediaGrid({
     activeDragEntryId = null,
     onItemDragStart,
     onItemDragEnd,
+    onItemDragOverPosition,
+    onItemDropPosition,
+    dropIndicatorEntryId = null,
+    dropIndicatorPosition = null,
 }: MediaGridProps) {
+    const suppressClickRef = useRef(false);
+
     return (
         <motion.div
             variants={containerVariants}
@@ -66,13 +85,19 @@ export function MediaGrid({
         >
             {items.map((item) => {
                 const isActiveDrag = activeDragEntryId !== null && String(activeDragEntryId) === String(item.id);
+                const isDropIndicator =
+                    dropIndicatorEntryId !== null &&
+                    String(dropIndicatorEntryId) === String(item.id) &&
+                    Boolean(dropIndicatorPosition);
                 return (
                     <motion.div
                         key={item.id}
                         variants={itemVariants}
+                        className="relative"
                         draggable={Boolean(onItemDragStart)}
                         onDragStartCapture={(event: DragEvent<HTMLDivElement>) => {
                             if (!onItemDragStart) return;
+                            suppressClickRef.current = true;
                             event.dataTransfer.effectAllowed = "move";
                             onItemDragStart({
                                 entryId: item.id,
@@ -85,6 +110,34 @@ export function MediaGrid({
                         onDragEndCapture={(event: DragEvent<HTMLDivElement>) => {
                             event.currentTarget.classList.remove("media-card-dragging");
                             onItemDragEnd?.();
+                            window.setTimeout(() => {
+                                suppressClickRef.current = false;
+                            }, 0);
+                        }}
+                        onDragOverCapture={(event: DragEvent<HTMLDivElement>) => {
+                            if (!onItemDragOverPosition || activeDragEntryId === null) return;
+                            event.preventDefault();
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            const position: "before" | "after" =
+                                event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                            onItemDragOverPosition({
+                                targetEntryId: String(item.id),
+                                position,
+                                sourceListId,
+                            });
+                        }}
+                        onDropCapture={(event: DragEvent<HTMLDivElement>) => {
+                            if (!onItemDropPosition || activeDragEntryId === null) return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            const position: "before" | "after" =
+                                event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                            onItemDropPosition({
+                                targetEntryId: String(item.id),
+                                position,
+                                sourceListId,
+                            });
                         }}
                         onTouchStart={() => {
                             if (!onItemDragStart) return;
@@ -111,11 +164,23 @@ export function MediaGrid({
                     >
                         <MediaCard
                             {...item}
-                            onView={item.onView}
+                            onClick={() => {
+                                if (suppressClickRef.current) return;
+                                item.onClick?.();
+                            }}
                             onEdit={item.onEdit}
                             onDelete={item.onDelete}
                             showActions={item.showActions}
                         />
+                        {isDropIndicator ? (
+                            <div
+                                aria-hidden="true"
+                                className={cn(
+                                    "pointer-events-none absolute inset-y-3 z-20 w-0.5 rounded-full bg-blue-300 shadow-[0_0_12px_rgba(147,197,253,0.9)]",
+                                    dropIndicatorPosition === "before" ? "-left-2" : "-right-2",
+                                )}
+                            />
+                        ) : null}
                     </motion.div>
                 );
             })}
