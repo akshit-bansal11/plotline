@@ -1,29 +1,26 @@
-import { put } from "@vercel/blob";
+import { v2 as cloudinary } from "cloudinary";
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
+const PROFILE_IMAGE_FOLDER = "plotline_user_pfp";
 
 const sanitizeUid = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "");
 
-const getExtension = (filename: string, mimeType: string) => {
-    const fromName = filename.split(".").pop()?.toLowerCase();
-    if (fromName && /^[a-z0-9]+$/.test(fromName)) return fromName;
-    if (mimeType === "image/jpeg") return "jpg";
-    if (mimeType === "image/png") return "png";
-    if (mimeType === "image/webp") return "webp";
-    if (mimeType === "image/svg+xml") return "svg";
-    if (mimeType === "image/gif") return "gif";
-    return "png";
-};
-
 export async function POST(request: Request) {
     try {
-        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        if (!process.env.CLOUDINARY_URL) {
             return NextResponse.json(
-                { error: "BLOB_READ_WRITE_TOKEN is missing on the server." },
+                { error: "CLOUDINARY_URL is missing on the server." },
                 { status: 500 },
             );
         }
+
+        cloudinary.config({
+            secure: true,
+            url: process.env.CLOUDINARY_URL,
+        });
 
         const formData = await request.formData();
         const file = formData.get("file");
@@ -50,14 +47,28 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Invalid user id." }, { status: 400 });
         }
 
-        const extension = getExtension(file.name, file.type);
-        const pathname = `users/${uid}/profile-${Date.now()}-${crypto.randomUUID()}.${extension}`;
-        const blob = await put(pathname, file, {
-            access: "public",
-            addRandomSuffix: false,
+        const arrayBuffer = await file.arrayBuffer();
+        const fileBuffer = Buffer.from(arrayBuffer);
+
+        const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream({
+                folder: PROFILE_IMAGE_FOLDER,
+                public_id: `${uid}-${Date.now()}`,
+                resource_type: "image",
+                overwrite: true,
+                invalidate: true,
+            }, (error, result) => {
+                if (error || !result?.secure_url) {
+                    reject(error ?? new Error("Cloudinary upload failed."));
+                    return;
+                }
+                resolve({ secure_url: result.secure_url });
+            });
+
+            stream.end(fileBuffer);
         });
 
-        return NextResponse.json({ url: blob.url }, { status: 200 });
+        return NextResponse.json({ url: uploadResult.secure_url }, { status: 200 });
     } catch (err) {
         const message = err instanceof Error ? err.message : "Upload failed.";
         return NextResponse.json({ error: message }, { status: 500 });

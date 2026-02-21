@@ -259,11 +259,10 @@ function ProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
             const message = err instanceof Error ? err.message : "Failed to update profile.";
             const normalized = message.toLowerCase();
             if (
-                normalized.includes("blob") ||
-                normalized.includes("read_write_token") ||
-                normalized.includes("token")
+                normalized.includes("cloudinary") ||
+                normalized.includes("cloudinary_url")
             ) {
-                setError("Profile upload failed because Vercel Blob is not configured. Set BLOB_READ_WRITE_TOKEN and redeploy/restart the app.");
+                setError("Profile upload failed because Cloudinary is not configured. Set CLOUDINARY_URL and restart the app.");
                 return;
             }
             setError(message);
