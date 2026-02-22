@@ -7,7 +7,7 @@ import { ChevronDown } from "lucide-react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Modal } from "@/components/ui/modal";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
-import { EntryDoc, EntryMediaType, EntryStatus } from "@/context/data-context";
+import { EntryDoc, EntryMediaType, EntryStatus, useData } from "@/context/data-context";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase";
 import { DescriptionErrorWrapper } from "@/components/ui/description-error-wrapper";
@@ -40,6 +40,7 @@ export function EntryDetailModal({
   const statusMenuRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const uid = user?.uid || null;
+  const { entries } = useData();
 
   useEffect(() => {
     if (!isStatusOpen) return;
@@ -318,6 +319,22 @@ export function EntryDetailModal({
                     {tag}
                   </span>
                 ))}
+              </div>
+            ) : null}
+            {entry.relations && entry.relations.length > 0 ? (
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                <div className="text-sm font-medium text-neutral-300">Related Entries</div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {entry.relations.map((rel, idx) => {
+                    const match = entries.find(e => String(e.id) === rel.targetId);
+                    return (
+                      <div key={idx} className="flex flex-col rounded-lg border border-white/5 bg-neutral-900/40 px-3 py-2">
+                        <span className="text-[10px] text-neutral-500 font-medium uppercase tracking-wider">{rel.type}</span>
+                        <span className="text-xs text-neutral-200 truncate">{match ? match.title : "Unknown Entry"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
           </div>

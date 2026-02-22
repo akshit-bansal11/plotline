@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, Globe } from "lucide-react";
 import Image from "next/image";
 import { useData, EntryDoc, EntryMediaType, EntryStatus } from "@/context/data-context";
 import { AnimatePresence, motion } from "motion/react";
@@ -11,7 +11,7 @@ const mediaTypeLabels: Record<EntryMediaType, string> = entryMediaTypeLabels;
 
 const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
 
-export function GlobalSearch() {
+export function GlobalSearch({ onOpenGlobal }: { onOpenGlobal?: () => void }) {
   const { entries, setSelectedEntry } = useData();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -172,6 +172,16 @@ export function GlobalSearch() {
               className="p-1 mr-1 text-neutral-400 hover:text-white rounded-full hover:bg-white/10"
             >
               <X size={14} suppressHydrationWarning />
+            </button>
+          )}
+          {onOpenGlobal && (
+            <button
+              id="global-search-mode-btn"
+              title="Switch to Global Search"
+              onClick={(e) => { e.preventDefault(); onOpenGlobal(); }}
+              className="p-2 mr-1 rounded-full transition-colors text-neutral-400 hover:text-white hover:bg-white/10"
+            >
+              <Globe size={14} suppressHydrationWarning />
             </button>
           )}
           <button
