@@ -1067,7 +1067,7 @@ export function Navbar() {
                         : "bg-transparent py-5"
                 )}
             >
-                <div className="container mx-auto flex items-center justify-between px-4 md:px-6">
+                <div className="w-full flex items-center justify-between px-4 md:px-8">
                     <Link
                         href="/"
                         scroll={false}

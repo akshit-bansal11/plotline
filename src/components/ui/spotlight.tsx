@@ -12,7 +12,7 @@ interface SpotlightProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Spotlight({
     children,
     className = "",
-    spotlightColor = "rgba(255, 255, 255, 0.1)",
+    spotlightColor = "rgba(255, 255, 255, 0.07)",
     ...props
 }: SpotlightProps) {
     const divRef = useRef<HTMLDivElement>(null);
@@ -52,7 +52,7 @@ export function Spotlight({
                 className="pointer-events-none absolute inset-[2px] rounded-[inherit] transition duration-300 z-10"
                 style={{
                     opacity,
-                    background: `radial-gradient(${spotlightSize || 160}px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 60%)`,
+                    background: `radial-gradient(${spotlightSize || 160}px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 70%)`,
                 }}
             />
             {children}

@@ -70,7 +70,7 @@ export function MediaSection<TItem>({
             className={cn("py-8 md:py-12 space-y-6", className)}
         >
             {showFilterInput ? (
-                <div className="container px-4 md:px-6 flex flex-col gap-4">
+                <div className="w-full px-4 md:px-8 flex flex-col gap-4">
                     <div className="space-y-2">
                         <input
                             value={resolvedFilterRaw}
@@ -88,7 +88,7 @@ export function MediaSection<TItem>({
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="relative"
             >
-                <div className="container px-4 md:px-6">{children(filteredItems)}</div>
+                <div className="w-full px-4 md:px-8">{children(filteredItems)}</div>
             </motion.div>
         </section>
     );

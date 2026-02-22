@@ -168,7 +168,7 @@ function DashboardSection({
     <div className="flex flex-col gap-10 pb-20">
       <Hero username={username} stats={totalsForHero} />
 
-      <section className="container mx-auto px-4 md:px-6">
+      <section className="w-full px-4 md:px-8">
         <div className="flex items-end justify-between gap-6">
           <div>
             <h2 className="text-xl font-semibold text-white">Dashboard</h2>
@@ -207,7 +207,7 @@ function DashboardSection({
         </div>
       </section>
 
-      <section className="container mx-auto px-4 md:px-6">
+      <section className="w-full px-4 md:px-8">
         <h2 className="text-xl font-semibold text-white">Recent activity</h2>
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           {(Object.keys(contentTypeLabels) as EntryMediaType[]).map((type) => {
@@ -651,18 +651,18 @@ function LibrarySection({
 
   return (
     <div className="pt-12">
-      <div className="container mx-auto px-4 md:px-6 mb-4">
+      <div className="w-full px-4 md:px-8 mb-4">
         <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
         <p className="text-neutral-400 text-sm">{description}</p>
       </div>
 
       {!uid ? (
-        <div className="container mx-auto px-4 md:px-6 text-sm text-neutral-500">Sign in to see your library.</div>
+        <div className="w-full px-4 md:px-8 text-sm text-neutral-500">Sign in to see your library.</div>
       ) : (
         <>
-          {uid && status === "loading" && entries.length === 0 ? <div className="container mx-auto px-4 md:px-6 text-sm text-neutral-400">Loading…</div> : null}
+          {uid && status === "loading" && entries.length === 0 ? <div className="w-full px-4 md:px-8 text-sm text-neutral-400">Loading…</div> : null}
           {visibleEntriesError ? (
-            <div className="container mx-auto px-4 md:px-6 flex flex-wrap items-center gap-3 text-sm text-red-400">
+            <div className="w-full px-4 md:px-8 flex flex-wrap items-center gap-3 text-sm text-red-400">
               <div className="min-w-0 flex-1 truncate">{visibleEntriesError}</div>
               <button
                 type="button"

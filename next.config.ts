@@ -16,6 +16,15 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/movies", destination: "/#movies", permanent: false },
+      { source: "/series", destination: "/#series", permanent: false },
+      { source: "/anime", destination: "/#anime", permanent: false },
+      { source: "/manga", destination: "/#manga", permanent: false },
+      { source: "/games", destination: "/#games", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;
