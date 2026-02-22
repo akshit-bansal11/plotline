@@ -19,6 +19,8 @@ export type EntryDoc = {
   description: string;
   image: string | null;
   releaseYear: string | null;
+  year: string | null;
+  externalId: string | null;
   lengthMinutes: number | null;
   episodeCount: number | null;
   chapterCount: number | null;
@@ -35,6 +37,7 @@ export type EntryDoc = {
   completedAtMs: number | null;
   completionDateUnknown: boolean;
   genresThemes: string[];
+  relations: { targetId: string; type: string; createdAtMs: number; inferred?: boolean }[];
 };
 
 type EntriesStatus = "idle" | "loading" | "ready" | "error";
@@ -83,6 +86,24 @@ const toMillis = (value: unknown): number | null => {
 const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
   const genresThemes = Array.isArray(raw.genresThemes) ? raw.genresThemes.filter((v): v is string => typeof v === "string") : [];
   const listIds = Array.isArray(raw.listIds) ? raw.listIds.filter((v): v is string => typeof v === "string") : [];
+  const relations = Array.isArray(raw.relations)
+    ? (() => {
+      const deduped = new Map<string, { targetId: string; type: string; createdAtMs: number; inferred?: boolean }>();
+      for (const rawRelation of raw.relations) {
+        if (!rawRelation || typeof rawRelation !== "object") continue;
+        const relation = rawRelation as Record<string, unknown>;
+        const targetId = String(relation.targetId || "").trim();
+        const type = String(relation.type || "").trim();
+        if (!targetId || !type) continue;
+        const createdAtMs = toMillis(relation.createdAtMs) ?? toMillis(relation.createdAt) ?? 0;
+        const key = `${targetId}::${type}`;
+        if (!deduped.has(key)) {
+          deduped.set(key, { targetId, type, createdAtMs, inferred: relation.inferred === true });
+        }
+      }
+      return Array.from(deduped.values());
+    })()
+    : [];
 
   // Handle legacy anime_movie type from DB if present
   let mediaType = coerceMediaType(raw.mediaType);
@@ -104,6 +125,8 @@ const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
     description: String(raw.description || ""),
     image: raw.image ? String(raw.image) : null,
     releaseYear: raw.releaseYear ? String(raw.releaseYear) : raw.year ? String(raw.year) : null,
+    year: raw.year ? String(raw.year) : raw.releaseYear ? String(raw.releaseYear) : null,
+    externalId: raw.externalId ? String(raw.externalId) : null,
     lengthMinutes: toNumber(raw.lengthMinutes),
     episodeCount: toNumber(raw.episodeCount),
     chapterCount: toNumber(raw.chapterCount),
@@ -117,6 +140,7 @@ const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
     completedAtMs: toMillis(raw.completedAt),
     completionDateUnknown: Boolean(raw.completionDateUnknown),
     genresThemes,
+    relations,
   };
 };
 

@@ -21,8 +21,8 @@ interface MediaGridProps {
         year?: string;
         userRating?: number | null;
         imdbRating?: number | null;
-        status?: import("@/context/data-context").EntryStatus;
         type?: string;
+        relations?: { targetId: string; type: string; createdAtMs: number }[];
         onClick?: () => void;
         onEdit?: () => void;
         onDelete?: () => void;
@@ -37,10 +37,14 @@ interface MediaGridProps {
         targetEntryId: string;
         position: "before" | "after";
         sourceListId: string | null;
-    }) => void;
+    } | null) => void;
     onItemDropPosition?: (details: {
         targetEntryId: string;
         position: "before" | "after";
+        sourceListId: string | null;
+    }) => void;
+    onItemDropOnItem?: (details: {
+        targetEntryId: string;
         sourceListId: string | null;
     }) => void;
     dropIndicatorEntryId?: string | null;
@@ -71,6 +75,7 @@ export function MediaGrid({
     onItemDragEnd,
     onItemDragOverPosition,
     onItemDropPosition,
+    onItemDropOnItem,
     dropIndicatorEntryId = null,
     dropIndicatorPosition = null,
 }: MediaGridProps) {
@@ -115,29 +120,57 @@ export function MediaGrid({
                             }, 0);
                         }}
                         onDragOverCapture={(event: DragEvent<HTMLDivElement>) => {
-                            if (!onItemDragOverPosition || activeDragEntryId === null) return;
+                            if (activeDragEntryId === null) return;
                             event.preventDefault();
                             const rect = event.currentTarget.getBoundingClientRect();
-                            const position: "before" | "after" =
-                                event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-                            onItemDragOverPosition({
-                                targetEntryId: String(item.id),
-                                position,
-                                sourceListId,
-                            });
+                            const y = event.clientY - rect.top;
+                            const x = event.clientX - rect.left;
+
+                            const isCenterY = y > rect.height * 0.25 && y < rect.height * 0.75;
+                            const isCenterX = x > rect.width * 0.25 && x < rect.width * 0.75;
+
+                            if (isCenterY && isCenterX && onItemDropOnItem) {
+                                onItemDragOverPosition?.(null); // Clear indicator
+                                event.currentTarget.classList.add("media-card-drop-target"); // Add a subtle visual cue if CSS exists
+                            } else if (onItemDragOverPosition) {
+                                event.currentTarget.classList.remove("media-card-drop-target");
+                                const position: "before" | "after" = y < rect.height / 2 ? "before" : "after";
+                                onItemDragOverPosition({
+                                    targetEntryId: String(item.id),
+                                    position,
+                                    sourceListId,
+                                });
+                            }
+                        }}
+                        onDragLeaveCapture={(event: DragEvent<HTMLDivElement>) => {
+                            event.currentTarget.classList.remove("media-card-drop-target");
                         }}
                         onDropCapture={(event: DragEvent<HTMLDivElement>) => {
-                            if (!onItemDropPosition || activeDragEntryId === null) return;
+                            if (activeDragEntryId === null) return;
                             event.preventDefault();
                             event.stopPropagation();
+                            event.currentTarget.classList.remove("media-card-drop-target");
+
                             const rect = event.currentTarget.getBoundingClientRect();
-                            const position: "before" | "after" =
-                                event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-                            onItemDropPosition({
-                                targetEntryId: String(item.id),
-                                position,
-                                sourceListId,
-                            });
+                            const y = event.clientY - rect.top;
+                            const x = event.clientX - rect.left;
+
+                            const isCenterY = y > rect.height * 0.25 && y < rect.height * 0.75;
+                            const isCenterX = x > rect.width * 0.25 && x < rect.width * 0.75;
+
+                            if (isCenterY && isCenterX && onItemDropOnItem) {
+                                onItemDropOnItem({
+                                    targetEntryId: String(item.id),
+                                    sourceListId,
+                                });
+                            } else if (onItemDropPosition) {
+                                const position: "before" | "after" = y < rect.height / 2 ? "before" : "after";
+                                onItemDropPosition({
+                                    targetEntryId: String(item.id),
+                                    position,
+                                    sourceListId,
+                                });
+                            }
                         }}
                         onTouchStart={() => {
                             if (!onItemDragStart) return;
