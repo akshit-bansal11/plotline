@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion, useScroll, useMotionValueEvent } from "motion/react";
-import { LogOut, List, Settings, Upload, Download, LogIn, UserCircle, KeyRound, Plus, ListPlus } from "lucide-react";
+import { LogOut, Settings, Upload, Download, LogIn, UserCircle, KeyRound } from "lucide-react";
 import {
     Timestamp,
     collection,
@@ -31,6 +31,8 @@ import { GlobalSearch } from "@/components/search/global-search";
 import { NewListModal } from "@/components/lists/new-list-modal";
 import { createDuplicateEntryKey, resolveComparableRating } from "@/lib/duplicate-entry";
 import { InfographicToast } from "@/components/ui/infographic-toast";
+import { ListsDropdown } from "@/components/lists/lists-dropdown";
+import { LibrarySearchDropdown } from "@/components/search/library-search-dropdown";
 
 type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
 type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified";
@@ -897,6 +899,10 @@ function SettingsModal({ isOpen, onClose, onSignOut }: { isOpen: boolean; onClos
 export function Navbar() {
     const { scrollY } = useScroll();
     const { activeSection, setActiveSection } = useSection();
+    const { user, signOut } = useAuth();
+    const userLabel = user?.displayName || user?.email;
+    const avatarUrl = user?.photoURL || null;
+
     const [isScrolled, setIsScrolled] = useState(false);
     const [isHidden, setIsHidden] = useState(false);
     const [lastScrollY, setLastScrollY] = useState(0);
@@ -909,6 +915,11 @@ export function Navbar() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const [pendingItem, setPendingItem] = useState<LoggableMedia | null>(null);
+    const [listModalViewId, setListModalViewId] = useState<string | null>(null);
+    const [listModalEditId, setListModalEditId] = useState<string | null>(null);
+    const [listModalDeleteId, setListModalDeleteId] = useState<string | null>(null);
+    const [listModalType, setListModalType] = useState<"movie" | "series" | "anime" | "manga" | "game" | null>(null);
+
     const menuRef = useRef<HTMLDivElement | null>(null);
     const triggerRef = useRef<HTMLButtonElement | null>(null);
     const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -923,14 +934,45 @@ export function Navbar() {
             default: return null;
         }
     };
-    const { user, signOut } = useAuth();
-    const userLabel = user?.displayName || user?.email;
-    const avatarUrl = user?.photoURL || null;
+
+    const resetListModalState = () => {
+        setListModalViewId(null);
+        setListModalEditId(null);
+        setListModalDeleteId(null);
+        setListModalType(null);
+    };
+
+    const openListModal = ({
+        viewId = null,
+        editId = null,
+        deleteId = null,
+        type = null,
+    }: {
+        viewId?: string | null;
+        editId?: string | null;
+        deleteId?: string | null;
+        type?: "movie" | "series" | "anime" | "manga" | "game" | null;
+    }) => {
+        setListModalViewId(viewId);
+        setListModalEditId(editId);
+        setListModalDeleteId(deleteId);
+        setListModalType(type);
+        setIsMyListsOpen(true);
+    };
 
     const handleSignOut = async () => {
         await signOut();
         setIsSettingsOpen(false);
         setIsProfileMenuOpen(false);
+    };
+
+    const handleGlobalSearchSelect = (item: LoggableMedia) => {
+        if (!user) {
+            setIsAuthOpen(true);
+            return;
+        }
+        setPendingItem(item);
+        setIsLogOpen(true);
     };
 
     const menuItems = useMemo(
@@ -944,16 +986,16 @@ export function Navbar() {
                 },
             },
             {
-                label: "My Lists",
-                icon: List,
+                label: "Import",
+                icon: Upload,
                 onClick: () => {
-                    setIsMyListsOpen(true);
+                    setIsImportExportOpen(true);
                     setIsProfileMenuOpen(false);
                 },
             },
             {
-                label: "Import/Export",
-                icon: Upload,
+                label: "Export",
+                icon: Download,
                 onClick: () => {
                     setIsImportExportOpen(true);
                     setIsProfileMenuOpen(false);
@@ -1036,14 +1078,12 @@ export function Navbar() {
         const previous = lastScrollY;
         setLastScrollY(latest);
 
-        // Show background when scrolled
         if (latest > 50) {
             setIsScrolled(true);
         } else {
             setIsScrolled(false);
         }
 
-        // Hide navbar when scrolling down, show when scrolling up
         if (latest > previous && latest > 150) {
             setIsHidden(true);
         } else {
@@ -1061,134 +1101,153 @@ export function Navbar() {
                 animate={isHidden ? "hidden" : "visible"}
                 transition={{ duration: 0.35, ease: "easeInOut" }}
                 className={cn(
-                    "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
-                    isScrolled
-                        ? "backdrop-blur-xl bg-neutral-950/50 py-3"
-                        : "bg-transparent py-5"
+                    "fixed left-0 right-0 top-0 z-40 transition-all duration-300",
+                    isScrolled ? "bg-neutral-950/55 py-3 backdrop-blur-xl" : "bg-transparent py-5"
                 )}
             >
-                <div className="w-full flex items-center justify-between px-4 md:px-8">
+                <div className="flex w-full items-center gap-3 px-4 md:px-8">
                     <Link
                         href="/"
                         scroll={false}
                         onClick={() => setActiveSection("home")}
-                        className="relative z-50 text-3xl font-bold tracking-tight text-white"
+                        className="relative z-50 shrink-0 text-3xl font-bold tracking-tight text-white"
                     >
                         Plotline<span className="text-neutral-600">.</span>
                     </Link>
-                    <div className="flex items-center gap-4">
-                        <div className="hidden md:block">
-                            <NavLinks />
-                        </div>
 
-                        {user && (
-                            <div className="hidden md:flex items-center gap-2">
-                                <GlobalSearch />
-                                <div className="w-px h-6 bg-white/10 mx-1" />
-                                <CountrySelector />
-                                <div className="w-px h-6 bg-white/10 mx-1" />
-                                <button
-                                    onClick={() => {
-                                        setPendingItem(null);
-                                        setIsLogOpen(true);
-                                    }}
-                                    className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
-                                >
-                                    <Plus size={14} suppressHydrationWarning />
-                                    Log entry
-                                </button>
-                                <button
-                                    onClick={() => setIsNewListOpen(true)}
-                                    className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
-                                >
-                                    <ListPlus size={14} suppressHydrationWarning />
-                                    New list
-                                </button>
-                            </div>
-                        )}
+                    <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
+                        <NavLinks className="shrink-0" />
+                        <GlobalSearch
+                            className="w-[200px] lg:w-[280px]"
+                            onSelectMedia={handleGlobalSearchSelect}
+                            onRequireAuth={() => setIsAuthOpen(true)}
+                            disabled={!user}
+                        />
 
-                        {userLabel ? (
-                            <div className="relative hidden md:flex items-center">
-                                <button
-                                    ref={triggerRef}
-                                    type="button"
-                                    onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                                    onKeyDown={handleTriggerKeyDown}
-                                    aria-haspopup="menu"
-                                    aria-expanded={isProfileMenuOpen}
-                                    aria-label={userLabel || "Profile"}
-                                    className="flex items-center rounded-full border border-white/10 bg-neutral-900/40 p-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-900/60"
-                                >
-                                    <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-neutral-900/50 text-xs font-semibold text-neutral-300">
-                                        {avatarUrl ? (
-                                            <Image src={avatarUrl} alt={userLabel || "User"} width={32} height={32} className="h-full w-full object-cover" />
-                                        ) : (
-                                            (userLabel || "U").slice(0, 1).toUpperCase()
-                                        )}
-                                    </div>
-                                </button>
-                                <AnimatePresence>
-                                    {isProfileMenuOpen && (
-                                        <motion.div
-                                            ref={menuRef}
-                                            role="menu"
-                                            onKeyDown={handleMenuKeyDown}
-                                            initial={{ opacity: 0, y: 6 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 6 }}
-                                            transition={{ duration: 0.2 }}
-                                            className="absolute right-0 top-[calc(100%+8px)] w-56 rounded-2xl border border-white/10 bg-neutral-950/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-                                        >
-                                            <div className="space-y-1">
-                                                {menuItems.map((item, index) => (
-                                                    <MenuItem
-                                                        key={item.label}
-                                                        label={item.label}
-                                                        icon={item.icon}
-                                                        onClick={item.onClick}
-                                                        buttonRef={(node) => {
-                                                            menuItemRefs.current[index] = node;
-                                                        }}
-                                                    />
-                                                ))}
-                                            </div>
-                                            <div className="my-1 h-px bg-white/10" />
-                                            <MenuItem
-                                                label="Log out"
-                                                icon={LogOut}
-                                                onClick={handleSignOut}
-                                                className="text-neutral-400 hover:!bg-red-500/10 hover:!text-red-400"
-                                                buttonRef={(node) => {
-                                                    menuItemRefs.current[menuItems.length] = node;
-                                                }}
-                                            />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                        {user ? (
+                            <LibrarySearchDropdown />
                         ) : (
                             <button
+                                type="button"
                                 onClick={() => setIsAuthOpen(true)}
-                                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white"
+                                className="rounded-full border border-white/10 bg-neutral-900/40 px-4 py-2 text-xs font-semibold text-neutral-400 transition-colors hover:bg-neutral-900/60 hover:text-neutral-100"
                             >
-                                <LogIn size={16} suppressHydrationWarning />
-                                <span>Sign In</span>
+                                Search Library
                             </button>
                         )}
 
-                        <MobileMenu
-                            onAuthOpen={() => setIsAuthOpen(true)}
-                            onSearchOpen={() => {
-                                setPendingItem(null);
-                                setIsLogOpen(true);
-                            }}
-                            onListsOpen={() => setIsMyListsOpen(true)}
-                            onProfileOpen={() => setIsProfileOpen(true)}
-                            onImportExportOpen={() => setIsImportExportOpen(true)}
-                            onSettingsOpen={() => setIsSettingsOpen(true)}
-                            userLabel={userLabel}
-                        />
+                        {user ? (
+                            <ListsDropdown
+                                onCreateList={() => setIsNewListOpen(true)}
+                                onOpenList={(listId) => openListModal({ viewId: listId })}
+                                onEditList={(listId, type) => openListModal({ editId: listId, type })}
+                                onDeleteList={(listId, type) => openListModal({ deleteId: listId, type })}
+                            />
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setIsAuthOpen(true)}
+                                className="rounded-full border border-white/10 bg-neutral-900/40 px-4 py-2 text-xs font-semibold text-neutral-400 transition-colors hover:bg-neutral-900/60 hover:text-neutral-100"
+                            >
+                                Lists
+                            </button>
+                        )}
                     </div>
+
+                    {userLabel ? (
+                        <div className="relative hidden items-center md:flex">
+                            <button
+                                ref={triggerRef}
+                                type="button"
+                                onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                                onKeyDown={handleTriggerKeyDown}
+                                aria-haspopup="menu"
+                                aria-expanded={isProfileMenuOpen}
+                                aria-label={userLabel || "Profile"}
+                                className="flex items-center rounded-full border border-white/10 bg-neutral-900/40 p-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-900/60"
+                            >
+                                <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-neutral-900/50 text-xs font-semibold text-neutral-300">
+                                    {avatarUrl ? (
+                                        <Image src={avatarUrl} alt={userLabel || "User"} width={32} height={32} className="h-full w-full object-cover" />
+                                    ) : (
+                                        (userLabel || "U").slice(0, 1).toUpperCase()
+                                    )}
+                                </div>
+                            </button>
+                            <AnimatePresence>
+                                {isProfileMenuOpen && (
+                                    <motion.div
+                                        ref={menuRef}
+                                        role="menu"
+                                        onKeyDown={handleMenuKeyDown}
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 6 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="absolute right-0 top-[calc(100%+8px)] w-72 rounded-2xl border border-white/10 bg-neutral-950/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                                    >
+                                        <div className="mb-2 rounded-xl border border-white/5 bg-neutral-900/60 p-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <div className="truncate text-sm font-semibold text-white">{userLabel}</div>
+                                                    <div className="text-[11px] text-neutral-500">{user?.email || ""}</div>
+                                                </div>
+                                                <CountrySelector />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            {menuItems.map((item, index) => (
+                                                <MenuItem
+                                                    key={item.label}
+                                                    label={item.label}
+                                                    icon={item.icon}
+                                                    onClick={item.onClick}
+                                                    buttonRef={(node) => {
+                                                        menuItemRefs.current[index] = node;
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <div className="my-1 h-px bg-white/10" />
+                                        <MenuItem
+                                            label="Log out"
+                                            icon={LogOut}
+                                            onClick={handleSignOut}
+                                            className="text-neutral-400 hover:!bg-red-500/10 hover:!text-red-400"
+                                            buttonRef={(node) => {
+                                                menuItemRefs.current[menuItems.length] = node;
+                                            }}
+                                        />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setIsAuthOpen(true)}
+                            className="hidden items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white md:flex"
+                        >
+                            <LogIn size={16} suppressHydrationWarning />
+                            <span>Sign In</span>
+                        </button>
+                    )}
+
+                    <MobileMenu
+                        onAuthOpen={() => setIsAuthOpen(true)}
+                        onSearchOpen={() => {
+                            setPendingItem(null);
+                            setIsLogOpen(true);
+                        }}
+                        onListsOpen={() => {
+                            resetListModalState();
+                            setIsMyListsOpen(true);
+                        }}
+                        onProfileOpen={() => setIsProfileOpen(true)}
+                        onImportExportOpen={() => setIsImportExportOpen(true)}
+                        onSettingsOpen={() => setIsSettingsOpen(true)}
+                        userLabel={userLabel}
+                    />
                 </div>
             </motion.header>
 
@@ -1206,9 +1265,13 @@ export function Navbar() {
                 onClose={() => {
                     setIsMyListsOpen(false);
                     setPendingItem(null);
+                    resetListModalState();
                 }}
                 initialItem={pendingItem}
-                mediaType={getMediaTypeFromSection()}
+                mediaType={listModalType || getMediaTypeFromSection()}
+                initialViewListId={listModalViewId}
+                initialEditListId={listModalEditId}
+                initialDeleteListId={listModalDeleteId}
             />
             <NewListModal
                 isOpen={isNewListOpen}
@@ -1221,3 +1284,4 @@ export function Navbar() {
         </>
     );
 }
+

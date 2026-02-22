@@ -486,7 +486,7 @@ export function LogEntryModal({
       setSearchResults([]);
       setSearchError(null);
 
-      setActiveTab(isEditing ? "manual" : "search"); // Default: Search for new, Manual for edit
+      setActiveTab(normalizedInitial ? "manual" : isEditing ? "manual" : "search");
       setTitle(normalizedInitial.title);
       setMediaType(normalizedInitial.inferredType);
       setIsMovie(!!normalizedInitial.inferredIsMovie);
