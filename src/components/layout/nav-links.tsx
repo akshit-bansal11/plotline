@@ -29,7 +29,6 @@ export function NavLinks({ className }: { className?: string }) {
         <nav className={cn("relative flex items-center gap-1 overflow-hidden", className)}>
             {links.map((link) => {
                 const isActive = activeSection === link.section;
-
                 const Icon = link.icon;
 
                 return (
@@ -45,12 +44,9 @@ export function NavLinks({ className }: { className?: string }) {
                     >
                         {isActive && (
                             <motion.div
-                                key={`nav-pill-${activeSection}`}
-                                initial={{ opacity: 0, scaleX: 0, scaleY: 0, y: 10 }}
-                                animate={{ opacity: 1, scaleX: 1, scaleY: 1, y: 0 }}
-                                transition={{ type: "spring", bounce: 0.15, duration: 0.55 }}
-                                style={{ transformOrigin: "0% 100%" }}
+                                layoutId="nav-pill"
                                 className="absolute inset-0 rounded-full bg-neutral-800"
+                                transition={{ type: "spring", stiffness: 450, damping: 35 }}
                             />
                         )}
                         <Icon
