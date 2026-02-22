@@ -28,8 +28,8 @@ import { useAuth } from "@/context/auth-context";
 import { useSection } from "@/context/section-context";
 import { db } from "@/lib/firebase";
 import { GlobalSearch } from "@/components/search/global-search";
+import { SearchModal } from "@/components/search/search-modal";
 import { NewListModal } from "@/components/lists/new-list-modal";
-import { createDuplicateEntryKey, resolveComparableRating } from "@/lib/duplicate-entry";
 import { InfographicToast } from "@/components/ui/infographic-toast";
 import { ListsDropdown } from "@/components/lists/lists-dropdown";
 import { LibrarySearchDropdown } from "@/components/search/library-search-dropdown";
@@ -571,34 +571,19 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             const existingEntriesSnapshot = await getDocs(
                 query(collection(db, "users", user.uid, "entries"), limit(1000)),
             );
-            const existingEntryKeys = new Set<string>();
+
+            const existingLibrary: { title: string; mediaType: string; year: string }[] = [];
             existingEntriesSnapshot.forEach((entryDoc) => {
                 const raw = entryDoc.data() as Record<string, unknown>;
-                const existingRating =
-                    typeof raw.rating === "number"
-                        ? raw.rating
-                        : typeof raw.imdbRating === "number"
-                            ? raw.imdbRating
-                            : null;
-                existingEntryKeys.add(
-                    createDuplicateEntryKey({
-                        name: typeof raw.title === "string" ? raw.title : "",
-                        yearOfRelease:
-                            typeof raw.releaseYear === "string"
-                                ? raw.releaseYear
-                                : typeof raw.year === "string"
-                                    ? raw.year
-                                    : null,
-                        type: typeof raw.mediaType === "string" ? raw.mediaType : "movie",
-                        rating: resolveComparableRating(
-                            typeof raw.userRating === "number" ? raw.userRating : null,
-                            existingRating,
-                        ),
-                        description: typeof raw.description === "string" ? raw.description : "",
-                        length: typeof raw.lengthMinutes === "number" ? raw.lengthMinutes : null,
-                        episodes: typeof raw.episodeCount === "number" ? raw.episodeCount : null,
-                    }),
-                );
+                existingLibrary.push({
+                    title: typeof raw.title === "string" ? raw.title.trim().toLowerCase() : "",
+                    mediaType: typeof raw.mediaType === "string" ? raw.mediaType : "movie",
+                    year: typeof raw.releaseYear === "string"
+                        ? raw.releaseYear
+                        : typeof raw.year === "string"
+                            ? raw.year
+                            : "",
+                });
             });
 
             let imported = 0;
@@ -645,21 +630,25 @@ function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 const status: EntryStatus = "unspecified";
                 const completionDateUnknown = false;
                 const completedAt = null;
-                const duplicateKey = createDuplicateEntryKey({
-                    name: title,
-                    yearOfRelease: finalReleaseYear,
-                    type: mediaType,
-                    rating: resolveComparableRating(userRatingValue, finalImdbRating),
-                    description: finalDescription.trim(),
-                    length: finalLengthMinutes,
-                    episodes: metadata?.episodeCount ?? null,
+                const titleLower = title.trim().toLowerCase();
+                const duplicateExists = existingLibrary.some((e) => {
+                    if (e.mediaType !== mediaType) return false;
+                    if (e.title !== titleLower) return false;
+                    if (e.year && finalReleaseYear && e.year !== finalReleaseYear) return false;
+                    return true;
                 });
-                if (existingEntryKeys.has(duplicateKey)) {
+
+                if (duplicateExists) {
                     skipped += 1;
                     duplicatesSkipped += 1;
                     continue;
                 }
-                existingEntryKeys.add(duplicateKey);
+
+                existingLibrary.push({
+                    title: titleLower,
+                    mediaType,
+                    year: finalReleaseYear || "",
+                });
 
                 const entryRef = doc(collection(db, "users", user.uid, "entries"));
                 batch.set(entryRef, {
@@ -911,6 +900,7 @@ export function Navbar() {
     const [isLogOpen, setIsLogOpen] = useState(false);
     const [isNewListOpen, setIsNewListOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [isImportExportOpen, setIsImportExportOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -1115,14 +1105,31 @@ export function Navbar() {
                         Plotline<span className="text-neutral-600">.</span>
                     </Link>
 
-                    <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
-                        <NavLinks className="shrink-0" />
-                        <GlobalSearch
-                            className="w-[200px] lg:w-[280px]"
-                            onSelectMedia={handleGlobalSearchSelect}
-                            onRequireAuth={() => setIsAuthOpen(true)}
-                            disabled={!user}
-                        />
+                        {user && (
+                            <div className="hidden md:flex items-center gap-2">
+                                <GlobalSearch onOpenGlobal={() => { setPendingItem(null); setIsSearchModalOpen(true); }} />
+                                <div className="w-px h-6 bg-white/10 mx-1" />
+                                <CountrySelector />
+                                <div className="w-px h-6 bg-white/10 mx-1" />
+                                <button
+                                    onClick={() => {
+                                        setPendingItem(null);
+                                        setIsLogOpen(true);
+                                    }}
+                                    className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
+                                >
+                                    <Plus size={14} suppressHydrationWarning />
+                                    Log entry
+                                </button>
+                                <button
+                                    onClick={() => setIsNewListOpen(true)}
+                                    className="flex items-center gap-2 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
+                                >
+                                    <ListPlus size={14} suppressHydrationWarning />
+                                    New list
+                                </button>
+                            </div>
+                        )}
 
                         {user ? (
                             <LibrarySearchDropdown />
@@ -1277,6 +1284,14 @@ export function Navbar() {
                 isOpen={isNewListOpen}
                 onClose={() => setIsNewListOpen(false)}
                 defaultType={getMediaTypeFromSection()}
+            />
+            <SearchModal
+                isOpen={isSearchModalOpen}
+                onClose={() => setIsSearchModalOpen(false)}
+                onOpenLogModal={(media) => {
+                    setPendingItem(media);
+                    setIsLogOpen(true);
+                }}
             />
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
             <ImportExportModal isOpen={isImportExportOpen} onClose={() => setIsImportExportOpen(false)} />

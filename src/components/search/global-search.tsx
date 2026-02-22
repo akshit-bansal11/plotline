@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Search, Filter, X, Globe } from "lucide-react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Filter, Search, X } from "lucide-react";
@@ -85,6 +86,8 @@ const getResultTypeLabel = (result: SearchResult) => {
 export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled = false }: GlobalSearchProps) {
   const yearOptions = useMemo<YearOption[]>(() => getYearFilterOptions(), []);
 
+export function GlobalSearch({ onOpenGlobal }: { onOpenGlobal?: () => void }) {
+  const { entries, setSelectedEntry } = useData();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -391,27 +394,41 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
   const subtitleLabel = showEpisodesFilter ? "Episodes" : showChaptersFilter ? "Chapters" : "Count";
 
   return (
-    <div ref={containerRef} className={cn("relative z-50", className)}>
-      <div className="relative flex items-center rounded-full border border-white/10 bg-neutral-900/50 transition-colors focus-within:border-white/20 focus-within:bg-neutral-900/70">
-        <Search size={15} className="ml-3 text-neutral-500" suppressHydrationWarning />
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setIsOpen(false);
-              setIsFilterOpen(false);
-            }
-          }}
-          placeholder="Search Catalog"
-          className="w-full min-w-[220px] bg-transparent px-3 py-2.5 text-sm text-white placeholder-neutral-500 focus:outline-none"
-        />
-        {query && (
+    <div className="relative z-50">
+      {/* Search input bar */}
+      <div className="relative flex items-center">
+        <div className="relative flex items-center bg-white/5 rounded-full border border-white/5 focus-within:bg-white/10 focus-within:border-white/20 transition-all overflow-hidden w-64 focus-within:w-80 transition-width duration-300">
+          <Search size={16} className="text-neutral-400 ml-3 shrink-0" suppressHydrationWarning />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setShowResults(true);
+            }}
+            onFocus={() => { if (query || hasActiveFilters) setShowResults(true); }}
+            placeholder="Search library..."
+            className="w-full bg-transparent border-none text-sm text-white px-3 py-2 focus:outline-none placeholder-neutral-500"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="p-1 mr-1 text-neutral-400 hover:text-white rounded-full hover:bg-white/10"
+            >
+              <X size={14} suppressHydrationWarning />
+            </button>
+          )}
+          {onOpenGlobal && (
+            <button
+              id="global-search-mode-btn"
+              title="Switch to Global Search"
+              onClick={(e) => { e.preventDefault(); onOpenGlobal(); }}
+              className="p-2 mr-1 rounded-full transition-colors text-neutral-400 hover:text-white hover:bg-white/10"
+            >
+              <Globe size={14} suppressHydrationWarning />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

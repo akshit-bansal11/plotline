@@ -4,7 +4,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { ChevronDown, Star } from "lucide-react";
+import { ChevronDown, Star, Link } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn, entryStatusLabels } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -29,6 +29,7 @@ interface MediaCardProps {
     userRating?: number | null;
     imdbRating?: number | null;
     status?: EntryStatus;
+    relations?: { targetId: string; type: string; createdAtMs: number }[];
     onClick?: () => void;
     onEdit?: () => void;
     onDelete?: () => void;
@@ -46,6 +47,7 @@ export function MediaCard({
     aspectRatio = "poster",
     userRating,
     status,
+    relations,
     onClick,
     onEdit,
     onDelete,
@@ -62,9 +64,22 @@ export function MediaCard({
     const [isRatingMenuOpen, setIsRatingMenuOpen] = useState(false);
     const [hoverRating, setHoverRating] = useState<number | null>(null);
     const [isRatingUpdating, setIsRatingUpdating] = useState(false);
+    const [isRelationsOpen, setIsRelationsOpen] = useState(false);
+    const relationsMenuRef = useRef<HTMLDivElement | null>(null);
 
-    const { selectedCountry } = useData();
+    const { selectedCountry, entries } = useData();
     const ottProviders = getOTTAvailability(title, selectedCountry, type);
+
+    useEffect(() => {
+        if (!isRelationsOpen) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (relationsMenuRef.current && !relationsMenuRef.current.contains(event.target as Node)) {
+                setIsRelationsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isRelationsOpen]);
 
     useEffect(() => {
         if (!isStatusOpen) return;
@@ -214,7 +229,7 @@ export function MediaCard({
                     <div className="absolute inset-0 bg-neutral-800/60" />
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/95 via-neutral-950/50 to-transparent opacity-100 md:opacity-0 transition-opacity duration-300 md:group-hover:opacity-100" />
 
                 {status ? (
                     <div
@@ -357,7 +372,7 @@ export function MediaCard({
 
                 {/* OTT Badges */}
                 {ottProviders.length > 0 && (
-                    <div className="absolute bottom-20 left-3 flex flex-col items-center mb-5 gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute bottom-20 left-3 flex flex-col items-center mb-5 gap-2 z-10 opacity-100 md:opacity-0 transition-opacity duration-300 md:group-hover:opacity-100">
                         {ottProviders.map((provider) => (
                             <div
                                 key={provider.name}
@@ -373,6 +388,57 @@ export function MediaCard({
                                 />
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {/* RELATIONS */}
+                {relations && relations.length > 0 && (
+                    <div
+                        className="absolute bottom-3 right-3 z-20 opacity-100 md:opacity-0 transition-opacity duration-300 md:group-hover:opacity-100"
+                        ref={relationsMenuRef}
+                        onMouseEnter={() => setIsRelationsOpen(true)}
+                        onMouseLeave={() => setIsRelationsOpen(false)}
+                    >
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                setIsRelationsOpen((prev) => !prev);
+                            }}
+                            className={cn(
+                                "flex items-center justify-center w-8 h-8 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-neutral-300 hover:text-white hover:bg-black/70 transition-all shadow-lg",
+                                isRelationsOpen ? "bg-black/80 ring-1 ring-white/20" : ""
+                            )}
+                        >
+                            <Link size={14} />
+                        </button>
+
+                        <AnimatePresence>
+                            {isRelationsOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="absolute bottom-full right-0 mb-2 w-48 rounded-xl border border-white/10 bg-neutral-950/95 backdrop-blur-xl p-2 shadow-xl"
+                                >
+                                    <div className="text-xs font-semibold text-neutral-400 mb-2 px-1">Related Entries</div>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                        {relations.map((rel, idx) => {
+                                            const match = entries.find(e => String(e.id) === rel.targetId);
+                                            return (
+                                                <div key={idx} className="flex flex-col rounded-lg px-2 py-1.5 hover:bg-white/5 transition-colors group/rel cursor-default" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                }}>
+                                                    <span className="text-[10px] text-neutral-500 font-medium uppercase tracking-wider">{rel.type}</span>
+                                                    <span className="text-xs text-neutral-200 truncate group-hover/rel:text-white">{match ? match.title : "Unknown Entry"}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 )}
 

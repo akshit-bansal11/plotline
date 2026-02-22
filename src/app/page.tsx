@@ -17,6 +17,8 @@ import { cn, entryMediaTypeLabels } from "@/lib/utils";
 import { LogEntryModal } from "@/components/entry/log-entry-modal";
 import { EntryDetailModal } from "@/components/entry/entry-detail-modal";
 import { MyListsModal } from "@/components/lists/my-lists-modal";
+import { Modal } from "@/components/ui/modal";
+import { RELATION_OPTIONS, RelationType, updateBidirectionalRelations, inverseRelationMap } from "@/lib/relations";
 
 const formatISODate = (millis: number) => {
   const date = new Date(millis);
@@ -320,6 +322,36 @@ function LibrarySection({
   const [dragAnnouncement, setDragAnnouncement] = useState("");
   const expandTimeoutRef = useRef<number | null>(null);
 
+  const [relationModal, setRelationModal] = useState<{ sourceId: string; targetId: string; type: RelationType; targetTitle: string; sourceTitle: string } | null>(null);
+  const [relationModalError, setRelationModalError] = useState<string | null>(null);
+  const [isRelationSaving, setIsRelationSaving] = useState(false);
+
+  const handleRelationDrop = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) {
+      handleItemDragEnd({ preserveAnnouncement: true });
+      setDragAnnouncement("Cannot relate an entry to itself.");
+      return;
+    }
+    const sourceEntry = entries.find(e => String(e.id) === sourceId);
+    const targetEntry = entries.find(e => String(e.id) === targetId);
+    if (!sourceEntry || !targetEntry) {
+      handleItemDragEnd({ preserveAnnouncement: true });
+      setDragAnnouncement("Could not create the relationship from this drop.");
+      return;
+    }
+
+    setRelationModalError(null);
+    setRelationModal({
+      sourceId,
+      targetId,
+      type: "Sequel",
+      sourceTitle: sourceEntry.title,
+      targetTitle: targetEntry.title,
+    });
+    handleItemDragEnd({ preserveAnnouncement: true });
+    setDragAnnouncement(`Dropped ${sourceEntry.title} onto ${targetEntry.title}. Choose a relationship type.`);
+  };
+
   const sectionEntries = useMemo(() => {
     return entries.filter((entry) => mediaTypes.includes(entry.mediaType));
   }, [entries, mediaTypes]);
@@ -453,9 +485,9 @@ function LibrarySection({
     setIsRemoveTargetActive(false);
   };
 
-  const handleItemDragEnd = () => {
+  const handleItemDragEnd = (options?: { preserveAnnouncement?: boolean }) => {
     clearExpandTimeout();
-    if (activeDrag) {
+    if (activeDrag && !options?.preserveAnnouncement) {
       setDragAnnouncement("Drag cancelled.");
     }
     setActiveDrag(null);
@@ -891,6 +923,7 @@ function LibrarySection({
                                               imdbRating: entry.imdbRating,
                                               status: entry.status,
                                               type: gridType,
+                                              relations: entry.relations,
                                               onClick: () => onSelectEntry(entry),
                                               showActions: true,
                                               onEdit: () => onEditEntry(entry),
@@ -900,7 +933,12 @@ function LibrarySection({
                                             activeDragEntryId={activeDrag?.entryId ?? null}
                                             onItemDragStart={handleItemDragStart}
                                             onItemDragEnd={handleItemDragEnd}
-                                            onItemDragOverPosition={({ targetEntryId, position }) => {
+                                            onItemDragOverPosition={(details) => {
+                                              if (!details) {
+                                                setReorderIndicator(null);
+                                                return;
+                                              }
+                                              const { targetEntryId, position } = details;
                                               if (!activeDrag) return;
                                               if (activeDrag.sourceListId === list.id) {
                                                 setReorderIndicator({ listId: list.id, targetEntryId, position });
@@ -911,6 +949,11 @@ function LibrarySection({
                                             }}
                                             onItemDropPosition={({ targetEntryId, position }) => {
                                               void handleDropOnItem(list.id, targetEntryId, position);
+                                            }}
+                                            onItemDropOnItem={({ targetEntryId }) => {
+                                              if (activeDrag) {
+                                                handleRelationDrop(String(activeDrag.entryId), targetEntryId);
+                                              }
                                             }}
                                             dropIndicatorEntryId={
                                               reorderIndicator?.listId === list.id ? reorderIndicator.targetEntryId : null
@@ -945,6 +988,7 @@ function LibrarySection({
                         imdbRating: entry.imdbRating,
                         status: entry.status,
                         type: gridType,
+                        relations: entry.relations,
                         onClick: () => onSelectEntry(entry),
                         showActions: true,
                         onEdit: () => onEditEntry(entry),
@@ -954,6 +998,11 @@ function LibrarySection({
                       activeDragEntryId={activeDrag?.entryId ?? null}
                       onItemDragStart={handleItemDragStart}
                       onItemDragEnd={handleItemDragEnd}
+                      onItemDropOnItem={({ targetEntryId }) => {
+                        if (activeDrag) {
+                          handleRelationDrop(String(activeDrag.entryId), targetEntryId);
+                        }
+                      }}
                     />
                   )}
                 </div>
@@ -1008,6 +1057,110 @@ function LibrarySection({
           </div>
         </>
       )}
+
+      {relationModal && (
+        <Modal
+          isOpen={!!relationModal}
+          onClose={() => {
+            if (isRelationSaving) return;
+            setRelationModal(null);
+            setRelationModalError(null);
+          }}
+          title="Create Relationship"
+          className="bg-neutral-900/80 max-w-md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-300">
+              You dropped <strong>{relationModal.sourceTitle}</strong> onto <strong>{relationModal.targetTitle}</strong>.
+            </p>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-neutral-400">Relationship Type</label>
+              <select
+                value={relationModal.type}
+                onChange={e => {
+                  setRelationModalError(null);
+                  setRelationModal(prev => prev ? { ...prev, type: e.target.value as RelationType } : null);
+                }}
+                className="w-full bg-neutral-950 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-white/20"
+              >
+                {RELATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+              <p className="text-[10px] text-neutral-500 mt-1">
+                This will set <span className="text-white">{relationModal.sourceTitle}</span> as a <span className="text-white font-medium">{relationModal.type}</span> of <span className="text-white">{relationModal.targetTitle}</span>.
+              </p>
+            </div>
+            {relationModalError ? <div className="text-xs text-red-400">{relationModalError}</div> : null}
+            <div className="flex gap-3 justify-end pt-4 border-t border-white/5 mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isRelationSaving) return;
+                  setRelationModal(null);
+                  setRelationModalError(null);
+                }}
+                className="px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors"
+                disabled={isRelationSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!uid || !relationModal || isRelationSaving) return;
+                  const sourceDoc = entries.find(e => String(e.id) === relationModal.sourceId);
+                  const oldRelations = Array.isArray(sourceDoc?.relations)
+                    ? sourceDoc.relations.filter((r) => Boolean(r.targetId) && Boolean(r.type) && !r.inferred)
+                    : [];
+                  const sourceRelationType = inverseRelationMap[relationModal.type] || relationModal.type;
+
+                  const relationsForTarget = oldRelations.filter((r) => r.targetId === relationModal.targetId);
+                  const existingRelation = relationsForTarget[0] || null;
+                  if (relationsForTarget.length === 1 && existingRelation?.type === sourceRelationType) {
+                    setRelationModalError("This relationship already exists.");
+                    return;
+                  }
+
+                  const updatedRelation = {
+                    targetId: relationModal.targetId,
+                    type: sourceRelationType,
+                    createdAtMs: Date.now(),
+                  };
+
+                  const newRelations = [
+                    ...oldRelations.filter((r) => r.targetId !== relationModal.targetId),
+                    updatedRelation,
+                  ];
+
+                  setRelationModalError(null);
+                  setIsRelationSaving(true);
+                  try {
+                    await updateDoc(doc(db, "users", uid, "entries", relationModal.sourceId), {
+                      relations: newRelations,
+                      updatedAt: serverTimestamp(),
+                    });
+
+                    await updateBidirectionalRelations(uid, relationModal.sourceId, oldRelations, newRelations);
+                    setDragAnnouncement(
+                      existingRelation
+                        ? `Updated: ${relationModal.targetTitle} is now ${relationModal.type} of ${relationModal.sourceTitle}.`
+                        : `Linked: ${relationModal.targetTitle} is ${relationModal.type} of ${relationModal.sourceTitle}.`
+                    );
+                    setRelationModal(null);
+                  } catch {
+                    setRelationModalError("Failed to save relationship. Please try again.");
+                  } finally {
+                    setIsRelationSaving(false);
+                  }
+                }}
+                className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-semibold"
+                disabled={isRelationSaving}
+              >
+                {isRelationSaving ? "Saving..." : "Create Link"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1033,8 +1186,9 @@ export default function Home() {
     setLibraryFilters((prev) => ({ ...prev, [key]: next })), []);
 
   const handleEditEntry = useCallback((entry: EntryDoc) => {
-    setIsEditingEntry(entry);
-  }, []);
+    const latestEntry = entries.find((candidate) => candidate.id === entry.id) || entry;
+    setIsEditingEntry(latestEntry);
+  }, [entries]);
 
   const handleEditList = useCallback((list: ListRow) => {
     setListsModalListId(list.id);
@@ -1054,6 +1208,24 @@ export default function Home() {
     try {
       if (!uid) return false;
       const entryRef = doc(db, "users", uid, "entries", entry.id);
+
+      await updateBidirectionalRelations(uid, entry.id, entry.relations || [], []);
+
+      const danglingRelationSources = entries.filter(
+        (candidate) =>
+          candidate.id !== entry.id &&
+          candidate.relations.some((relation) => relation.targetId === entry.id),
+      );
+
+      await Promise.all(
+        danglingRelationSources.map((candidate) => {
+          const cleanedRelations = candidate.relations.filter((relation) => relation.targetId !== entry.id);
+          return updateDoc(doc(db, "users", uid, "entries", candidate.id), {
+            relations: cleanedRelations,
+            updatedAt: serverTimestamp(),
+          });
+        }),
+      );
 
       // Delete from all lists
       const listsSnap = await getDocs(collection(db, "users", uid, "lists"));
@@ -1075,7 +1247,7 @@ export default function Home() {
       console.error("Failed to delete entry:", err);
       return false;
     }
-  }, [uid]);
+  }, [uid, entries]);
 
   const handleDeleteEntry = useCallback(async (entry: EntryDoc) => {
     const confirmed = confirm(`Are you sure you want to delete "${entry.title}"?`);
@@ -1171,7 +1343,14 @@ export default function Home() {
           lengthMinutes: isEditingEntry.lengthMinutes,
           episodeCount: isEditingEntry.episodeCount,
           chapterCount: isEditingEntry.chapterCount,
+          playTime: isEditingEntry.playTime,
+          achievements: isEditingEntry.achievements,
+          totalAchievements: isEditingEntry.totalAchievements,
+          platform: isEditingEntry.platform,
+          isMovie: isEditingEntry.isMovie,
+          listIds: isEditingEntry.listIds,
           genresThemes: isEditingEntry.genresThemes,
+          relations: isEditingEntry.relations,
           status: isEditingEntry.status,
           completedAt: isEditingEntry.completedAtMs,
           completionDateUnknown: isEditingEntry.completionDateUnknown,

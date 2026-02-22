@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 
 import { Timestamp, addDoc, collection, serverTimestamp, query, orderBy, limit, onSnapshot, updateDoc, doc, getDocs, where, deleteDoc } from "firebase/firestore";
-import { Plus, Gamepad2, Monitor, Smartphone, Disc, HardDrive, Hexagon, Tablet, Laptop, Terminal, Loader2, Search, ChevronDown } from "lucide-react";
+import { Plus, Gamepad2, Monitor, Smartphone, Disc, HardDrive, Hexagon, Tablet, Laptop, Terminal, Loader2, Search, ChevronDown, X, CheckCircle } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
 import { db } from "@/lib/firebase";
@@ -12,8 +12,9 @@ import { useAuth } from "@/context/auth-context";
 import { NewListModal } from "@/components/lists/new-list-modal";
 import { DescriptionTextarea } from "@/components/ui/description-textarea";
 import { sanitizeImportedDescription } from "@/lib/validation";
-import { createDuplicateEntryKey, resolveComparableRating } from "@/lib/duplicate-entry";
 import { InfographicToast } from "@/components/ui/infographic-toast";
+import { updateBidirectionalRelations, RELATION_OPTIONS, RelationType } from "@/lib/relations";
+import { useData, EntryDoc } from "@/context/data-context";
 
 export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified" | "main_story_completed" | "fully_completed" | "backlogged" | "bored" | "own" | "wishlist" | "not_committed" | "committed";
@@ -74,6 +75,7 @@ export type LoggableMedia = {
   status?: EntryStatus;
   completedAt?: number | null;
   completionDateUnknown?: boolean;
+  relations?: { targetId: string; type: string; createdAtMs: number; inferred?: boolean }[];
 };
 
 type ListMediaType = "movie" | "series" | "anime" | "manga" | "game";
@@ -95,6 +97,41 @@ interface SearchResponse {
   errors?: string[];
   cached?: boolean;
 }
+
+type EditableRelation = {
+  targetId: string;
+  type: string;
+  title: string;
+  image: string | null;
+  mediaType: string;
+};
+
+const buildEditableRelations = (
+  rawRelations: Array<{ targetId: string; type: string }>,
+  entries: EntryDoc[],
+): EditableRelation[] => {
+  const next: EditableRelation[] = [];
+  const seenTargets = new Set<string>();
+
+  for (const relation of rawRelations) {
+    const targetId = String(relation.targetId || "").trim();
+    const type = String(relation.type || "").trim();
+    if (!targetId || !type) continue;
+    if (seenTargets.has(targetId)) continue;
+
+    seenTargets.add(targetId);
+    const match = entries.find((entry) => String(entry.id) === targetId);
+    next.push({
+      targetId,
+      type,
+      title: match ? match.title : "Unknown Entry",
+      image: match ? match.image : null,
+      mediaType: match ? match.mediaType : "movie",
+    });
+  }
+
+  return next;
+};
 
 const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
 const mediaTypeLabels: Record<EntryMediaType, string> = entryMediaTypeLabels;
@@ -180,6 +217,7 @@ export function LogEntryModal({
   isEditing?: boolean;
 }) {
   const { user } = useAuth();
+  const { entries } = useData();
   const [activeTab, setActiveTab] = useState<"manual" | "search">("manual");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -219,6 +257,13 @@ export function LogEntryModal({
   const [externalId, setExternalId] = useState<string | null>(null);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(null);
+
+  const [originalRelations, setOriginalRelations] = useState<{ targetId: string; type: string; createdAtMs: number }[]>([]);
+  const [relations, setRelations] = useState<EditableRelation[]>([]);
+  const [isRelationSearchOpen, setIsRelationSearchOpen] = useState(false);
+  const [relationSearchQuery, setRelationSearchQuery] = useState("");
+  const [selectedRelationDoc, setSelectedRelationDoc] = useState<EntryDoc | null>(null);
+  const [selectedRelationType, setSelectedRelationType] = useState<RelationType>("Sequel");
 
   const [lists, setLists] = useState<{ id: string; name: string; type: ListMediaType; types: ListMediaType[] }[]>([]);
 
@@ -399,6 +444,8 @@ export function LogEntryModal({
     return lists.filter((list) => list.types.includes(listMediaType));
   }, [lists, listMediaType]);
 
+  const relatedTargetIdSet = useMemo(() => new Set(relations.map((relation) => relation.targetId)), [relations]);
+
   // Effect to find which lists this item is in
   useEffect(() => {
     // Only run this synchronization logic if we are editing an existing item
@@ -554,6 +601,26 @@ export function LogEntryModal({
         setCompletionUnknown(false);
       }
       // List IDs set by other effect
+
+      if (normalizedInitial.relations) {
+        const initialRelations = normalizedInitial.relations
+          .filter((relation) => relation.inferred !== true)
+          .map((relation) => ({
+            targetId: String(relation.targetId || "").trim(),
+            type: String(relation.type || "").trim(),
+            createdAtMs:
+              typeof relation.createdAtMs === "number" && Number.isFinite(relation.createdAtMs)
+                ? relation.createdAtMs
+                : Date.now(),
+          }))
+          .filter((relation) => Boolean(relation.targetId) && Boolean(relation.type));
+
+        setOriginalRelations(initialRelations);
+        setRelations(buildEditableRelations(initialRelations, entries));
+      } else {
+        setOriginalRelations([]);
+        setRelations([]);
+      }
     } else if (initializedRef.current !== "new") {
       // Only reset if we haven't initialized "new" state yet
       initializedRef.current = "new";
@@ -588,8 +655,39 @@ export function LogEntryModal({
       setExternalId(null);
       setSelectedListIds(new Set());
       setInitialListIds(new Set());
+      setOriginalRelations([]);
+      setRelations([]);
     }
-  }, [isOpen, normalizedInitial]);
+  }, [isOpen, normalizedInitial, entries, isEditing]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (relations.length === 0) return;
+
+    setRelations((prev) => {
+      let changed = false;
+      const next = prev.map((relation) => {
+        const match = entries.find((entry) => String(entry.id) === relation.targetId);
+        if (!match) return relation;
+        if (
+          relation.title === match.title &&
+          relation.image === match.image &&
+          relation.mediaType === match.mediaType
+        ) {
+          return relation;
+        }
+        changed = true;
+        return {
+          ...relation,
+          title: match.title,
+          image: match.image,
+          mediaType: match.mediaType,
+        };
+      });
+
+      return changed ? next : prev;
+    });
+  }, [entries, isOpen, relations.length]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -736,48 +834,15 @@ export function LogEntryModal({
     }
 
     if (!isEditing) {
-      const candidateKey = createDuplicateEntryKey({
-        name: trimmedTitle,
-        yearOfRelease: releaseYearValue,
-        type: mediaType,
-        rating: resolveComparableRating(userRatingValue, imdbRatingValue),
-        description: description.trim(),
-        length: lengthMinutesValue,
-        episodes: episodeCountValue,
-      });
-
-      const existingEntriesSnapshot = await getDocs(
-        query(collection(db, "users", uid, "entries"), limit(1000)),
-      );
-
-      const duplicateExists = existingEntriesSnapshot.docs.some((entryDoc) => {
-        const raw = entryDoc.data() as Record<string, unknown>;
-        const existingRating =
-          typeof raw.rating === "number"
-            ? raw.rating
-            : typeof raw.imdbRating === "number"
-              ? raw.imdbRating
-              : null;
-
-        const existingKey = createDuplicateEntryKey({
-          name: typeof raw.title === "string" ? raw.title : "",
-          yearOfRelease:
-            typeof raw.releaseYear === "string"
-              ? raw.releaseYear
-              : typeof raw.year === "string"
-                ? raw.year
-                : null,
-          type: typeof raw.mediaType === "string" ? raw.mediaType : "movie",
-          rating: resolveComparableRating(
-            typeof raw.userRating === "number" ? raw.userRating : null,
-            existingRating,
-          ),
-          description: typeof raw.description === "string" ? raw.description : "",
-          length: typeof raw.lengthMinutes === "number" ? raw.lengthMinutes : null,
-          episodes: typeof raw.episodeCount === "number" ? raw.episodeCount : null,
-        });
-
-        return existingKey === candidateKey;
+      const candidateTitleLower = trimmedTitle.toLowerCase();
+      const duplicateExists = entries.some((e) => {
+        if (externalId && String(e.externalId) === String(externalId)) return true;
+        if (e.mediaType !== mediaType) return false;
+        if (e.title.toLowerCase() !== candidateTitleLower) return false;
+        const eYear = e.releaseYear || e.year || "";
+        const rYear = releaseYearValue || "";
+        if (eYear && rYear && eYear !== rYear) return false;
+        return true;
       });
 
       if (duplicateExists) {
@@ -793,6 +858,19 @@ export function LogEntryModal({
     setIsSaving(true);
     try {
       const entryId = isEditing && normalizedInitial?.id ? String(normalizedInitial.id) : null;
+      const relationPayload = relations.reduce<{ targetId: string; type: string; createdAtMs: number }[]>(
+        (acc, relation) => {
+          if (!relation.targetId || !relation.type) return acc;
+          if (acc.some((existing) => existing.targetId === relation.targetId)) return acc;
+          acc.push({
+            targetId: relation.targetId,
+            type: relation.type,
+            createdAtMs: Date.now(),
+          });
+          return acc;
+        },
+        [],
+      );
 
       // 1. Save/Update Entry
       const entryData = {
@@ -820,6 +898,7 @@ export function LogEntryModal({
         completionDateUnknown: completionDateUnknownValue,
         updatedAt: serverTimestamp(),
         listIds: Array.from(selectedListIds), // Save list relationships in entry
+        relations: relationPayload,
       };
 
       let finalEntryId = entryId;
@@ -911,6 +990,9 @@ export function LogEntryModal({
 
       await Promise.all(promises);
 
+      const relationsToSave = relationPayload.map((relation) => ({ targetId: relation.targetId, type: relation.type }));
+      await updateBidirectionalRelations(uid, finalEntryId, originalRelations, relationsToSave);
+
       if (!isEditing) {
         // Reset form
         setTitle("");
@@ -935,6 +1017,11 @@ export function LogEntryModal({
 
         setSelectedListIds(new Set());
         setInitialListIds(new Set());
+        setOriginalRelations([]);
+        setRelations([]);
+        setIsRelationSearchOpen(false);
+        setRelationSearchQuery("");
+        setSelectedRelationDoc(null);
 
         setImage(null);
         setExternalId(null);
@@ -992,30 +1079,54 @@ export function LogEntryModal({
                   <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
                 </div>
               ) : searchResults.length > 0 ? (
-                searchResults.map((result) => (
-                  <div
-                    key={result.id}
-                    onClick={() => handleSelectResult(result)}
-                    className="flex w-full gap-3 rounded-xl border border-transparent p-2 text-left hover:bg-white/5 hover:border-white/5 transition-all group cursor-pointer"
-                  >
-                    <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
-                      {result.image ? (
-                        <Image src={result.image} alt={result.title} width={56} height={80} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-neutral-700">
-                          <Search size={16} />
+                searchResults.map((result) => {
+                  const isDuplicate = entries.some((e) => {
+                    if (String(e.externalId) === String(result.id)) return true;
+                    if (e.mediaType !== result.type) return false;
+                    const eName = e.title.trim().toLowerCase();
+                    const rName = result.title.trim().toLowerCase();
+                    if (eName !== rName) return false;
+                    const eYear = e.releaseYear || e.year || "";
+                    const rYear = result.year || "";
+                    if (eYear && rYear && eYear !== rYear) return false;
+                    return true;
+                  });
+
+                  return (
+                    <div
+                      key={result.id}
+                      onClick={() => !isDuplicate && handleSelectResult(result)}
+                      className={cn(
+                        "flex w-full gap-3 rounded-xl border p-2 text-left transition-all relative overflow-hidden",
+                        isDuplicate
+                          ? "opacity-50 cursor-not-allowed bg-neutral-900 border-white/5"
+                          : "border-transparent hover:bg-white/5 hover:border-white/5 group cursor-pointer"
+                      )}
+                    >
+                      {isDuplicate && (
+                        <div className="absolute inset-0 bg-neutral-950/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                          <CheckCircle className="text-emerald-500 h-8 w-8 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                         </div>
                       )}
-                    </div>
-                    <div className="flex flex-1 flex-col justify-center min-w-0">
-                      <div className="truncate font-medium text-neutral-200 group-hover:text-white">{result.title}</div>
-                      <div className="text-xs text-neutral-500">
-                        {result.year ? `${result.year} • ` : ""}{mediaTypeLabels[result.type]}
+                      <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
+                        {result.image ? (
+                          <Image src={result.image} alt={result.title} width={56} height={80} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-neutral-700">
+                            <Search size={16} />
+                          </div>
+                        )}
                       </div>
-                      {result.overview && <ExpandableText text={result.overview} />}
+                      <div className="flex flex-1 flex-col justify-center min-w-0">
+                        <div className="truncate font-medium text-neutral-200 group-hover:text-white">{result.title}</div>
+                        <div className="text-xs text-neutral-500">
+                          {result.year ? `${result.year} • ` : ""}{mediaTypeLabels[result.type]}
+                        </div>
+                        {result.overview && <ExpandableText text={result.overview} />}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : searchQuery ? (
                 <div className="text-center text-sm text-neutral-500 py-10">
                   {searchError || "No results found."}
@@ -1463,6 +1574,125 @@ export function LogEntryModal({
                   rows={4}
                   placeholder="What did you think?"
                 />
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-white/5 mt-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-neutral-300">Related Entries</label>
+                </div>
+                <div className="space-y-3">
+                  {relations.map((rel, idx) => (
+                    <div key={`${rel.targetId}-${rel.type}`} className="flex items-center gap-3 bg-neutral-800/50 p-3 rounded-xl border border-white/5">
+                      {rel.image ? (
+                        <div className="w-8 h-12 relative rounded overflow-hidden shrink-0 bg-neutral-800 hidden sm:block">
+                          <Image src={rel.image} alt="" fill className="object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-12 rounded bg-neutral-800 shrink-0 hidden sm:block" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-neutral-200 truncate">{rel.title}</div>
+                        <div className="text-[10px] text-neutral-500">{rel.type}</div>
+                      </div>
+                      <button type="button" onClick={() => setRelations(prev => prev.filter((_, i) => i !== idx))} className="text-neutral-500 hover:text-red-400 p-2">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {!isRelationSearchOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setIsRelationSearchOpen(true);
+                      }}
+                      className="flex items-center gap-2 text-xs font-medium text-neutral-400 hover:text-neutral-200 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" /> Add Related Entry
+                    </button>
+                  ) : (
+                    <div className="bg-neutral-800/80 p-3 rounded-xl border border-white/10 space-y-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                        <input
+                          value={relationSearchQuery}
+                          onChange={e => {
+                            setError(null);
+                            setRelationSearchQuery(e.target.value);
+                            setSelectedRelationDoc(null);
+                          }}
+                          placeholder="Search your library..."
+                          className="w-full bg-neutral-900/50 border border-white/5 rounded-lg py-2 pl-9 pr-3 text-sm text-neutral-200 focus:outline-none focus:border-white/20"
+                        />
+                        {relationSearchQuery && !selectedRelationDoc && (
+                          <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-neutral-900 border border-white/10 rounded-lg shadow-xl z-50">
+                            {entries.filter((entry) => {
+                              const entryId = String(entry.id);
+                              return (
+                                entry.title.toLowerCase().includes(relationSearchQuery.toLowerCase()) &&
+                                entryId !== String(normalizedInitial?.id || "new") &&
+                                !relatedTargetIdSet.has(entryId)
+                              );
+                            }).map(e => (
+                              <button
+                                type="button"
+                                key={e.id}
+                                onClick={() => { setSelectedRelationDoc(e); setRelationSearchQuery(e.title); }}
+                                className="w-full text-left px-3 py-2 text-xs text-neutral-300 hover:bg-white/10 truncate"
+                              >
+                                {e.title}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {selectedRelationDoc && (
+                        <div className="flex gap-2">
+                          <select
+                            value={selectedRelationType}
+                            onChange={e => setSelectedRelationType(e.target.value as RelationType)}
+                            className="flex-1 bg-neutral-900/50 border border-white/5 rounded-lg py-2 px-3 text-sm text-neutral-200 focus:outline-none focus:border-white/20"
+                          >
+                            {RELATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const targetId = String(selectedRelationDoc.id);
+                              if (targetId === String(normalizedInitial?.id || "new")) {
+                                setError("You cannot relate an entry to itself.");
+                                return;
+                              }
+                              if (relations.some((relation) => relation.targetId === targetId)) {
+                                setError("This entry is already related. Remove it first to change the relation type.");
+                                return;
+                              }
+                              setError(null);
+                              setRelations((prev) => [
+                                ...prev,
+                                {
+                                  targetId,
+                                  type: selectedRelationType,
+                                  title: selectedRelationDoc.title,
+                                  image: selectedRelationDoc.image,
+                                  mediaType: selectedRelationDoc.mediaType,
+                                },
+                              ]);
+                              setIsRelationSearchOpen(false);
+                              setRelationSearchQuery("");
+                              setSelectedRelationDoc(null);
+                            }}
+                            className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-4 rounded-lg transition-colors"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      )}
+                      <button type="button" onClick={() => { setIsRelationSearchOpen(false); setRelationSearchQuery(""); setSelectedRelationDoc(null); }} className="w-full text-xs text-neutral-500 hover:text-neutral-300 py-1 text-center">Cancel</button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
