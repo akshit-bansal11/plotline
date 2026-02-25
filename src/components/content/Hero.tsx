@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { GlassCard } from "@/components/ui/glass-card";
+import { StatCard } from "@/components/content/StatCard";
 
 interface HeroProps {
   username?: string;
@@ -60,19 +60,5 @@ export function Hero({
       </div>
 
     </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <GlassCard
-      className="flex flex-col gap-1 p-6 transition-transform hover:-translate-y-1"
-      hoverEffect
-    >
-      <span className="text-3xl font-bold text-white">
-        {value.toLocaleString()}
-      </span>
-      <span className="text-sm font-medium text-neutral-500">{label}</span>
-    </GlassCard>
   );
 }

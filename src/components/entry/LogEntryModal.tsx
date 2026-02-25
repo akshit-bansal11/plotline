@@ -5,16 +5,17 @@ import Image from "next/image";
 
 import { Timestamp, addDoc, collection, serverTimestamp, query, orderBy, limit, onSnapshot, updateDoc, doc, getDocs, where, deleteDoc } from "firebase/firestore";
 import { Plus, Gamepad2, Monitor, Smartphone, Disc, HardDrive, Hexagon, Tablet, Laptop, Terminal, Loader2, Search, ChevronDown, X, CheckCircle } from "lucide-react";
-import { Modal } from "@/components/ui/modal";
+import { Modal } from "@/components/ui/Modal";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
 import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/auth-context";
-import { NewListModal } from "@/components/lists/new-list-modal";
-import { DescriptionTextarea } from "@/components/ui/description-textarea";
+import { useAuth } from "@/context/AuthContext";
+import { NewListModal } from "@/components/lists/NewListModal";
+import { DescriptionTextarea } from "@/components/ui/DescriptionTextarea";
 import { sanitizeImportedDescription } from "@/lib/validation";
-import { InfographicToast } from "@/components/ui/infographic-toast";
+import { InfographicToast } from "@/components/ui/InfographicToast";
+import { ExpandableText } from "@/components/ui/ExpandableText";
 import { updateBidirectionalRelations, RELATION_OPTIONS, RelationType } from "@/lib/relations";
-import { useData, EntryDoc } from "@/context/data-context";
+import { useData, EntryDoc } from "@/context/DataContext";
 
 export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified" | "main_story_completed" | "fully_completed" | "backlogged" | "bored" | "own" | "wishlist" | "not_committed" | "committed";
@@ -179,30 +180,7 @@ const parseISODate = (value: string): { date: Date; millis: number } | null => {
   return { date, millis: date.getTime() };
 };
 
-function ExpandableText({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = text.length > 150;
 
-  return (
-    <div className="mt-1">
-      <div className={cn("text-xs text-neutral-400", !expanded && isLong && "line-clamp-2")}>
-        {text}
-      </div>
-      {isLong && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded(!expanded);
-          }}
-          className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-neutral-500 hover:text-neutral-300"
-        >
-          {expanded ? "Show less" : "Show more"}
-        </button>
-      )}
-    </div>
-  );
-}
 
 export function LogEntryModal({
   isOpen,
@@ -257,6 +235,7 @@ export function LogEntryModal({
   const [externalId, setExternalId] = useState<string | null>(null);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(null);
+  const [listEligibilityToast, setListEligibilityToast] = useState<{ id: number; message: string } | null>(null);
 
   const [originalRelations, setOriginalRelations] = useState<{ targetId: string; type: string; createdAtMs: number }[]>([]);
   const [relations, setRelations] = useState<EditableRelation[]>([]);
@@ -443,6 +422,8 @@ export function LogEntryModal({
     // Show all lists that accept this media type
     return lists.filter((list) => list.types.includes(listMediaType));
   }, [lists, listMediaType]);
+  const isListEligibleForSelection =
+    status === "completed" || status === "main_story_completed" || status === "fully_completed";
 
   const relatedTargetIdSet = useMemo(() => new Set(relations.map((relation) => relation.targetId)), [relations]);
 
@@ -507,13 +488,14 @@ export function LogEntryModal({
     return () => {
       cancelled = true;
     };
-  }, [uid, isOpen, isEditing, normalizedInitial?.id, lists]);
+  }, [uid, isOpen, isEditing, normalizedInitial?.id, normalizedInitial?.listIds, lists]);
 
   useEffect(() => {
     if (!isOpen) {
       initializedRef.current = null;
       fetchedListIdsForEntryRef.current = null;
       setDuplicateToast(null);
+      setListEligibilityToast(null);
       return;
     }
 
@@ -701,6 +683,12 @@ export function LogEntryModal({
     }
   }, [status, isOpen, completionDate, completionUnknown]);
 
+  useEffect(() => {
+    if (isListEligibleForSelection) return;
+    if (selectedListIds.size === 0) return;
+    setSelectedListIds(new Set());
+  }, [isListEligibleForSelection, selectedListIds]);
+
   const userRatingError = useMemo(() => {
     const raw = userRating.trim();
     if (!raw) return null;
@@ -820,9 +808,12 @@ export function LogEntryModal({
       }
     }
 
+    const effectiveSelectedListIds =
+      isListEligibleForSelection ? selectedListIds : new Set<string>();
+
     // Validate lists
-    if (selectedListIds.size > 0) {
-      for (const id of selectedListIds) {
+    if (effectiveSelectedListIds.size > 0) {
+      for (const id of effectiveSelectedListIds) {
         const list = lists.find(l => l.id === id);
         if (list && !list.types.includes(listMediaType)) {
           // Allow saving but maybe warn? Or just filter out?
@@ -897,7 +888,7 @@ export function LogEntryModal({
         completedAt,
         completionDateUnknown: completionDateUnknownValue,
         updatedAt: serverTimestamp(),
-        listIds: Array.from(selectedListIds), // Save list relationships in entry
+        listIds: Array.from(effectiveSelectedListIds), // Save list relationships in entry
         relations: relationPayload,
       };
 
@@ -920,9 +911,9 @@ export function LogEntryModal({
       if (!finalEntryId) throw new Error("Failed to get entry ID");
 
       // 2. Handle Lists (Add/Remove)
-      const addedIds = Array.from(selectedListIds).filter(id => !initialListIds.has(id));
-      const removedIds = Array.from(initialListIds).filter(id => !selectedListIds.has(id));
-      const commonIds = Array.from(selectedListIds).filter(id => initialListIds.has(id));
+      const addedIds = Array.from(effectiveSelectedListIds).filter(id => !initialListIds.has(id));
+      const removedIds = Array.from(initialListIds).filter(id => !effectiveSelectedListIds.has(id));
+      const commonIds = Array.from(effectiveSelectedListIds).filter(id => initialListIds.has(id));
 
       // Batch or Parallel processing? Parallel is fine for Firestore
       const promises = [];
@@ -1241,7 +1232,16 @@ export function LogEntryModal({
                         <input
                           type="checkbox"
                           checked={selectedListIds.has(list.id)}
+                          onClick={(e) => {
+                            if (isListEligibleForSelection) return;
+                            e.preventDefault();
+                            setListEligibilityToast({
+                              id: Date.now(),
+                              message: "Only completed items can be added to the list.",
+                            });
+                          }}
                           onChange={(e) => {
+                            if (!isListEligibleForSelection) return;
                             const next = new Set(selectedListIds);
                             if (e.target.checked) next.add(list.id);
                             else next.delete(list.id);
@@ -1256,6 +1256,11 @@ export function LogEntryModal({
                     <div className="text-xs text-neutral-500 p-2 text-center">No compatible lists found.</div>
                   )}
                 </div>
+                {!isListEligibleForSelection && (
+                  <div className="text-[11px] text-amber-300">
+                    Only completed items can be added to lists.
+                  </div>
+                )}
               </div>
 
               {numericField ? (
@@ -1730,6 +1735,12 @@ export function LogEntryModal({
         title="Duplicate Detected"
         message={duplicateToast?.message || ""}
         onClose={() => setDuplicateToast(null)}
+      />
+      <InfographicToast
+        isOpen={Boolean(listEligibilityToast)}
+        title="List Restriction"
+        message={listEligibilityToast?.message || ""}
+        onClose={() => setListEligibilityToast(null)}
       />
     </Modal>
   );

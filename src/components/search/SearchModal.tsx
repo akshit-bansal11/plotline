@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Modal } from "@/components/ui/modal";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
-import type { LoggableMedia } from "@/components/entry/log-entry-modal";
+import { ExpandableText } from "@/components/ui/ExpandableText";
+import type { LoggableMedia } from "@/components/entry/LogEntryModal";
 
 type MediaType = "movie" | "series" | "anime" | "manga" | "game";
 
@@ -38,30 +39,7 @@ const typeLabels: Record<MediaType, string> = {
     game: "Game",
 };
 
-function ExpandableText({ text }: { text: string }) {
-    const [expanded, setExpanded] = useState(false);
-    const isLong = text.length > 150;
 
-    return (
-        <div className="mt-2">
-            <div className={cn("text-xs text-neutral-500", !expanded && isLong && "line-clamp-2")}>
-                {text}
-            </div>
-            {isLong && (
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setExpanded(!expanded);
-                    }}
-                    className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-neutral-400 hover:text-white"
-                >
-                    {expanded ? "Show less" : "Show more"}
-                </button>
-            )}
-        </div>
-    );
-}
 
 export function SearchModal({ isOpen, onClose, onOpenLogModal }: SearchModalProps) {
     const [query, setQuery] = useState("");
@@ -313,7 +291,7 @@ export function SearchModal({ isOpen, onClose, onOpenLogModal }: SearchModalProp
                                         {result.year ? `${result.year} • ` : ""}
                                         {typeLabels[result.type]}
                                     </div>
-                                    {result.overview && <ExpandableText text={result.overview} />}
+                                    {result.overview && <ExpandableText text={result.overview} className="mt-2 [&>div:first-child]:text-neutral-500 [&>button]:text-neutral-400 [&>button:hover]:text-white" />}
                                 </div>
                                 {actionLoading[getResultKey(result)] && (
                                     <div className="flex items-center">

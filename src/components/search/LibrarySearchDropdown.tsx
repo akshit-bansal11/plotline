@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Search } from "lucide-react";
-import { useData } from "@/context/data-context";
+import { useData } from "@/context/DataContext";
 import { cn, entryMediaTypeLabels } from "@/lib/utils";
 
 interface LibrarySearchDropdownProps {
@@ -56,7 +56,7 @@ export function LibrarySearchDropdown({ className }: LibrarySearchDropdownProps)
         onClick={() => setIsOpen((current) => !current)}
         className="rounded-full border border-white/10 bg-neutral-900/40 px-4 py-2 text-xs font-semibold text-neutral-200 transition-colors hover:bg-neutral-900/60"
       >
-        Search Library
+        Library
       </button>
 
       <AnimatePresence>

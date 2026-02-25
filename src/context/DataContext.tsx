@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
 import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/context/AuthContext";
 
 export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 export type EntryStatus = "watching" | "completed" | "plan_to_watch" | "on_hold" | "dropped" | "unspecified" | "main_story_completed" | "fully_completed" | "backlogged" | "bored" | "own" | "wishlist" | "not_committed" | "committed";

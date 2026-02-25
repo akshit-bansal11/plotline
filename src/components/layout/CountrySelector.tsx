@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronDown, Globe, Search } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
-import { useData } from "@/context/data-context";
+import { useData } from "@/context/DataContext";
 
 /* ── Flag image helpers ────────────────────────────────────────── */
 const FLAG_URL = (code: string) =>

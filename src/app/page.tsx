@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, ChevronRight, Pencil, Trash2, X } from "lucide-react";
-import { Hero } from "@/components/content/hero";
-import { GlassCard } from "@/components/ui/glass-card";
-import { MediaGrid } from "@/components/content/media-grid";
-import { MediaSection } from "@/components/content/media-section";
-import { useAuth } from "@/context/auth-context";
-import { useSection, type SectionKey } from "@/context/section-context";
-import { useData, type EntryDoc, type EntryMediaType } from "@/context/data-context";
+import { Hero } from "@/components/content/Hero";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { MediaGrid } from "@/components/content/MediaGrid";
+import { MediaSection } from "@/components/content/MediaSection";
+import { useAuth } from "@/context/AuthContext";
+import { useSection, type SectionKey } from "@/context/SectionContext";
+import { useData, type EntryDoc, type EntryMediaType } from "@/context/DataContext";
 import { db } from "@/lib/firebase";
-import { cn, entryMediaTypeLabels } from "@/lib/utils";
-import { LogEntryModal } from "@/components/entry/log-entry-modal";
-import { EntryDetailModal } from "@/components/entry/entry-detail-modal";
-import { MyListsModal } from "@/components/lists/my-lists-modal";
-import { Modal } from "@/components/ui/modal";
+import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
+import { LogEntryModal } from "@/components/entry/LogEntryModal";
+import { EntryDetailModal } from "@/components/entry/EntryDetailModal";
+import { MyListsModal } from "@/components/lists/MyListsModal";
+import { Modal } from "@/components/ui/Modal";
+import { InfographicToast } from "@/components/ui/InfographicToast";
 import { RELATION_OPTIONS, RelationType, updateBidirectionalRelations, inverseRelationMap } from "@/lib/relations";
 
 const formatISODate = (millis: number) => {
@@ -81,6 +82,9 @@ const toMillis = (value: unknown) => {
   }
   return null;
 };
+
+const isListEligibleStatus = (status: EntryDoc["status"]) =>
+  status === "completed" || status === "main_story_completed" || status === "fully_completed";
 
 function DashboardSection({
   entries,
@@ -279,7 +283,6 @@ function DashboardSection({
 
 function LibrarySection({
   title,
-  description,
   mediaTypes,
   gridType,
   filterRaw,
@@ -295,7 +298,6 @@ function LibrarySection({
   onDeleteList,
 }: {
   title: string;
-  description: string;
   mediaTypes: string[];
   gridType: string;
   filterRaw: string;
@@ -321,6 +323,8 @@ function LibrarySection({
   const [isRemoveTargetActive, setIsRemoveTargetActive] = useState(false);
   const [dragAnnouncement, setDragAnnouncement] = useState("");
   const expandTimeoutRef = useRef<number | null>(null);
+  const [otherStatusFilter, setOtherStatusFilter] = useState<EntryDoc["status"] | "all">("all");
+  const [listEligibilityToast, setListEligibilityToast] = useState<{ id: number; message: string } | null>(null);
 
   const [relationModal, setRelationModal] = useState<{ sourceId: string; targetId: string; type: RelationType; targetTitle: string; sourceTitle: string } | null>(null);
   const [relationModalError, setRelationModalError] = useState<string | null>(null);
@@ -600,6 +604,19 @@ function LibrarySection({
     }
 
     if (targetList) {
+      if (!isListEligibleStatus(entry.status)) {
+        setListEligibilityToast({
+          id: Date.now(),
+          message: "Only completed items can be added to the list.",
+        });
+        setDragAnnouncement("Only completed items can be added to the list.");
+        setActiveDrag(null);
+        setActiveDropTarget(null);
+        setReorderIndicator(null);
+        setIsRemoveTargetActive(false);
+        clearExpandTimeout();
+        return;
+      }
       const normalizedEntryType: EntryMediaType =
         (entry.mediaType as string) === "anime_movie" ? "anime" : entry.mediaType;
       if (!targetList.types.includes(normalizedEntryType)) {
@@ -685,7 +702,6 @@ function LibrarySection({
     <div className="pt-12">
       <div className="w-full px-4 md:px-8 mb-4">
         <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
-        <p className="text-neutral-400 text-sm">{description}</p>
       </div>
 
       {!uid ? (
@@ -726,12 +742,20 @@ function LibrarySection({
                 const listItems = listItemsById[list.id] || [];
                 const listEntries = listItems
                   .map((item) => filteredById.get(item.externalId))
-                  .filter((entry): entry is EntryDoc => Boolean(entry));
+                  .filter((entry): entry is EntryDoc => Boolean(entry))
+                  .filter((entry) => isListEligibleStatus(entry.status));
                 listEntries.forEach((entry) => listedIds.add(entry.id));
                 return { list, listEntries };
               });
 
               const otherEntries = filteredEntries.filter((entry) => !listedIds.has(entry.id));
+              const otherStatusOptions = Array.from(
+                new Set(otherEntries.map((entry) => entry.status)),
+              ) as EntryDoc["status"][];
+              const filteredOtherEntries =
+                otherStatusFilter === "all"
+                  ? otherEntries
+                  : otherEntries.filter((entry) => entry.status === otherStatusFilter);
               const hasUnlistedItems = otherEntries.length > 0;
 
               const listSections = listSectionsData
@@ -787,89 +811,91 @@ function LibrarySection({
                         )}
                       </div>
 
-                      {/* List grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                      {/* List chips */}
+                      <div className="flex flex-wrap items-start gap-2">
                         {listSections.map(({ list, listEntries, isOpen }) => {
                           const isEmpty = listEntries.length === 0;
                           return (
-                            <div key={list.id} className={cn(isOpen && !isEmpty ? "col-span-full" : "")}>
-                              {/* List header chip */}
-                              <div
-                                className={cn(
-                                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors select-none",
-                                  isEmpty
-                                    ? "border-white/5 bg-neutral-900/20 text-neutral-600 cursor-default"
-                                    : isOpen
-                                      ? "border-white/10 bg-neutral-800/60 text-white cursor-pointer"
-                                      : "border-white/5 bg-neutral-900/40 text-neutral-300 hover:bg-neutral-900/60 hover:text-white cursor-pointer",
-                                  activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list" ? "media-card-drop-target" : "",
-                                )}
-                                onDragEnter={(event) => {
-                                  if (!activeDrag) return;
-                                  event.preventDefault();
-                                  setActiveDropTarget({ listId: list.id, bucket: "list" });
-                                  setReorderIndicator(null);
-                                  clearExpandTimeout();
-                                  if (!isOpen && !isEmpty) {
-                                    const timeoutId = window.setTimeout(() => {
-                                      setOpenLists((prev) => ({ ...prev, [list.id]: true }));
-                                    }, 300);
-                                    expandTimeoutRef.current = timeoutId;
-                                  }
-                                }}
-                                onDragOver={(event) => {
-                                  if (!activeDrag) return;
-                                  event.preventDefault();
-                                }}
-                                onDragLeave={(event) => {
-                                  if (!activeDrag) return;
-                                  const related = event.relatedTarget as HTMLElement | null;
-                                  if (!related || !event.currentTarget.contains(related)) {
-                                    if (activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list") {
-                                      setActiveDropTarget(null);
+                            <Fragment key={list.id}>
+                              <div className="min-w-0 w-auto max-w-full">
+                                {/* List header chip */}
+                                <div
+                                  className={cn(
+                                    "inline-flex max-w-full items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors select-none",
+                                    isEmpty
+                                      ? "border-white/5 bg-neutral-900/20 text-neutral-600 cursor-default"
+                                      : isOpen
+                                        ? "border-white/10 bg-neutral-800/60 text-white cursor-pointer"
+                                        : "border-white/5 bg-neutral-900/40 text-neutral-300 hover:bg-neutral-900/60 hover:text-white cursor-pointer",
+                                    activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list" ? "media-card-drop-target" : "",
+                                  )}
+                                  onDragEnter={(event) => {
+                                    if (!activeDrag) return;
+                                    event.preventDefault();
+                                    setActiveDropTarget({ listId: list.id, bucket: "list" });
+                                    setReorderIndicator(null);
+                                    clearExpandTimeout();
+                                    if (!isOpen && !isEmpty) {
+                                      const timeoutId = window.setTimeout(() => {
+                                        setOpenLists((prev) => ({ ...prev, [list.id]: true }));
+                                      }, 300);
+                                      expandTimeoutRef.current = timeoutId;
                                     }
-                                  }
-                                }}
-                                onDrop={(event) => {
-                                  if (!activeDrag) return;
-                                  event.preventDefault();
-                                  handleDropOnList(list.id);
-                                }}
-                                onClick={() => {
-                                  if (activeDrag) {
+                                  }}
+                                  onDragOver={(event) => {
+                                    if (!activeDrag) return;
+                                    event.preventDefault();
+                                  }}
+                                  onDragLeave={(event) => {
+                                    if (!activeDrag) return;
+                                    const related = event.relatedTarget as HTMLElement | null;
+                                    if (!related || !event.currentTarget.contains(related)) {
+                                      if (activeDropTarget?.listId === list.id && activeDropTarget.bucket === "list") {
+                                        setActiveDropTarget(null);
+                                      }
+                                    }
+                                  }}
+                                  onDrop={(event) => {
+                                    if (!activeDrag) return;
+                                    event.preventDefault();
                                     handleDropOnList(list.id);
-                                    return;
+                                  }}
+                                  onClick={() => {
+                                    if (activeDrag) {
+                                      handleDropOnList(list.id);
+                                      return;
+                                    }
+                                    if (isEmpty) return;
+                                    setOpenLists((prev) => ({ ...prev, [list.id]: !isOpen }));
+                                  }}
+                                >
+                                  {isEmpty
+                                    ? <ChevronRight size={14} className="shrink-0 text-neutral-700" />
+                                    : isOpen
+                                      ? <ChevronDown size={14} className="shrink-0 text-neutral-400" />
+                                      : <ChevronRight size={14} className="shrink-0 text-neutral-400" />
                                   }
-                                  if (isEmpty) return;
-                                  setOpenLists((prev) => ({ ...prev, [list.id]: !isOpen }));
-                                }}
-                              >
-                                {isEmpty
-                                  ? <ChevronRight size={14} className="shrink-0 text-neutral-700" />
-                                  : isOpen
-                                    ? <ChevronDown size={14} className="shrink-0 text-neutral-400" />
-                                    : <ChevronRight size={14} className="shrink-0 text-neutral-400" />
-                                }
-                                <span className="truncate">{list.name || "Untitled list"}</span>
-                                <span className={cn("ml-auto shrink-0 text-[10px]", isEmpty ? "text-neutral-700" : "text-neutral-500")}>{listEntries.length}</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); onEditList(list); }}
-                                  disabled={!uid}
-                                  className={cn("shrink-0 p-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed", isEmpty ? "text-neutral-700 hover:text-neutral-400 hover:bg-white/5" : "text-neutral-500 hover:text-white hover:bg-white/10")}
-                                  aria-label="Edit list"
-                                >
-                                  <Pencil size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); onDeleteList(list); }}
-                                  disabled={!uid}
-                                  className={cn("shrink-0 p-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed", isEmpty ? "text-neutral-700 hover:text-red-400/50 hover:bg-red-500/5" : "text-neutral-500 hover:text-red-400 hover:bg-red-500/10")}
-                                  aria-label="Delete list"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
+                                  <span className="max-w-52 truncate">{list.name || "Untitled list"}</span>
+                                  <span className={cn("shrink-0 rounded-full border px-1.5 py-0.5 text-[10px]", isEmpty ? "border-white/5 text-neutral-700" : "border-white/10 text-neutral-500")}>{listEntries.length}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onEditList(list); }}
+                                    disabled={!uid}
+                                    className={cn("shrink-0 rounded-md p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50", isEmpty ? "text-neutral-700 hover:bg-white/5 hover:text-neutral-400" : "text-neutral-500 hover:bg-white/10 hover:text-white")}
+                                    aria-label="Edit list"
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onDeleteList(list); }}
+                                    disabled={!uid}
+                                    className={cn("shrink-0 rounded-md p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50", isEmpty ? "text-neutral-700 hover:bg-red-500/5 hover:text-red-400/50" : "text-neutral-500 hover:bg-red-500/10 hover:text-red-400")}
+                                    aria-label="Delete list"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Expanded content */}
@@ -880,10 +906,9 @@ function LibrarySection({
                                     animate={{ height: "auto", opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
                                     transition={{ duration: 0.25, ease: "easeInOut" }}
-                                    className="overflow-hidden"
+                                    className="w-full overflow-hidden"
                                   >
                                     <div className="pt-3 pb-2">
-
                                       {listEntries.length === 0 ? (
                                         <div className="text-sm text-neutral-400">No items in this list.</div>
                                       ) : (
@@ -961,6 +986,7 @@ function LibrarySection({
                                             dropIndicatorPosition={
                                               reorderIndicator?.listId === list.id ? reorderIndicator.position : null
                                             }
+                                            showStatusControl={false}
                                           />
                                         </div>
                                       )}
@@ -968,7 +994,7 @@ function LibrarySection({
                                   </motion.div>
                                 )}
                               </AnimatePresence>
-                            </div>
+                            </Fragment>
                           );
                         })}
                       </div>
@@ -977,33 +1003,65 @@ function LibrarySection({
 
                   {/* Unlisted entries */}
                   {otherEntries.length > 0 && (
-                    <MediaGrid
-                      items={otherEntries.map((entry) => ({
-                        id: entry.id,
-                        title: entry.title,
-                        description: entry.description,
-                        image: entry.image,
-                        year: entry.releaseYear || undefined,
-                        userRating: entry.userRating,
-                        imdbRating: entry.imdbRating,
-                        status: entry.status,
-                        type: gridType,
-                        relations: entry.relations,
-                        onClick: () => onSelectEntry(entry),
-                        showActions: true,
-                        onEdit: () => onEditEntry(entry),
-                        onDelete: () => onDeleteEntry(entry),
-                      }))}
-                      sourceListId={null}
-                      activeDragEntryId={activeDrag?.entryId ?? null}
-                      onItemDragStart={handleItemDragStart}
-                      onItemDragEnd={handleItemDragEnd}
-                      onItemDropOnItem={({ targetEntryId }) => {
-                        if (activeDrag) {
-                          handleRelationDrop(String(activeDrag.entryId), targetEntryId);
-                        }
-                      }}
-                    />
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-neutral-500">Outside List</span>
+                        <button
+                          type="button"
+                          onClick={() => setOtherStatusFilter("all")}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors",
+                            otherStatusFilter === "all"
+                              ? "border-white/30 bg-white/10 text-white"
+                              : "border-white/10 text-neutral-500 hover:border-white/20 hover:text-neutral-300"
+                          )}
+                        >
+                          All
+                        </button>
+                        {otherStatusOptions.map((statusOption) => (
+                          <button
+                            key={statusOption}
+                            type="button"
+                            onClick={() => setOtherStatusFilter(otherStatusFilter === statusOption ? "all" : statusOption)}
+                            className={cn(
+                              "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors",
+                              otherStatusFilter === statusOption
+                                ? "border-white/30 bg-white/10 text-white"
+                                : "border-white/10 text-neutral-500 hover:border-white/20 hover:text-neutral-300"
+                            )}
+                          >
+                            {entryStatusLabels[statusOption]}
+                          </button>
+                        ))}
+                      </div>
+                      <MediaGrid
+                        items={filteredOtherEntries.map((entry) => ({
+                          id: entry.id,
+                          title: entry.title,
+                          description: entry.description,
+                          image: entry.image,
+                          year: entry.releaseYear || undefined,
+                          userRating: entry.userRating,
+                          imdbRating: entry.imdbRating,
+                          status: entry.status,
+                          type: gridType,
+                          relations: entry.relations,
+                          onClick: () => onSelectEntry(entry),
+                          showActions: true,
+                          onEdit: () => onEditEntry(entry),
+                          onDelete: () => onDeleteEntry(entry),
+                        }))}
+                        sourceListId={null}
+                        activeDragEntryId={activeDrag?.entryId ?? null}
+                        onItemDragStart={handleItemDragStart}
+                        onItemDragEnd={handleItemDragEnd}
+                        onItemDropOnItem={({ targetEntryId }) => {
+                          if (activeDrag) {
+                            handleRelationDrop(String(activeDrag.entryId), targetEntryId);
+                          }
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               );
@@ -1161,6 +1219,12 @@ function LibrarySection({
           </div>
         </Modal>
       )}
+      <InfographicToast
+        isOpen={Boolean(listEligibilityToast)}
+        title="List Restriction"
+        message={listEligibilityToast?.message || ""}
+        onClose={() => setListEligibilityToast(null)}
+      />
     </div>
   );
 }
@@ -1261,12 +1325,12 @@ export default function Home() {
   }, [deleteEntry]);
 
   const sectionConfigs = useMemo(() => {
-    const configs: Record<Exclude<SectionKey, "home">, { title: string; description: string; mediaTypes: string[]; gridType: string }> = {
-      movies: { title: "Movies", description: "Your logged movies.", mediaTypes: ["movie"], gridType: "movie" },
-      series: { title: "Series", description: "Your logged series.", mediaTypes: ["series"], gridType: "series" },
-      anime: { title: "Anime", description: "Your logged anime.", mediaTypes: ["anime", "anime_movie"], gridType: "anime" },
-      manga: { title: "Manga", description: "Your logged manga.", mediaTypes: ["manga"], gridType: "manga" },
-      games: { title: "Games", description: "Your logged games.", mediaTypes: ["game"], gridType: "game" },
+    const configs: Record<Exclude<SectionKey, "home">, { title: string; mediaTypes: string[]; gridType: string }> = {
+      movies: { title: "Movies", mediaTypes: ["movie"], gridType: "movie" },
+      series: { title: "Series", mediaTypes: ["series"], gridType: "series" },
+      anime: { title: "Anime", mediaTypes: ["anime", "anime_movie"], gridType: "anime" },
+      manga: { title: "Manga", mediaTypes: ["manga"], gridType: "manga" },
+      games: { title: "Games", mediaTypes: ["game"], gridType: "game" },
     };
     return configs;
   }, []);
@@ -1287,8 +1351,8 @@ export default function Home() {
     const config = sectionConfigs[activeSection as Exclude<SectionKey, "home">];
     return (
       <LibrarySection
+        key={activeSection}
         title={config.title}
-        description={config.description}
         mediaTypes={config.mediaTypes}
         gridType={config.gridType}
         filterRaw={libraryFilters[activeSection as Exclude<SectionKey, "home">]}

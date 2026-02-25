@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Search, LogIn, List, UserCircle, Upload, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSection, type SectionKey } from "@/context/section-context";
+import { useSection, type SectionKey } from "@/context/SectionContext";
 
 const links: Array<{ href: string; label: string; section: SectionKey }> = [
     { href: "/", label: "Home", section: "home" },

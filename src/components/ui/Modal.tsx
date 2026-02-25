@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GlassCard } from "./glass-card";
+import { GlassCard } from "./GlassCard";
 
 interface ModalProps {
     isOpen: boolean;

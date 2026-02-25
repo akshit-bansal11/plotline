@@ -1,4 +1,7 @@
+// Via SVGL
 import { NetflixLogo, PlayStationLogo, XboxLogo } from "@/assets/Logos";
+
+// OTTs
 import PrimeVideoLogo from "@/assets/ott-logos/prime-video-dark.svg";
 import DisneyPlusLogo from "@/assets/ott-logos/disney-plus.svg";
 import HBOMaxLogo from "@/assets/ott-logos/hbo-max-dark.svg";
@@ -6,10 +9,12 @@ import AppleTVLogo from "@/assets/ott-logos/apple-tv-plus-dark.svg";
 import CrunchyrollLogo from "@/assets/ott-logos/crunchyroll.svg";
 import PeacockLogo from "@/assets/ott-logos/peacock-dark.svg";
 import ParamountLogo from "@/assets/ott-logos/paramount.svg";
-import SteamLogo from "@/assets/ott-logos/steam-dark.svg";
-import EpicLogo from "@/assets/ott-logos/epic-games-dark.svg";
-import GOGLogo from "@/assets/ott-logos/gog-dark.svg";
 import HuluLogo from "@/assets/ott-logos/hulu.svg";
+
+// Game Platforms
+import SteamLogo from "@/assets/game-platform-logos/steam-dark.svg";
+import EpicLogo from "@/assets/game-platform-logos/epic-games-dark.svg";
+import GOGLogo from "@/assets/game-platform-logos/gog-dark.svg";
 
 export type OTTProvider = {
     name: string;

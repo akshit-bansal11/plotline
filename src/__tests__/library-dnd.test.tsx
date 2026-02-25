@@ -5,7 +5,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
-import { SectionProvider } from "@/context/section-context";
+import { SectionProvider } from "@/context/SectionContext";
 
 const authState = { uid: "user-1" as string | null };
 
@@ -39,7 +39,7 @@ vi.mock("motion/react", async () => {
   };
 });
 
-vi.mock("@/context/auth-context", () => ({
+vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: authState.uid ? { uid: authState.uid } : null }),
 }));
 
@@ -92,7 +92,7 @@ vi.mock("firebase/firestore", () => ({
   serverTimestamp: firestoreMocks.serverTimestamp,
 }));
 
-vi.mock("@/context/data-context", () => {
+vi.mock("@/context/DataContext", () => {
   const entries = [
     {
       id: "entry-1",

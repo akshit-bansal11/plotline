@@ -3,7 +3,7 @@
 import { useRef, type DragEvent } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { MediaCard } from "./media-card";
+import { MediaCard } from "./MediaCard";
 
 type DragStartDetails = {
     entryId: string | number;
@@ -29,6 +29,7 @@ interface MediaGridProps {
         showActions?: boolean;
     }>;
     className?: string;
+    showStatusControl?: boolean;
     sourceListId?: string | null;
     activeDragEntryId?: string | null;
     onItemDragStart?: (details: DragStartDetails) => void;
@@ -69,6 +70,7 @@ const itemVariants = {
 export function MediaGrid({
     items,
     className,
+    showStatusControl = true,
     sourceListId = null,
     activeDragEntryId = null,
     onItemDragStart,
@@ -84,7 +86,7 @@ export function MediaGrid({
     return (
         <motion.div
             variants={containerVariants}
-            initial="hidden"
+            initial={false}
             animate="visible"
             className={cn("grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6", className)}
         >
@@ -204,6 +206,7 @@ export function MediaGrid({
                             onEdit={item.onEdit}
                             onDelete={item.onDelete}
                             showActions={item.showActions}
+                            showStatusControl={showStatusControl}
                         />
                         {isDropIndicator ? (
                             <div

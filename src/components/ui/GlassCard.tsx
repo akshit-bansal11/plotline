@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Spotlight } from "./spotlight";
+import { Spotlight } from "./Spotlight";
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
     children: React.ReactNode;

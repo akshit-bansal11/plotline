@@ -4,7 +4,7 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { SearchModal } from "@/components/search/search-modal";
+import { SearchModal } from "@/components/search/SearchModal";
 
 vi.mock("next/image", () => ({
   default: (props: {

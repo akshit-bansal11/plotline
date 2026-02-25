@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { BookOpen, Film, Gamepad2, Home, Sparkles, Tv } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSection, type SectionKey } from "@/context/section-context";
+import { useSection, type SectionKey } from "@/context/SectionContext";
 
 const links: Array<{ href: string; label: string; section: SectionKey; icon: typeof Home }> = [
     { href: "/", label: "Home", section: "home", icon: Home },

@@ -5,15 +5,15 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ChevronDown, Star, Link } from "lucide-react";
-import { GlassCard } from "@/components/ui/glass-card";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { cn, entryStatusLabels } from "@/lib/utils";
-import { useAuth } from "@/context/auth-context";
-import { useData } from "@/context/data-context";
+import { useAuth } from "@/context/AuthContext";
+import { useData } from "@/context/DataContext";
 import { db } from "@/lib/firebase";
 import { getOTTAvailability } from "@/lib/ott";
-import { DescriptionErrorWrapper } from "@/components/ui/description-error-wrapper";
+import { DescriptionErrorWrapper } from "@/components/ui/DescriptionErrorWrapper";
 import { MAX_DESCRIPTION_LENGTH_MANUAL } from "@/lib/validation";
-import type { EntryStatus } from "@/context/data-context";
+import type { EntryStatus } from "@/context/DataContext";
 
 const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
 
@@ -34,6 +34,7 @@ interface MediaCardProps {
     onEdit?: () => void;
     onDelete?: () => void;
     showActions?: boolean;
+    showStatusControl?: boolean;
 }
 
 export function MediaCard({
@@ -52,6 +53,7 @@ export function MediaCard({
     onEdit,
     onDelete,
     showActions = false,
+    showStatusControl = true,
 }: MediaCardProps) {
     const { user } = useAuth();
     const uid = user?.uid || null;
@@ -231,7 +233,7 @@ export function MediaCard({
 
                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/95 via-neutral-950/50 to-transparent opacity-100 md:opacity-0 transition-opacity duration-300 md:group-hover:opacity-100" />
 
-                {status ? (
+                {showStatusControl && status ? (
                     <div
                         className="absolute top-3 right-3 z-10"
                         ref={statusMenuRef}
@@ -320,7 +322,7 @@ export function MediaCard({
                         {displayRating !== null ? (
                             displayRatingText
                         ) : (
-                            <Star size={11} className="text-neutral-300" suppressHydrationWarning />
+                            <Star size={11} fill="currentColor" className="text-neutral-300" suppressHydrationWarning />
                         )}
                     </div>
                     <AnimatePresence>
@@ -351,6 +353,7 @@ export function MediaCard({
                                             >
                                                 <Star
                                                     size={13}
+                                                    fill="currentColor"
                                                     className={cn(
                                                         "transition-colors",
                                                         isActive

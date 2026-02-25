@@ -1,6 +1,6 @@
 "use client";
 
-import { useData } from "@/context/data-context";
+import { useData } from "@/context/DataContext";
 import { Globe } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 

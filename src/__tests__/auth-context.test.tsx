@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AuthProvider, useAuth } from "@/context/auth-context";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 type AuthApi = {
   signInWithEmail: (email: string, password: string) => Promise<void>;

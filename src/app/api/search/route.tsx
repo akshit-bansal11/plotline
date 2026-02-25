@@ -10,7 +10,7 @@ import {
   type ApiBaseType,
   type ApiSearchStatus,
   type ApiSearchType,
-} from "@/lib/search-filters";
+} from "@/lib/searchFilters";
 
 type MediaType = ApiBaseType;
 

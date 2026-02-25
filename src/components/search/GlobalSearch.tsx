@@ -5,7 +5,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Filter, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { LoggableMedia } from "@/components/entry/log-entry-modal";
+import type { LoggableMedia } from "@/components/entry/LogEntryModal";
 import {
   ANIME_STUDIO_OPTIONS,
   GAME_PLATFORM_OPTIONS,
@@ -20,7 +20,7 @@ import {
   type ApiBaseType,
   type ApiSearchStatus,
   type ApiSearchType,
-} from "@/lib/search-filters";
+} from "@/lib/searchFilters";
 
 type SearchResult = {
   id: string;
@@ -82,6 +82,17 @@ const getResultTypeLabel = (result: SearchResult) => {
   return typeLabels[result.type];
 };
 
+const discoveryQueryPool: Record<ApiBaseType | "all", string[]> = {
+  movie: ["adventure", "drama", "thriller", "animation", "classic"],
+  series: ["mystery", "comedy", "crime", "fantasy", "family"],
+  anime: ["shounen", "romance", "isekai", "seinen", "slice of life"],
+  manga: ["seinen", "shoujo", "mystery", "drama", "fantasy"],
+  game: ["rpg", "action", "strategy", "adventure", "indie"],
+  all: ["popular", "trending", "classic", "award", "top rated"],
+};
+
+const SUGGESTION_LOADER_MIN_MS = 180;
+
 export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled = false }: GlobalSearchProps) {
   const yearOptions = useMemo<YearOption[]>(() => getYearFilterOptions(), []);
 
@@ -91,7 +102,7 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
   const [errors, setErrors] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [discoveryNonce, setDiscoveryNonce] = useState(0);
   const [selectedType, setSelectedType] = useState<ApiSearchType | null>(null);
   const [selectedSubtype, setSelectedSubtype] = useState<string | null>(null);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
@@ -128,16 +139,28 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
   }, [query]);
 
   useEffect(() => {
-    const handleOutsideClick = (event: MouseEvent) => {
+    const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (!containerRef.current?.contains(target)) {
+      const container = containerRef.current;
+      if (!container) return;
+
+      if (!container.contains(target)) {
         setIsOpen(false);
-        setIsFilterOpen(false);
+        inputRef.current?.blur();
+        return;
       }
+
+      const targetEl = target as HTMLElement;
+      const interactiveField = targetEl.closest("input, textarea, select, option");
+      if (interactiveField) return;
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus({ preventScroll: true });
+      });
     };
 
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
   useEffect(() => {
@@ -170,6 +193,31 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
 
   const hasActiveFilters = activeFilterCount > 0;
 
+  const discoveryQuery = useMemo(() => {
+    const explicitTerms: string[] = [];
+    if (selectedGenres.length > 0) explicitTerms.push(...selectedGenres);
+    if (selectedStudio) explicitTerms.push(selectedStudio);
+    if (selectedPlatform) explicitTerms.push(selectedPlatform);
+    if (selectedSerialization) explicitTerms.push(selectedSerialization);
+    if (selectedSubtype) explicitTerms.push(selectedSubtype.replace(/_/g, " "));
+    if (selectedStatus) explicitTerms.push(statusLabels[selectedStatus]);
+
+    const pool = baseType ? discoveryQueryPool[baseType] : discoveryQueryPool.all;
+    const candidates = [...explicitTerms, ...pool];
+    if (candidates.length === 0) return "";
+    const index = (Math.floor(Math.random() * candidates.length) + discoveryNonce) % candidates.length;
+    return candidates[index];
+  }, [
+    baseType,
+    discoveryNonce,
+    selectedGenres,
+    selectedPlatform,
+    selectedSerialization,
+    selectedStatus,
+    selectedStudio,
+    selectedSubtype,
+  ]);
+
   const minCountValue = useMemo(() => {
     const parsed = Number(minEpisodesOrChapters);
     if (!Number.isFinite(parsed) || parsed <= 0) return null;
@@ -177,9 +225,12 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
   }, [minEpisodesOrChapters]);
 
   const requestParams = useMemo(() => {
-    if (debouncedQuery.length < 2) return null;
+    if (!isOpen) return null;
+    const effectiveQuery = debouncedQuery.length > 0 ? debouncedQuery : discoveryQuery;
+    if (!effectiveQuery) return null;
 
-    const params = new URLSearchParams({ q: debouncedQuery });
+    const params = new URLSearchParams({ q: effectiveQuery });
+    if (debouncedQuery.length === 0) params.set("discover", "1");
 
     if (selectedType) params.set("type", selectedType);
     if (selectedSubtype && selectedType !== "anime_movie") params.set("subtype", selectedSubtype);
@@ -199,6 +250,8 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
     return params;
   }, [
     debouncedQuery,
+    discoveryQuery,
+    isOpen,
     minCountValue,
     ratingMin,
     selectedGenres,
@@ -214,28 +267,59 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
   ]);
 
   useEffect(() => {
+    let cancelled = false;
+    let loaderTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const clearLoaderTimeout = () => {
+      if (loaderTimeout !== null) {
+        clearTimeout(loaderTimeout);
+        loaderTimeout = null;
+      }
+    };
+
+    const finishLoading = (startedAt: number) => {
+      if (cancelled) return;
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, SUGGESTION_LOADER_MIN_MS - elapsed);
+      if (remaining === 0) {
+        setIsLoading(false);
+        return;
+      }
+      loaderTimeout = setTimeout(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+      }, remaining);
+    };
+
     if (!requestParams) {
       setResults([]);
       setErrors([]);
       setIsLoading(false);
       abortRef.current?.abort();
-      return;
+      return () => {
+        cancelled = true;
+        clearLoaderTimeout();
+      };
     }
+
+    const startedAt = Date.now();
+    setIsLoading(true);
 
     const cacheKey = requestParams.toString();
     const cached = cacheRef.current.get(cacheKey);
     if (cached) {
       setResults(cached.results || []);
       setErrors(cached.errors || []);
-      setIsLoading(false);
-      return;
+      finishLoading(startedAt);
+      return () => {
+        cancelled = true;
+        clearLoaderTimeout();
+      };
     }
 
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-
-    setIsLoading(true);
 
     const run = async () => {
       try {
@@ -258,11 +342,17 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
         setResults([]);
         setErrors([error instanceof Error ? error.message : "Search failed."]);
       } finally {
-        setIsLoading(false);
+        finishLoading(startedAt);
       }
     };
 
     void run();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearLoaderTimeout();
+    };
   }, [requestParams]);
 
   const clearFilters = () => {
@@ -276,6 +366,9 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
     setSelectedStudio(null);
     setSelectedPlatform(null);
     setSelectedSerialization(null);
+    if (debouncedQuery.length === 0) {
+      setDiscoveryNonce((current) => current + 1);
+    }
   };
 
   const toggleGenre = (genre: string) => {
@@ -381,7 +474,6 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
       setQuery("");
       setResults([]);
       setIsOpen(false);
-      setIsFilterOpen(false);
       inputRef.current?.blur();
     } finally {
       setPendingSelectionKey(null);
@@ -389,9 +481,14 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
   };
 
   const subtitleLabel = showEpisodesFilter ? "Episodes" : showChaptersFilter ? "Chapters" : "Count";
+  const showSearchLoadingLabel = debouncedQuery.length > 0 || hasActiveFilters;
+  const visibleErrors = useMemo(
+    () => errors.filter((error) => !/fetch failed|failed to fetch/i.test(error)),
+    [errors],
+  );
 
   return (
-    <div ref={containerRef} className={cn("relative z-50", className)}>
+    <div ref={containerRef} className={cn("relative z-50 transition-[width] duration-300 ease-out", className)}>
       <div className="relative flex items-center rounded-full border border-white/10 bg-neutral-900/50 transition-colors focus-within:border-white/20 focus-within:bg-neutral-900/70">
         <Search size={15} className="ml-3 text-neutral-500" suppressHydrationWarning />
         <input
@@ -401,11 +498,15 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
             setQuery(event.target.value);
             setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            setIsOpen(true);
+            if (query.trim().length === 0) {
+              setDiscoveryNonce((current) => current + 1);
+            }
+          }}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               setIsOpen(false);
-              setIsFilterOpen(false);
             }
           }}
           placeholder="Search Catalog"
@@ -418,6 +519,8 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
               setQuery("");
               setResults([]);
               setErrors([]);
+              setDiscoveryNonce((current) => current + 1);
+              setIsOpen(true);
             }}
             className="rounded-full p-1 text-neutral-500 transition-colors hover:bg-white/5 hover:text-neutral-200"
             aria-label="Clear"
@@ -428,16 +531,22 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
         <button
           type="button"
           onClick={() => {
-            setIsFilterOpen((current) => !current);
             setIsOpen(true);
+            if (query.trim().length === 0) {
+              setDiscoveryNonce((current) => current + 1);
+            }
+            requestAnimationFrame(() => {
+              inputRef.current?.focus({ preventScroll: true });
+            });
           }}
           className={cn(
             "relative mr-1 rounded-full p-2 transition-colors",
-            isFilterOpen || hasActiveFilters
+            hasActiveFilters
               ? "bg-emerald-400/10 text-emerald-300"
               : "text-neutral-500 hover:bg-white/5 hover:text-neutral-200"
           )}
           aria-label="Toggle filters"
+          aria-expanded={isOpen}
         >
           <Filter size={14} suppressHydrationWarning />
           {activeFilterCount > 0 ? (
@@ -449,40 +558,30 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
       </div>
 
       <AnimatePresence>
-        {isOpen && (query.trim().length >= 2 || hasActiveFilters || isLoading) ? (
+        {isOpen ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="absolute right-0 top-[calc(100%+10px)] w-[min(92vw,560px)] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950/95 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            className="absolute left-0 top-[calc(100%+10px)] w-[min(94vw,620px)] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950/95 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
           >
-            {hasActiveFilters ? (
-              <div className="border-b border-white/5 px-4 py-2 text-[11px] text-neutral-400">
-                Active filters: {activeFilterCount}
-              </div>
-            ) : null}
-
-            <div className="max-h-[58vh] overflow-y-auto custom-scrollbar">
+            <div className="grid max-h-[72vh] grid-cols-1 md:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="min-h-0 overflow-y-auto custom-scrollbar">
               {isLoading ? (
-                <div className="p-5 text-sm text-neutral-400">Searching...</div>
+                <div className="flex items-center gap-3 p-5 text-sm text-neutral-400">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
+                  {showSearchLoadingLabel ? <span>Searching...</span> : null}
+                </div>
               ) : null}
 
-              {!isLoading && query.trim().length < 2 ? (
-                <div className="p-5 text-sm text-neutral-500">Type at least 2 characters to search.</div>
-              ) : null}
-
-              {!isLoading && errors.length > 0 ? (
+              {!isLoading && visibleErrors.length > 0 ? (
                 <div className="space-y-1 p-4">
-                  {errors.map((error, index) => (
+                  {visibleErrors.map((error, index) => (
                     <div key={`${error}-${index}`} className="text-xs text-amber-300">
                       {error}
                     </div>
                   ))}
                 </div>
-              ) : null}
-
-              {!isLoading && query.trim().length >= 2 && results.length === 0 && errors.length === 0 ? (
-                <div className="p-5 text-sm text-neutral-500">No suggestions found for the selected filters.</div>
               ) : null}
 
               {!isLoading && results.length > 0 ? (
@@ -532,34 +631,25 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
                   })}
                 </div>
               ) : null}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {isFilterOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-            className="absolute right-0 top-[calc(100%+10px)] z-10 w-[min(94vw,680px)] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950/95 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-          >
-            <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
-              <div className="text-sm font-semibold text-white">Search Filters</div>
-              {hasActiveFilters ? (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="text-xs font-semibold text-neutral-400 transition-colors hover:text-white"
-                >
-                  Clear all
-                </button>
-              ) : null}
-            </div>
+              </div>
 
-            <div className="grid max-h-[62vh] grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-2 custom-scrollbar">
-              <div className="space-y-2 md:col-span-2">
+              <div className="min-h-0 overflow-y-auto border-t border-white/10 md:border-t-0 md:border-l md:border-white/10 custom-scrollbar">
+                <div className="flex items-center justify-between px-4 py-3">
+                <div className="text-sm font-semibold text-white">Search Filters</div>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="text-xs font-semibold text-neutral-400 transition-colors hover:text-white"
+                  >
+                    Clear all
+                  </button>
+                ) : null}
+              </div>
+
+                <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
                 <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Type</div>
                 <div className="flex flex-wrap gap-2">
                   {GLOBAL_SEARCH_TYPE_OPTIONS.map((option) => (
@@ -761,6 +851,8 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
                   </div>
                 </div>
               ) : null}
+                </div>
+              </div>
             </div>
           </motion.div>
         ) : null}

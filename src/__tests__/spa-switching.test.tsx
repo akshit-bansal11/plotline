@@ -28,19 +28,19 @@ vi.mock("motion/react", async () => {
   };
 });
 
-vi.mock("@/components/content/hero", () => ({
+vi.mock("@/components/content/Hero", () => ({
   Hero: () => <div data-testid="hero" />,
 }));
 
-vi.mock("@/components/ui/glass-card", () => ({
+vi.mock("@/components/ui/GlassCard", () => ({
   GlassCard: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/components/content/media-grid", () => ({
+vi.mock("@/components/content/MediaGrid", () => ({
   MediaGrid: ({ items }: { items: Array<unknown> }) => <div data-testid="grid">{items.length}</div>,
 }));
 
-vi.mock("@/components/content/media-section", () => ({
+vi.mock("@/components/content/MediaSection", () => ({
   MediaSection: ({
     items,
     children,
@@ -55,7 +55,7 @@ vi.mock("@/lib/firebase", () => ({
 }));
 
 const authState = { uid: "user-1" as string | null };
-vi.mock("@/context/auth-context", () => ({
+vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: authState.uid ? { uid: authState.uid } : null }),
 }));
 
@@ -71,8 +71,8 @@ vi.mock("firebase/firestore", () => ({
 }));
 
 import Home from "@/app/page";
-import { SectionProvider } from "@/context/section-context";
-import { DataProvider } from "@/context/data-context";
+import { SectionProvider } from "@/context/SectionContext";
+import { DataProvider } from "@/context/DataContext";
 
 beforeEach(() => {
   window.location.hash = "";

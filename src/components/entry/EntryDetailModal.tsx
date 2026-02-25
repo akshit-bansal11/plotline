@@ -5,12 +5,12 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { Modal } from "@/components/ui/modal";
+import { Modal } from "@/components/ui/Modal";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
-import { EntryDoc, EntryMediaType, EntryStatus, useData } from "@/context/data-context";
-import { useAuth } from "@/context/auth-context";
+import { EntryDoc, EntryMediaType, EntryStatus, useData } from "@/context/DataContext";
+import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { DescriptionErrorWrapper } from "@/components/ui/description-error-wrapper";
+import { DescriptionErrorWrapper } from "@/components/ui/DescriptionErrorWrapper";
 import { MAX_DESCRIPTION_LENGTH_MANUAL } from "@/lib/validation";
 
 const statusLabels: Record<EntryStatus, string> = entryStatusLabels;

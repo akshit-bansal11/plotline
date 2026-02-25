@@ -5,7 +5,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { collection, onSnapshot, orderBy, query, limit } from "firebase/firestore";
 import { ListPlus, Pencil, Trash2 } from "lucide-react";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
@@ -208,14 +208,22 @@ export function ListsDropdown({ className, onCreateList, onOpenList, onEditList,
                     const stats = listStats[list.id] || { count: 0, images: [] };
 
                     return (
-                      <button
+                      <div
                         key={list.id}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => {
                           onOpenList(list.id);
                           setIsOpen(false);
                         }}
-                        className="group flex h-full flex-col gap-3 rounded-2xl border border-white/10 bg-neutral-900/50 p-4 text-left transition-colors hover:bg-neutral-900/70"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onOpenList(list.id);
+                            setIsOpen(false);
+                          }
+                        }}
+                        className="group flex h-full cursor-pointer flex-col gap-3 rounded-2xl border border-white/10 bg-neutral-900/50 p-4 text-left transition-colors hover:bg-neutral-900/70"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
@@ -232,10 +240,10 @@ export function ListsDropdown({ className, onCreateList, onOpenList, onEditList,
                                 onEditList(list.id, list.type);
                                 setIsOpen(false);
                               }}
-                              className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-white/5 hover:text-white"
+                              className="rounded-lg p-2.5 text-neutral-500 transition-colors hover:bg-white/5 hover:text-white"
                               aria-label="Edit list"
                             >
-                              <Pencil size={14} suppressHydrationWarning />
+                              <Pencil size={16} suppressHydrationWarning />
                             </button>
                             <button
                               type="button"
@@ -244,10 +252,10 @@ export function ListsDropdown({ className, onCreateList, onOpenList, onEditList,
                                 onDeleteList(list.id, list.type);
                                 setIsOpen(false);
                               }}
-                              className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                              className="rounded-lg p-2.5 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-300"
                               aria-label="Delete list"
                             >
-                              <Trash2 size={14} suppressHydrationWarning />
+                              <Trash2 size={16} suppressHydrationWarning />
                             </button>
                           </div>
                         </div>
@@ -284,7 +292,7 @@ export function ListsDropdown({ className, onCreateList, onOpenList, onEditList,
                           </div>
                           <span className="text-[11px] text-neutral-500">View list</span>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>

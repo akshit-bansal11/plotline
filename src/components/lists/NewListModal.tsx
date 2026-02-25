@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { Modal } from "@/components/ui/modal";
-import { useAuth } from "@/context/auth-context";
+import { Modal } from "@/components/ui/Modal";
+import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
-import { DescriptionTextarea } from "@/components/ui/description-textarea";
+import { DescriptionTextarea } from "@/components/ui/DescriptionTextarea";
 
 type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 
