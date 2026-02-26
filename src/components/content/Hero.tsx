@@ -19,13 +19,13 @@ export function Hero({
   stats = { movies: 0, series: 0, anime: 0, manga: 0, games: 0 },
 }: HeroProps) {
   return (
-    <div className="relative w-full overflow-hidden pt-32 pb-12">
+    <div className="relative w-full overflow-hidden pt-22">
       {/* Background Gradient/Noise */}
-      <div className="absolute inset-0 bg-neutral-950">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-neutral-900/30 blur-[120px] rounded-full pointer-events-none" />
-      </div>
+      {/* <div className="absolute inset-0 bg-neutral-950">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-125 bg-neutral-900/30 blur-[120px] rounded-full pointer-events-none" />
+      </div> */}
 
-      <div className="relative z-10 w-full px-4 md:px-8">
+      <div className="relative z-10 w-full px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -45,7 +45,7 @@ export function Hero({
         </motion.div>
 
         {/* Stats Grid */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -56,7 +56,7 @@ export function Hero({
           <StatCard label="Anime Completed" value={stats.anime} />
           <StatCard label="Manga Read" value={stats.manga} />
           <StatCard label="Games Beaten" value={stats.games} />
-        </motion.div>
+        </motion.div> */}
       </div>
 
     </div>

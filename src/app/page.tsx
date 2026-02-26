@@ -176,10 +176,10 @@ function DashboardSection({
 
       <section className="w-full px-4 md:px-8">
         <div className="flex items-end justify-between gap-6">
-          <div>
+          {/* <div>
             <h2 className="text-xl font-semibold text-white">Dashboard</h2>
             <div className="mt-1 text-sm text-neutral-400">Metrics update instantly based on your completion dates.</div>
-          </div>
+          </div> */}
           {!uid && <div className="text-sm text-neutral-500">Sign in to start tracking.</div>}
         </div>
         {uid && status === "loading" ? <div className="mt-3 text-sm text-neutral-500">Syncing…</div> : null}
@@ -196,7 +196,7 @@ function DashboardSection({
           </div>
         ) : null}
 
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className="mt-6 grid not-sm:grid-cols-1 grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {(Object.keys(contentTypeLabels) as EntryMediaType[]).map((type) => (
             <GlassCard key={type} className="p-5" hoverEffect>
               <div className="text-sm font-semibold text-white">{contentTypeLabels[type]}</div>
