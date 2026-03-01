@@ -16,6 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSection } from "@/context/SectionContext";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { NewListModal } from "@/components/lists/NewListModal";
+import { LinkDropZone } from "@/components/ui/LinkDropZone";
 import { ListsDropdown } from "@/components/lists/ListsDropdown";
 import { LibrarySearchDropdown } from "@/components/search/LibrarySearchDropdown";
 import { MenuItem } from "./MenuItem";
@@ -98,6 +99,38 @@ export function Navbar() {
             setIsAuthOpen(true);
             return;
         }
+        setPendingItem(item);
+        setIsLogOpen(true);
+    };
+
+    const handleLinkDropResolved = (media: {
+        id: string;
+        title: string;
+        image: string | null;
+        year?: string;
+        type: "movie" | "series" | "anime" | "manga" | "game";
+        description?: string;
+        rating?: number | null;
+        imdbRating?: number | null;
+        lengthMinutes?: number | null;
+        episodeCount?: number | null;
+        chapterCount?: number | null;
+        genresThemes?: string[];
+    }) => {
+        const item: LoggableMedia = {
+            id: media.id,
+            title: media.title,
+            image: media.image,
+            year: media.year,
+            type: media.type,
+            description: media.description,
+            rating: media.rating,
+            imdbRating: media.imdbRating,
+            lengthMinutes: media.lengthMinutes,
+            episodeCount: media.episodeCount,
+            chapterCount: media.chapterCount,
+            genresThemes: media.genresThemes,
+        };
         setPendingItem(item);
         setIsLogOpen(true);
     };
@@ -408,6 +441,11 @@ export function Navbar() {
             <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
             <ImportExportModal isOpen={isImportExportOpen} onClose={() => setIsImportExportOpen(false)} />
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onSignOut={handleSignOut} />
+            <LinkDropZone
+                onResolved={handleLinkDropResolved}
+                disabled={!user}
+                onRequireAuth={() => setIsAuthOpen(true)}
+            />
         </>
     );
 }

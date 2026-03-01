@@ -97,6 +97,8 @@ const parseOmdbYear = (value?: string | null) => {
   return match ? match[0] : undefined;
 };
 
+const round1 = (value: number) => Math.round(value * 10) / 10;
+
 const isValidNumber = (value?: number | null) => typeof value === "number" && Number.isFinite(value);
 
 const getMissingFields = (data: MetadataResult | null, mediaType: MediaType) => {
@@ -233,8 +235,8 @@ const fetchTmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
     year: parseYear(mediaType === "movie" ? data.release_date : data.first_air_date),
     type: mediaType,
     image: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
-    rating: typeof data.vote_average === "number" ? data.vote_average : null,
-    tmdbRating: typeof data.vote_average === "number" ? data.vote_average : null,
+    rating: typeof data.vote_average === "number" ? round1(data.vote_average) : null,
+    tmdbRating: typeof data.vote_average === "number" ? round1(data.vote_average) : null,
     lengthMinutes,
     episodeCount: mediaType === "series" && typeof data.number_of_episodes === "number" ? data.number_of_episodes : null,
     genresThemes: Array.isArray(data.genres) ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v)) : [],
@@ -270,6 +272,7 @@ const fetchOmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
   if (data.Response === "False") return null;
 
   const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
+  const ratingRounded = typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
   const genresThemes =
     data.Genre && data.Genre !== "N/A" ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [];
   return {
@@ -278,8 +281,8 @@ const fetchOmdbMetadataById = async (id: string, mediaType: MediaType): Promise<
     year: parseOmdbYear(data.Year),
     type: mediaType,
     image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
-    rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
-    imdbRating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
+    rating: ratingRounded,
+    imdbRating: ratingRounded,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes,
   };
@@ -306,6 +309,7 @@ const fetchOmdbMetadataByTitle = async (title: string, mediaType: MediaType, yea
   if (data.Response === "False") return null;
 
   const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
+  const ratingRounded = typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
   const genresThemes =
     data.Genre && data.Genre !== "N/A" ? data.Genre.split(",").map((g) => g.trim()).filter(Boolean) : [];
   return {
@@ -314,8 +318,8 @@ const fetchOmdbMetadataByTitle = async (title: string, mediaType: MediaType, yea
     year: parseOmdbYear(data.Year),
     type: mediaType,
     image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
-    rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
-    imdbRating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
+    rating: ratingRounded,
+    imdbRating: ratingRounded,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes,
   };
@@ -367,7 +371,7 @@ const fetchMalMetadata = async (id: string, mediaType: MediaType): Promise<Metad
     year: parseYear(data.start_date),
     type: mediaType,
     image: data.main_picture?.medium || null,
-    rating: typeof data.mean === "number" ? data.mean : null,
+    rating: typeof data.mean === "number" ? round1(data.mean) : null,
     lengthMinutes,
     episodeCount: mediaType === "anime" && typeof data.num_episodes === "number" ? data.num_episodes : null,
     chapterCount: mediaType === "manga" && typeof data.num_chapters === "number" ? data.num_chapters : null,
@@ -383,7 +387,7 @@ const formatIgdbCoverUrl = (url?: string) => {
 
 const normalizeIgdbRating = (value?: number) => {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return Number((value / 10).toFixed(1));
+  return round1(value / 10);
 };
 
 const getIgdbAccessToken = async (): Promise<{ token: string | null; error: string }> => {
