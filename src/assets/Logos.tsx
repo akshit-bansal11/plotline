@@ -2,7 +2,7 @@
 
 // OTT
 export const NetflixLogo = "https://svgl.app/library/netflix-icon.svg";
-export const HuluLogo = "https://svgl.app/library/hulu-dark.svg";
+// export const HuluLogo = "https://svgl.app/library/hulu-dark.svg";
 
 // Gaming Platforms
 export const PlayStationLogo = "https://svgl.app/library/playstation.svg";

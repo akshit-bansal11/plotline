@@ -1,4 +1,0 @@
-src/components/search/global-search.tsx(397,6): error TS17008: JSX element 'div' has no corresponding closing tag.
-src/components/search/global-search.tsx(444,10): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
-src/components/search/global-search.tsx(787,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
-src/components/search/global-search.tsx(788,1): error TS1005: '</' expected.
