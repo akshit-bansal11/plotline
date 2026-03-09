@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Search } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { cn, entryMediaTypeLabels } from "@/lib/utils";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 
 interface LibrarySearchDropdownProps {
   className?: string;
@@ -98,7 +99,7 @@ export function LibrarySearchDropdown({ className }: LibrarySearchDropdownProps)
                     >
                       <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md bg-neutral-800">
                         {entry.image ? (
-                          <Image src={entry.image} alt={entry.title} fill className="object-cover" />
+                          <ImageWithSkeleton src={entry.image} alt={entry.title} fill className="object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-neutral-600">
                             <Search size={14} />

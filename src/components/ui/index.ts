@@ -6,3 +6,4 @@ export { Spotlight } from "./Spotlight";
 export { DescriptionTextarea } from "./DescriptionTextarea";
 export { InfographicToast } from "./InfographicToast";
 export { ExpandableText } from "./ExpandableText";
+export { ImageWithSkeleton } from "./ImageWithSkeleton";

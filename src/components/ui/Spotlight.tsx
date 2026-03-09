@@ -12,7 +12,7 @@ interface SpotlightProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Spotlight({
     children,
     className = "",
-    spotlightColor = "rgba(255, 255, 255, 0.07)",
+    spotlightColor = "rgb(255, 255, 255)",
     ...props
 }: SpotlightProps) {
     const divRef = useRef<HTMLDivElement>(null);
@@ -27,7 +27,7 @@ export function Spotlight({
         const rect = div.getBoundingClientRect();
 
         setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-        const nextSize = Math.max(rect.width, rect.height) + 6;
+        const nextSize = Math.max(rect.width/1.5, rect.height/1.5) + 6;
         setSpotlightSize(nextSize);
     };
 
@@ -45,7 +45,7 @@ export function Spotlight({
             onMouseMove={handleMouseMove}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className={cn("relative overflow-hidden", className)}
+            className={cn("relative overflow-hidden flex flex-col", className)}
             {...props}
         >
             <div

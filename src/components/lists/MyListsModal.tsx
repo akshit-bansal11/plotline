@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { DescriptionTextarea } from "@/components/ui/DescriptionTextarea";
 import { DescriptionErrorWrapper } from "@/components/ui/DescriptionErrorWrapper";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { MAX_DESCRIPTION_LENGTH_MANUAL } from "@/lib/validation";
 
 type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
@@ -679,12 +680,15 @@ export function MyListsModal({
                     hoverEffect
                   >
                     {item.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                      />
+                      <>
+                        <div className="absolute inset-0 animate-pulse bg-neutral-800/60" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="relative w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                        />
+                      </>
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-neutral-800 gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
@@ -739,7 +743,7 @@ export function MyListsModal({
               {listItems.slice(0, 5).map((item, i) => (
                 item.image && (
                   <div key={i} className="w-10 h-10 rounded-full border-2 border-neutral-900 overflow-hidden bg-neutral-800 shrink-0">
-                    <Image src={item.image} alt="" width={40} height={40} className="w-full h-full object-cover opacity-60" />
+                    <ImageWithSkeleton src={item.image} alt="" width={40} height={40} className="w-full h-full object-cover opacity-60" />
                   </div>
                 )
               ))}

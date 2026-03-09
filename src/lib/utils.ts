@@ -19,7 +19,7 @@ export const entryStatusLabels = {
     bored: "Bored",
     own: "Own",
     wishlist: "Wishlist",
-    not_committed: "Not Committed",
+    not_committed: "Playing",
     committed: "Committed",
 };
 

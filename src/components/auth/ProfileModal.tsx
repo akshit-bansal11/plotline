@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 
 export function ProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const { user, updateUserProfile } = useAuth();
@@ -121,7 +122,7 @@ export function ProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                     <div className="flex flex-col items-center gap-3">
                         <div className="h-24 w-24 overflow-hidden rounded-full border border-white/10 bg-neutral-900/40">
                             {displayPhoto ? (
-                                <Image src={displayPhoto} alt="Profile" width={96} height={96} className="h-full w-full object-cover" />
+                                <ImageWithSkeleton src={displayPhoto} alt="Profile" width={96} height={96} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="flex h-full w-full items-center justify-center text-3xl font-semibold text-neutral-400">
                                     {initials}
@@ -177,7 +178,7 @@ export function ProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                             <div className="mt-3 flex items-center gap-3">
                                 <div className="h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-neutral-900/40">
                                     {displayPhoto ? (
-                                        <Image src={displayPhoto} alt="Preview" width={48} height={48} className="h-full w-full object-cover" />
+                                        <ImageWithSkeleton src={displayPhoto} alt="Preview" width={48} height={48} className="h-full w-full object-cover" />
                                     ) : (
                                         <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-neutral-400">
                                             {initials}

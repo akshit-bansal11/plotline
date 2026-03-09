@@ -6,6 +6,7 @@ import Image from "next/image";
 import { AnimatePresence, motion, useScroll, useMotionValueEvent } from "motion/react";
 import { LogIn, LogOut, UserCircle, Settings, Upload, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { NavLinks } from "./NavLinks";
 import { MobileMenu } from "./MobileMenu";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -327,7 +328,7 @@ export function Navbar() {
                                 >
                                     <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-neutral-900/50 text-xs font-semibold text-neutral-300">
                                         {avatarUrl ? (
-                                            <Image src={avatarUrl} alt={userLabel || "User"} width={32} height={32} className="h-full w-full object-cover" />
+                                            <ImageWithSkeleton src={avatarUrl} alt={userLabel || "User"} width={32} height={32} className="h-full w-full object-cover" />
                                         ) : (
                                             (userLabel || "U").slice(0, 1).toUpperCase()
                                         )}

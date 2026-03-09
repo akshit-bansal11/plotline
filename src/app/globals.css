@@ -22,11 +22,11 @@
 }
 
 @utility glass {
-  @apply backdrop-blur-xl bg-neutral-900/40 border border-white/5;
+  @apply bg-[#121212] border border-white/10;
 }
 
 @utility glass-hover {
-  @apply transition-all duration-500 hover:bg-neutral-800/50 hover:border-white/10 hover:shadow-lg hover:shadow-black/20;
+  @apply transition-all hover:backdrop-blur-3xl duration-300 hover:shadow-lg hover:shadow-black/20;
 }
 
 @layer base {

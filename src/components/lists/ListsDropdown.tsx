@@ -8,6 +8,7 @@ import { ListPlus, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 
 type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 
@@ -283,7 +284,7 @@ export function ListsDropdown({ className, onCreateList, onOpenList, onEditList,
                                   key={`${list.id}-image-${index}`}
                                   className="relative h-8 w-8 overflow-hidden rounded-full border border-neutral-950 bg-neutral-800"
                                 >
-                                  <Image src={image} alt="" fill className="object-cover" />
+                                  <ImageWithSkeleton src={image} alt="" fill className="object-cover" />
                                 </div>
                               ))
                             ) : (

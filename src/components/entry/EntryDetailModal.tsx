@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
 import { EntryDoc, EntryMediaType, EntryStatus, useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
@@ -91,16 +92,42 @@ export function EntryDetailModal({
     }
   };
 
-  const statusOptions: EntryStatus[] = ["watching", "completed", "plan_to_watch", "on_hold", "dropped", "unspecified"];
+  const STANDARD_STATUS_OPTIONS: EntryStatus[] = ["watching", "completed", "plan_to_watch", "on_hold", "dropped", "unspecified"];
+  const GAME_STATUS_OPTIONS: EntryStatus[] = ["not_committed", "committed", "main_story_completed", "fully_completed", "backlogged", "bored", "own", "wishlist", "dropped", "unspecified"];
+  const statusOptions = entry?.mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS;
 
   const getStatusBadgeClass = (value: EntryStatus) => {
+    if (entry?.mediaType === "game") {
+      switch (value) {
+        case "main_story_completed":
+          return "border-emerald-700/50 bg-emerald-950/80 text-emerald-600 hover:bg-emerald-900/80";
+        case "fully_completed":
+          return "border-emerald-400/50 bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80";
+        case "backlogged":
+          return "border-yellow-500/50 bg-yellow-950/80 text-yellow-400 hover:bg-yellow-900/80";
+        case "bored":
+          return "border-orange-500/50 bg-orange-950/80 text-orange-400 hover:bg-orange-900/80";
+        case "own":
+          return "border-pink-500/50 bg-pink-950/80 text-pink-400 hover:bg-pink-900/80";
+        case "wishlist":
+          return "border-white/50 bg-neutral-950/80 text-white hover:bg-neutral-900/80";
+        case "committed":
+          return "border-sky-500/50 bg-sky-950/80 text-sky-400 hover:bg-sky-900/80";
+        case "not_committed":
+          return "border-blue-700/50 bg-blue-950/80 text-blue-500 hover:bg-blue-900/80";
+        case "dropped":
+          return "border-red-500/50 bg-red-950/80 text-red-400 hover:bg-red-900/80";
+        default:
+          return "border-neutral-500/30 bg-neutral-950/80 text-neutral-400 hover:bg-neutral-900/80";
+      }
+    }
     switch (value) {
       case "completed":
         return "border-emerald-500/50 bg-emerald-950/80 text-emerald-400 hover:bg-emerald-900/80";
       case "watching":
         return "border-blue-500/50 bg-blue-950/80 text-blue-400 hover:bg-blue-900/80";
       case "plan_to_watch":
-        return "border-neutral-500/50 bg-neutral-950/80 text-neutral-400 hover:bg-neutral-900/80";
+        return "border-violet-500/50 bg-violet-950/80 text-violet-400 hover:bg-violet-900/80";
       case "on_hold":
         return "border-yellow-500/50 bg-yellow-950/80 text-yellow-400 hover:bg-yellow-900/80";
       case "dropped":
@@ -237,7 +264,7 @@ export function EntryDetailModal({
           <div className="w-full sm:w-48">
             <div className="aspect-[2/3] w-full overflow-hidden rounded-2xl bg-neutral-800/50">
               {entry.image ? (
-                <Image src={entry.image} alt={entry.title} width={192} height={288} className="h-full w-full object-cover" />
+                <ImageWithSkeleton src={entry.image} alt={entry.title} width={192} height={288} className="h-full w-full object-cover" />
               ) : (
                 <div className="h-full w-full bg-neutral-800/50" />
               )}

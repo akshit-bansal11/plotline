@@ -4,9 +4,10 @@ import { Fragment, useEffect, useCallback, useMemo, useRef, useState } from "rea
 import Image from "next/image";
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, ChevronRight, Pencil, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Star, Trash2, X } from "lucide-react";
 import { Hero } from "@/components/content/Hero";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { MediaGrid } from "@/components/content/MediaGrid";
 import { MediaSection } from "@/components/content/MediaSection";
 import { useAuth } from "@/context/AuthContext";
@@ -152,20 +153,16 @@ function DashboardSection({
 
   const recentByType = useMemo(() => {
     const grouped: Record<EntryMediaType, EntryDoc[]> = { movie: [], series: [], anime: [], manga: [], game: [] };
-    const thirtyDaysAgo = new Date().getTime() - 30 * 24 * 60 * 60 * 1000;
 
-    for (const entry of completedEntries) {
-      const finishedDate = entry.completedAtMs ?? entry.createdAtMs ?? 0;
-      if (finishedDate >= thirtyDaysAgo) {
-        grouped[entry.mediaType].push(entry);
-      }
+    for (const entry of entries) {
+      grouped[entry.mediaType].push(entry);
     }
 
     const sortKey = (e: EntryDoc) => e.completedAtMs ?? e.createdAtMs ?? 0;
     (Object.keys(grouped) as EntryMediaType[]).forEach((key) => grouped[key].sort((a, b) => sortKey(b) - sortKey(a)));
 
     return grouped;
-  }, [completedEntries]);
+  }, [entries]);
 
   const username = user?.displayName || user?.email || "Traveler";
   const visibleEntriesError = uid ? error : null;
@@ -217,48 +214,64 @@ function DashboardSection({
         <h2 className="text-xl font-semibold text-white">Recent activity</h2>
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           {(Object.keys(contentTypeLabels) as EntryMediaType[]).map((type) => {
-            const items = recentByType[type].slice(0, 5);
+            const items = recentByType[type].slice(0, 10);
 
             return (
               <GlassCard key={type} className="p-5" hoverEffect>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="text-sm font-semibold text-white">{contentTypeLabels[type]}</div>
-                  <div className="text-xs text-neutral-500">Most recently completed</div>
-                </div>
+                <div className="text-sm font-semibold text-white">{contentTypeLabels[type]}</div>
 
                 {uid && items.length === 0 ? <div className="mt-4 text-sm text-neutral-400">No completed items yet.</div> : null}
 
                 {!uid ? <div className="mt-4 text-sm text-neutral-500">Sign in to see your recent activity.</div> : null}
 
                 {items.length > 0 ? (
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 space-y-3 max-h-[340px] overflow-y-auto pr-2">
                     {items.map((entry) => (
                       <div key={entry.id} className="flex items-center gap-3 rounded-2xl border border-white/5 bg-neutral-900/40 p-3">
                         <div className="h-14 w-10 shrink-0 overflow-hidden rounded-lg bg-neutral-800/50">
                           {entry.image ? (
-                            <Image src={entry.image} alt={entry.title} width={40} height={56} className="h-full w-full object-cover" />
+                            <ImageWithSkeleton src={entry.image} alt={entry.title} width={40} height={56} className="h-full w-full object-cover" />
                           ) : (
                             <div className="h-full w-full bg-neutral-800/50" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-white">{entry.title}</div>
-                          <div className="mt-1 text-xs text-neutral-500">
-                            {entry.releaseYear ? `${entry.releaseYear} • ` : ""}
-                            {entry.completedAtMs
-                              ? formatISODate(entry.completedAtMs)
-                              : entry.completionDateUnknown
-                                ? "Date unknown"
-                                : "No date set"}
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-semibold text-white">{entry.title}</span>
+                            <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[10px]", entry.mediaType === "game" ? {
+                              "border-emerald-700/20 bg-emerald-700/10 text-emerald-600": entry.status === "main_story_completed",
+                              "border-emerald-400/20 bg-emerald-400/10 text-emerald-300": entry.status === "fully_completed",
+                              "border-amber-500/20 bg-amber-500/10 text-amber-400": entry.status === "backlogged",
+                              "border-orange-500/20 bg-orange-500/10 text-orange-400": entry.status === "bored",
+                              "border-pink-500/20 bg-pink-500/10 text-pink-400": entry.status === "own",
+                              "border-white/20 bg-white/10 text-white": entry.status === "wishlist",
+                              "border-sky-500/20 bg-sky-500/10 text-sky-400": entry.status === "committed",
+                              "border-blue-700/20 bg-blue-700/10 text-blue-500": entry.status === "not_committed",
+                              "border-red-500/20 bg-red-500/10 text-red-400": entry.status === "dropped",
+                              "border-neutral-500/20 bg-neutral-800/40 text-neutral-400": entry.status === "unspecified",
+                            } : {
+                              "border-violet-500/20 bg-violet-500/10 text-violet-400": entry.status === "plan_to_watch",
+                              "border-blue-500/20 bg-blue-500/10 text-blue-400": entry.status === "watching",
+                              "border-emerald-500/20 bg-emerald-500/10 text-emerald-400": entry.status === "completed",
+                              "border-amber-500/20 bg-amber-500/10 text-amber-400": entry.status === "on_hold",
+                              "border-red-500/20 bg-red-500/10 text-red-400": entry.status === "dropped",
+                              "border-neutral-500/20 bg-neutral-800/40 text-neutral-400": entry.status === "unspecified",
+                            })}>
+                              {entryStatusLabels[entry.status] ?? "Unspecified"}
+                            </span>
                           </div>
+                          {(entry.releaseYear || entry.completedAtMs) ? (
+                            <div className="mt-1 text-xs text-neutral-500">
+                              {entry.releaseYear ? `${entry.releaseYear}` : ""}
+                              {entry.releaseYear && entry.completedAtMs ? " • " : ""}
+                              {entry.completedAtMs ? formatISODate(entry.completedAtMs) : ""}
+                            </div>
+                          ) : null}
                         </div>
                         {typeof entry.userRating === "number" ? (
-                          <div className="shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 tabular-nums">
-                            You {entry.userRating.toFixed(1)}
-                          </div>
-                        ) : typeof entry.imdbRating === "number" ? (
-                          <div className="shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 tabular-nums">
-                            IMDb {entry.imdbRating.toFixed(1)}
+                          <div className="flex items-center gap-1 shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-2.5 py-1 text-xs text-neutral-200 tabular-nums">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            {entry.userRating.toFixed(1)}
                           </div>
                         ) : null}
                         <button
@@ -1004,36 +1017,41 @@ function LibrarySection({
                   {/* Unlisted entries */}
                   {otherEntries.length > 0 && (
                     <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-neutral-500">Outside List</span>
-                        <button
-                          type="button"
-                          onClick={() => setOtherStatusFilter("all")}
-                          className={cn(
-                            "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors",
-                            otherStatusFilter === "all"
-                              ? "border-white/30 bg-white/10 text-white"
-                              : "border-white/10 text-neutral-500 hover:border-white/20 hover:text-neutral-300"
-                          )}
-                        >
-                          All
-                        </button>
-                        {otherStatusOptions.map((statusOption) => (
+                      {otherStatusOptions.length > 1 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-neutral-500">Unlisted</span>
                           <button
-                            key={statusOption}
                             type="button"
-                            onClick={() => setOtherStatusFilter(otherStatusFilter === statusOption ? "all" : statusOption)}
+                            onClick={() => setOtherStatusFilter("all")}
                             className={cn(
                               "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors",
-                              otherStatusFilter === statusOption
+                              otherStatusFilter === "all"
                                 ? "border-white/30 bg-white/10 text-white"
                                 : "border-white/10 text-neutral-500 hover:border-white/20 hover:text-neutral-300"
                             )}
                           >
-                            {entryStatusLabels[statusOption]}
+                            All
                           </button>
-                        ))}
-                      </div>
+                          {otherStatusOptions.map((statusOption) => (
+                            <button
+                              key={statusOption}
+                              type="button"
+                              onClick={() => setOtherStatusFilter(otherStatusFilter === statusOption ? "all" : statusOption)}
+                              className={cn(
+                                "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors",
+                                otherStatusFilter === statusOption
+                                  ? "border-white/30 bg-white/10 text-white"
+                                  : "border-white/10 text-neutral-500 hover:border-white/20 hover:text-neutral-300"
+                              )}
+                            >
+                              {entryStatusLabels[statusOption]}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {otherStatusOptions.length === 1 && (
+                        <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-neutral-500">Unlisted</span>
+                      )}
                       <MediaGrid
                         items={filteredOtherEntries.map((entry) => ({
                           id: entry.id,

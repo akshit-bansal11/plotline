@@ -68,6 +68,8 @@ export function MediaCard({
     const [isRatingUpdating, setIsRatingUpdating] = useState(false);
     const [isRelationsOpen, setIsRelationsOpen] = useState(false);
     const relationsMenuRef = useRef<HTMLDivElement | null>(null);
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [ottLogosLoaded, setOttLogosLoaded] = useState<Record<string, boolean>>({});
 
     const { selectedCountry, entries } = useData();
     const ottProviders = getOTTAvailability(title, selectedCountry, type);
@@ -100,16 +102,42 @@ export function MediaCard({
         setLocalRating(next);
     }, [userRating]);
 
-    const statusOptions: EntryStatus[] = ["watching", "completed", "plan_to_watch", "on_hold", "dropped", "unspecified"];
+    const STANDARD_STATUS_OPTIONS: EntryStatus[] = ["watching", "completed", "plan_to_watch", "on_hold", "dropped", "unspecified"];
+    const GAME_STATUS_OPTIONS: EntryStatus[] = ["not_committed", "committed", "main_story_completed", "fully_completed", "backlogged", "bored", "own", "wishlist", "dropped", "unspecified"];
+    const statusOptions = type === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS;
 
     const getStatusBadgeClass = (s: EntryStatus) => {
+        if (type === "game") {
+            switch (s) {
+                case "main_story_completed":
+                    return "border-emerald-700/50 bg-emerald-950/80 text-emerald-600 hover:bg-emerald-900/80";
+                case "fully_completed":
+                    return "border-emerald-400/50 bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80";
+                case "backlogged":
+                    return "border-yellow-500/50 bg-yellow-950/80 text-yellow-400 hover:bg-yellow-900/80";
+                case "bored":
+                    return "border-orange-500/50 bg-orange-950/80 text-orange-400 hover:bg-orange-900/80";
+                case "own":
+                    return "border-pink-500/50 bg-pink-950/80 text-pink-400 hover:bg-pink-900/80";
+                case "wishlist":
+                    return "border-white/50 bg-neutral-950/80 text-white hover:bg-neutral-900/80";
+                case "committed":
+                    return "border-sky-500/50 bg-sky-950/80 text-sky-400 hover:bg-sky-900/80";
+                case "not_committed":
+                    return "border-blue-700/50 bg-blue-950/80 text-blue-500 hover:bg-blue-900/80";
+                case "dropped":
+                    return "border-red-500/50 bg-red-950/80 text-red-400 hover:bg-red-900/80";
+                default:
+                    return "border-neutral-500/30 bg-neutral-950/80 text-neutral-400 hover:bg-neutral-900/80";
+            }
+        }
         switch (s) {
             case "completed":
                 return "border-emerald-500/50 bg-emerald-950/80 text-emerald-400 hover:bg-emerald-900/80";
             case "watching":
                 return "border-blue-500/50 bg-blue-950/80 text-blue-400 hover:bg-blue-900/80";
             case "plan_to_watch":
-                return "border-neutral-500/50 bg-neutral-950/80 text-neutral-400 hover:bg-neutral-900/80";
+                return "border-violet-500/50 bg-violet-950/80 text-violet-400 hover:bg-violet-900/80";
             case "on_hold":
                 return "border-yellow-500/50 bg-yellow-950/80 text-yellow-400 hover:bg-yellow-900/80";
             case "dropped":
@@ -220,13 +248,22 @@ export function MediaCard({
                 }
             >
                 {image ? (
-                    <Image
-                        src={image}
-                        alt={title}
-                        fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-                    />
+                    <>
+                        {!imageLoaded && (
+                            <div className="absolute inset-0 bg-neutral-800/60 animate-pulse" />
+                        )}
+                        <Image
+                            src={image}
+                            alt={title}
+                            fill
+                            className={cn(
+                                "object-cover transition-all duration-700 group-hover:scale-110",
+                                imageLoaded ? "opacity-100" : "opacity-0"
+                            )}
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                            onLoad={() => setImageLoaded(true)}
+                        />
+                    </>
                 ) : (
                     <div className="absolute inset-0 bg-neutral-800/60" />
                 )}
@@ -379,15 +416,22 @@ export function MediaCard({
                         {ottProviders.map((provider) => (
                             <div
                                 key={provider.name}
-                                className="relative h-10 w-10 overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/30 backdrop-blur-sm p-4 shadow-lg "
+                                className="relative h-10 w-10 overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/30 backdrop-blur-sm p-4 shadow-lg"
                                 title={`Available on ${provider.name}`}
                             >
+                                {!ottLogosLoaded[provider.name] && (
+                                    <div className="absolute inset-0 rounded-lg bg-neutral-700/50 animate-pulse" />
+                                )}
                                 <Image
                                     src={provider.logo}
                                     alt={provider.name}
                                     fill
-                                    className="object-contain p-1.5"
+                                    className={cn(
+                                        "object-contain p-1.5 transition-opacity duration-300",
+                                        ottLogosLoaded[provider.name] ? "opacity-100" : "opacity-0"
+                                    )}
                                     sizes="28px"
+                                    onLoad={() => setOttLogosLoaded(prev => ({ ...prev, [provider.name]: true }))}
                                 />
                             </div>
                         ))}

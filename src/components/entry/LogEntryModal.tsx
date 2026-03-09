@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Timestamp, addDoc, collection, serverTimestamp, query, orderBy, limit, onSnapshot, updateDoc, doc, getDocs, where, deleteDoc } from "firebase/firestore";
 import { Plus, Gamepad2, Monitor, Smartphone, Disc, HardDrive, Hexagon, Tablet, Laptop, Terminal, Loader2, Search, ChevronDown, X, CheckCircle } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/lib/utils";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -1101,7 +1102,7 @@ export function LogEntryModal({
                       )}
                       <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
                         {result.image ? (
-                          <Image src={result.image} alt={result.title} width={56} height={80} className="h-full w-full object-cover" />
+                          <ImageWithSkeleton src={result.image} alt={result.title} width={56} height={80} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-neutral-700">
                             <Search size={16} />
@@ -1590,7 +1591,7 @@ export function LogEntryModal({
                     <div key={`${rel.targetId}-${rel.type}`} className="flex items-center gap-3 bg-neutral-800/50 p-3 rounded-xl border border-white/5">
                       {rel.image ? (
                         <div className="w-8 h-12 relative rounded overflow-hidden shrink-0 bg-neutral-800 hidden sm:block">
-                          <Image src={rel.image} alt="" fill className="object-cover" />
+                          <ImageWithSkeleton src={rel.image} alt="" fill className="object-cover" />
                         </div>
                       ) : (
                         <div className="w-8 h-12 rounded bg-neutral-800 shrink-0 hidden sm:block" />

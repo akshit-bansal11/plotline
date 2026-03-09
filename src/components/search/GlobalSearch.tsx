@@ -5,6 +5,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import { Filter, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import type { LoggableMedia } from "@/components/entry/LogEntryModal";
 import {
   ANIME_STUDIO_OPTIONS,
@@ -604,7 +605,7 @@ export function GlobalSearch({ className, onSelectMedia, onRequireAuth, disabled
                       >
                         <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md bg-neutral-800">
                           {result.image ? (
-                            <Image src={result.image} alt={result.title} fill className="object-cover" />
+                            <ImageWithSkeleton src={result.image} alt={result.title} fill className="object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-neutral-600">
                               <Search size={14} />
