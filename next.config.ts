@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "ia.media-imdb.com" },
       { protocol: "https", hostname: "img.omdbapi.com" },
       { protocol: "https", hostname: "cdn.myanimelist.net" },
+      { protocol: "https", hostname: "myanimelist.net" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "images.igdb.com" },
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
