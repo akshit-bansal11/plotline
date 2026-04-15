@@ -1,21 +1,108 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Geoma";
+  src: url("/fonts/geoma-thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geoma";
+  src: url("/fonts/geoma-light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geoma";
+  src: url("/fonts/geoma-regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  src: url("/fonts/montserrat.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Neofolia";
+  src: url("/fonts/neofolia.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+  --color-neutral-950: #0a0a0a;
+
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--color-neutral-950);
+  --foreground: var(--color-neutral-50);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@utility glass {
+  @apply bg-[#121212] border border-white/10;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@utility glass-hover {
+  @apply transition-all hover:backdrop-blur-3xl duration-300 hover:shadow-lg hover:shadow-black/20;
+}
+
+@layer base {
+  /* Scrollbar Polish */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-800 rounded-full hover:bg-neutral-600 transition-colors;
+  }
+
+  /* Hide scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Mask gradient for horizontal scroll */
+  .mask-gradient-x {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 20px,
+      black calc(100% - 20px),
+      transparent
+    );
   }
 }
 
@@ -23,4 +110,88 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+
+  @apply antialiased min-h-screen selection:bg-neutral-800 selection:text-white;
+}
+
+.media-card .media-card-status-button {
+  padding: 3.2px 9.6px;
+  font-size: 8px;
+}
+
+.media-card .media-card-rating-badge {
+  width: 28.8px;
+  height: 28.8px;
+  font-size: 9.6px;
+  box-shadow: 0 3.2px 9.6px rgba(0, 0, 0, 0.5);
+}
+
+.media-card .media-card-rating-menu {
+  margin-top: 6.4px;
+  padding: 6.4px 9.6px;
+}
+
+.media-card .media-card-rating-option {
+  width: 16px;
+  height: 16px;
+}
+
+.media-card .media-card-info {
+  padding: 12.8px;
+}
+
+.media-card .media-card-title {
+  font-size: 12.8px;
+  line-height: 1.2;
+}
+
+.media-card .media-card-meta {
+  margin-top: 3.2px;
+  column-gap: 6.4px;
+  font-size: 9.6px;
+}
+
+.media-card .media-card-actions {
+  margin-top: 6.4px;
+  column-gap: 6.4px;
+}
+
+.media-card .media-card-action-button {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.media-card-dragging {
+  opacity: 0.6;
+}
+
+.media-card-drop-target {
+  outline: 2px solid rgba(96, 165, 250, 0.6);
+  outline-offset: 2px;
+}
+
+@layer utilities {
+  .font-geoma-thin {
+    font-family: "Geoma", sans-serif;
+    font-weight: 100;
+  }
+
+  .font-geoma-light {
+    font-family: "Geoma", sans-serif;
+    font-weight: 300;
+  }
+
+  .font-geoma {
+    font-family: "Geoma", sans-serif;
+    font-weight: 400;
+  }
+
+  .font-montserrat {
+    font-family: "Montserrat", sans-serif;
+  }
+
+  .font-neofolia {
+    font-family: "Neofolia", serif;
+  }
 }
