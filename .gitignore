@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# auth fix and testing
+auth-fix-context.md
+/scratch
+/temp
