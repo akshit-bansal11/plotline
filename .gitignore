@@ -44,3 +44,6 @@ next-env.d.ts
 auth-fix-context.md
 /scratch
 /temp
+
+# boneyard — auto-generated bone layouts (keep registry stub committed)
+/src/bones/*.bones.json

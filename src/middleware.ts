@@ -5,6 +5,8 @@ import { adminAuth } from "@/lib/firebaseAdmin";
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get("session")?.value;
   const { pathname } = request.nextUrl;
+  const userAgent = request.headers.get("user-agent") || "";
+  const isHeadlessBuild = userAgent.includes("HeadlessChrome");
 
   // Define public routes
   const publicRoutes = [
@@ -13,9 +15,7 @@ export async function middleware(request: NextRequest) {
     "/api/auth/verify-captcha",
     "/api/auth/forgot-password",
   ];
-  const isPublicRoute = publicRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
+  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
   let isAuthenticated = false;
 
@@ -43,6 +43,10 @@ export async function middleware(request: NextRequest) {
 
   // Special case for root path: if not authenticated, redirect to /auth
   if (!isAuthenticated && pathname === "/") {
+    // Let Boneyard's headless Chromium snapshot the public home shell without auth.
+    if (isHeadlessBuild) {
+      return NextResponse.next();
+    }
     return NextResponse.redirect(new URL("/auth", request.url));
   }
 
