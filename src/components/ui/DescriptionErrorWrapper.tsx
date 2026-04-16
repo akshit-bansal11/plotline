@@ -23,9 +23,7 @@ export function DescriptionErrorWrapper({
       <div className={cn("relative h-full w-full", className)}>
         {children}
         {actions && (
-          <div className="absolute inset-x-0 bottom-0 pointer-events-none z-20">
-            {actions}
-          </div>
+          <div className="absolute inset-x-0 bottom-0 pointer-events-none z-20">{actions}</div>
         )}
       </div>
     );
@@ -59,9 +57,7 @@ export function DescriptionErrorWrapper({
       </div>
 
       {actions && (
-        <div className="absolute inset-x-0 bottom-0 pointer-events-none z-20">
-          {actions}
-        </div>
+        <div className="absolute inset-x-0 bottom-0 pointer-events-none z-20">{actions}</div>
       )}
     </div>
   );

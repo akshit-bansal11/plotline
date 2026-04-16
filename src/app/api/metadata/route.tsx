@@ -20,10 +20,7 @@ type MetadataResult = {
 
 type FetchResult = { ok: true; data: unknown } | { ok: false; error: string };
 
-const cache = new Map<
-  string,
-  { timestamp: number; data: MetadataResult | null }
->();
+const cache = new Map<string, { timestamp: number; data: MetadataResult | null }>();
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
 const igdbTokenCache = { token: null as string | null, expiresAt: 0 };
 const RATE_LIMIT_WINDOW = 60_000;
@@ -50,12 +47,8 @@ const checkRateLimit = (key: string) => {
   return true;
 };
 
-const safeFetchJson = async (
-  url: string,
-  init?: RequestInit,
-): Promise<FetchResult> => {
-  const sleep = (delay: number) =>
-    new Promise((resolve) => setTimeout(resolve, delay));
+const safeFetchJson = async (url: string, init?: RequestInit): Promise<FetchResult> => {
+  const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay));
   for (let attempt = 0; attempt <= FETCH_RETRY_COUNT; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -88,8 +81,7 @@ const safeFetchJson = async (
   return { ok: false, error: "Request failed" };
 };
 
-const parseYear = (value?: string | null) =>
-  value ? value.split("-")[0] : undefined;
+const parseYear = (value?: string | null) => (value ? value.split("-")[0] : undefined);
 
 const parseRuntimeMinutes = (value?: string | null) => {
   if (!value) return null;
@@ -110,10 +102,7 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
 const isValidNumber = (value?: number | null) =>
   typeof value === "number" && Number.isFinite(value);
 
-const getMissingFields = (
-  data: MetadataResult | null,
-  mediaType: MediaType,
-) => {
+const getMissingFields = (data: MetadataResult | null, mediaType: MediaType) => {
   const required =
     mediaType === "movie"
       ? [
@@ -140,14 +129,12 @@ const getMissingFields = (
   const missing: string[] = [];
   if (!data.title || data.title.trim().length === 0) missing.push("title");
   if (!data.type || data.type !== mediaType) missing.push("type");
-  if (!data.description || data.description.trim().length === 0)
-    missing.push("description");
+  if (!data.description || data.description.trim().length === 0) missing.push("description");
   if (!data.year || data.year.trim().length === 0) missing.push("year");
   if (!isValidNumber(data.rating)) missing.push("rating");
   if (!Array.isArray(data.genresThemes) || data.genresThemes.length === 0)
     missing.push("genresThemes");
-  if (!Array.isArray(data.genreIds) || data.genreIds.length === 0)
-    missing.push("genreIds");
+  if (!Array.isArray(data.genreIds) || data.genreIds.length === 0) missing.push("genreIds");
   if (mediaType === "movie") {
     if (!isValidNumber(data.lengthMinutes) || (data.lengthMinutes ?? 0) <= 0)
       missing.push("lengthMinutes");
@@ -186,18 +173,14 @@ const mergeMetadata = (
   const primaryDesc = primary.description || "";
   const secondaryDesc = secondary.description || "";
   const genres = Array.from(
-    new Set([
-      ...(primary.genresThemes || []),
-      ...(secondary.genresThemes || []),
-    ]),
+    new Set([...(primary.genresThemes || []), ...(secondary.genresThemes || [])]),
   );
   const genreIds = Array.from(
     new Set([...(primary.genreIds || []), ...(secondary.genreIds || [])]),
   );
   return {
     title: primary.title || secondary.title,
-    description:
-      primaryDesc.length >= secondaryDesc.length ? primaryDesc : secondaryDesc,
+    description: primaryDesc.length >= secondaryDesc.length ? primaryDesc : secondaryDesc,
     year: primary.year || secondary.year,
     type: primary.type || secondary.type,
     image: primary.image ?? secondary.image,
@@ -234,9 +217,7 @@ const searchTmdbIdByTitle = async (
       : `&first_air_date_year=${encodeURIComponent(year)}`
     : "";
   const url = `https://api.themoviedb.org/3/search/${tmdbType}?query=${encodeURIComponent(title)}${yearParam}`;
-  const headers = bearerToken
-    ? { Authorization: `Bearer ${bearerToken}` }
-    : undefined;
+  const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
   const response = await safeFetchJson(finalUrl, { headers });
   if (!response.ok) return null;
@@ -256,9 +237,7 @@ const fetchTmdbMetadataById = async (
 
   const tmdbType = mediaType === "series" ? "tv" : "movie";
   const url = `https://api.themoviedb.org/3/${tmdbType}/${encodeURIComponent(id)}?language=en-US`;
-  const headers = bearerToken
-    ? { Authorization: `Bearer ${bearerToken}` }
-    : undefined;
+  const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
   const response = await safeFetchJson(finalUrl, { headers });
   if (!response.ok) return null;
@@ -288,17 +267,11 @@ const fetchTmdbMetadataById = async (
   return {
     title: data.title || data.name,
     description: data.overview || "",
-    year: parseYear(
-      mediaType === "movie" ? data.release_date : data.first_air_date,
-    ),
+    year: parseYear(mediaType === "movie" ? data.release_date : data.first_air_date),
     type: mediaType,
-    image: data.poster_path
-      ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
-      : null,
-    rating:
-      typeof data.vote_average === "number" ? round1(data.vote_average) : null,
-    tmdbRating:
-      typeof data.vote_average === "number" ? round1(data.vote_average) : null,
+    image: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
+    rating: typeof data.vote_average === "number" ? round1(data.vote_average) : null,
+    tmdbRating: typeof data.vote_average === "number" ? round1(data.vote_average) : null,
     lengthMinutes,
     episodeCount:
       mediaType === "series" && typeof data.number_of_episodes === "number"
@@ -310,9 +283,7 @@ const fetchTmdbMetadataById = async (
     genreIds: Array.isArray(data.genres)
       ? data.genres
           .map((g) => g.id)
-          .filter(
-            (v): v is number => typeof v === "number" && Number.isFinite(v),
-          )
+          .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
       : [],
   };
 };
@@ -325,11 +296,7 @@ const fetchTmdbMetadata = async (
 ) => {
   if (mediaType !== "movie" && mediaType !== "series") return null;
   const resolvedId =
-    id && /^\d+$/.test(id)
-      ? id
-      : title
-        ? await searchTmdbIdByTitle(title, mediaType, year)
-        : null;
+    id && /^\d+$/.test(id) ? id : title ? await searchTmdbIdByTitle(title, mediaType, year) : null;
   if (!resolvedId) return null;
   return fetchTmdbMetadataById(resolvedId, mediaType);
 };
@@ -355,14 +322,9 @@ const fetchOmdbMetadataById = async (
   };
   if (data.Response === "False") return null;
 
-  const rating =
-    data.imdbRating && data.imdbRating !== "N/A"
-      ? Number(data.imdbRating)
-      : null;
+  const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
   const ratingRounded =
-    typeof rating === "number" && Number.isFinite(rating)
-      ? round1(rating)
-      : null;
+    typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
   const genresThemes =
     data.Genre && data.Genre !== "N/A"
       ? data.Genre.split(",")
@@ -389,8 +351,7 @@ const fetchOmdbMetadataByTitle = async (
 ): Promise<MetadataResult | null> => {
   const apiKey = process.env.OMDB_API_KEY;
   if (!apiKey) return null;
-  const typeParam =
-    mediaType === "movie" || mediaType === "series" ? `&type=${mediaType}` : "";
+  const typeParam = mediaType === "movie" || mediaType === "series" ? `&type=${mediaType}` : "";
   const yearParam = year ? `&y=${encodeURIComponent(year)}` : "";
   const url = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}&plot=full${typeParam}${yearParam}`;
   const response = await safeFetchJson(url);
@@ -407,14 +368,9 @@ const fetchOmdbMetadataByTitle = async (
   };
   if (data.Response === "False") return null;
 
-  const rating =
-    data.imdbRating && data.imdbRating !== "N/A"
-      ? Number(data.imdbRating)
-      : null;
+  const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
   const ratingRounded =
-    typeof rating === "number" && Number.isFinite(rating)
-      ? round1(rating)
-      : null;
+    typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
   const genresThemes =
     data.Genre && data.Genre !== "N/A"
       ? data.Genre.split(",")
@@ -493,13 +449,9 @@ const fetchMalMetadata = async (
     rating: typeof data.mean === "number" ? round1(data.mean) : null,
     lengthMinutes,
     episodeCount:
-      mediaType === "anime" && typeof data.num_episodes === "number"
-        ? data.num_episodes
-        : null,
+      mediaType === "anime" && typeof data.num_episodes === "number" ? data.num_episodes : null,
     chapterCount:
-      mediaType === "manga" && typeof data.num_chapters === "number"
-        ? data.num_chapters
-        : null,
+      mediaType === "manga" && typeof data.num_chapters === "number" ? data.num_chapters : null,
     genresThemes: Array.isArray(data.genres)
       ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v))
       : [],
@@ -592,9 +544,7 @@ const fetchIgdbMetadata = async (
   const year = data.first_release_date
     ? String(new Date(data.first_release_date * 1000).getUTCFullYear())
     : undefined;
-  const ratingValue = normalizeIgdbRating(
-    data.aggregated_rating ?? data.rating,
-  );
+  const ratingValue = normalizeIgdbRating(data.aggregated_rating ?? data.rating);
   return {
     title: data.name || "",
     description: data.summary || "",

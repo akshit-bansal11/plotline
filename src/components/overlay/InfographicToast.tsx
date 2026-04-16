@@ -40,9 +40,7 @@ export function InfographicToast({
           </div>
           <div className="space-y-1">
             <p className="text-sm font-semibold text-white">{title}</p>
-            <p className="text-xs leading-relaxed text-neutral-300">
-              {message}
-            </p>
+            <p className="text-xs leading-relaxed text-neutral-300">{message}</p>
           </div>
         </motion.div>
       ) : null}

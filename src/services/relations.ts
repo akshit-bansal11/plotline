@@ -1,11 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export type RelationType =
@@ -100,9 +93,7 @@ const transitiveFamilies: RelationType[] = [
   "Parent Story",
 ];
 
-const relationTypeSet = new Set<RelationType>(
-  Object.keys(inverseRelationMap) as RelationType[],
-);
+const relationTypeSet = new Set<RelationType>(Object.keys(inverseRelationMap) as RelationType[]);
 
 const toMillis = (value: unknown): number | null => {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -135,9 +126,7 @@ const normalizeRelations = (relations: RelationInput[]): RelationRecord[] => {
     if (!targetId || !type) continue;
 
     const createdAtMs =
-      toMillis(relation.createdAtMs) ??
-      toMillis(relation.createdAt) ??
-      Date.now();
+      toMillis(relation.createdAtMs) ?? toMillis(relation.createdAt) ?? Date.now();
     const inferred = relation.inferred === true;
     const key = `${targetId}::${type}`;
     const existing = deduped.get(key);
@@ -192,9 +181,7 @@ const relationSetSignature = (relations: RelationRecord[]) =>
     .join("|");
 
 const reconcileTransitiveRelations = async (uid: string) => {
-  const entriesSnapshot = await getDocs(
-    collection(db, "users", uid, "entries"),
-  );
+  const entriesSnapshot = await getDocs(collection(db, "users", uid, "entries"));
   const entryIds = entriesSnapshot.docs.map((entryDoc) => entryDoc.id);
   const entryIdSet = new Set(entryIds);
 
@@ -203,10 +190,7 @@ const reconcileTransitiveRelations = async (uid: string) => {
     const data = entryDoc.data() as { relations?: RelationInput[] };
     const normalized = normalizeRelations(
       Array.isArray(data.relations) ? data.relations : [],
-    ).filter(
-      (relation) =>
-        relation.targetId !== entryDoc.id && entryIdSet.has(relation.targetId),
-    );
+    ).filter((relation) => relation.targetId !== entryDoc.id && entryIdSet.has(relation.targetId));
     currentRelationsBySource.set(entryDoc.id, normalized);
   }
   for (const entryId of entryIds) {
@@ -246,9 +230,7 @@ const reconcileTransitiveRelations = async (uid: string) => {
   for (const sourceId of entryIds) {
     const explicit = explicitRelationsBySource.get(sourceId) || [];
     const current = currentRelationsBySource.get(sourceId) || [];
-    const occupiedTargets = new Set(
-      explicit.map((relation) => relation.targetId),
-    );
+    const occupiedTargets = new Set(explicit.map((relation) => relation.targetId));
     const derivedByTarget = new Map<string, RelationRecord>();
 
     for (const family of transitiveFamilies) {
@@ -263,9 +245,7 @@ const reconcileTransitiveRelations = async (uid: string) => {
 
         const previous = current.find(
           (relation) =>
-            relation.targetId === targetId &&
-            relation.type === family &&
-            relation.inferred,
+            relation.targetId === targetId && relation.type === family && relation.inferred,
         );
         derivedByTarget.set(targetId, {
           targetId,
@@ -278,17 +258,11 @@ const reconcileTransitiveRelations = async (uid: string) => {
 
     finalRelationsBySource.set(
       sourceId,
-      normalizeRelations([
-        ...explicit,
-        ...Array.from(derivedByTarget.values()),
-      ]),
+      normalizeRelations([...explicit, ...Array.from(derivedByTarget.values())]),
     );
   }
 
-  const allSourceIds = new Set<string>([
-    ...entryIds,
-    ...Array.from(finalRelationsBySource.keys()),
-  ]);
+  const allSourceIds = new Set<string>([...entryIds, ...Array.from(finalRelationsBySource.keys())]);
 
   for (const sourceId of allSourceIds) {
     const sourceRelations = finalRelationsBySource.get(sourceId) || [];
@@ -299,15 +273,9 @@ const reconcileTransitiveRelations = async (uid: string) => {
       const targetId = relation.targetId;
       if (!entryIdSet.has(targetId)) continue;
       const targetRelations = finalRelationsBySource.get(targetId) || [];
-      if (
-        targetRelations.some(
-          (targetRelation) => targetRelation.targetId === sourceId,
-        )
-      )
-        continue;
+      if (targetRelations.some((targetRelation) => targetRelation.targetId === sourceId)) continue;
 
-      const currentTargetRelations =
-        currentRelationsBySource.get(targetId) || [];
+      const currentTargetRelations = currentRelationsBySource.get(targetId) || [];
       const previous = currentTargetRelations.find(
         (targetRelation) =>
           targetRelation.targetId === sourceId &&
@@ -335,10 +303,7 @@ const reconcileTransitiveRelations = async (uid: string) => {
     const currentRelations = currentRelationsBySource.get(entryId) || [];
     const finalRelations = finalRelationsBySource.get(entryId) || [];
 
-    if (
-      relationSetSignature(currentRelations) ===
-      relationSetSignature(finalRelations)
-    ) {
+    if (relationSetSignature(currentRelations) === relationSetSignature(finalRelations)) {
       continue;
     }
 
@@ -376,24 +341,14 @@ export const updateBidirectionalRelations = async (
   );
 
   const oldMap = new Map(
-    normalizedOldRelations.map((relation) => [
-      toRelationKey(relation),
-      relation,
-    ]),
+    normalizedOldRelations.map((relation) => [toRelationKey(relation), relation]),
   );
   const newMap = new Map(
-    normalizedNewRelations.map((relation) => [
-      toRelationKey(relation),
-      relation,
-    ]),
+    normalizedNewRelations.map((relation) => [toRelationKey(relation), relation]),
   );
 
-  const added = normalizedNewRelations.filter(
-    (relation) => !oldMap.has(toRelationKey(relation)),
-  );
-  const removed = normalizedOldRelations.filter(
-    (relation) => !newMap.has(toRelationKey(relation)),
-  );
+  const added = normalizedNewRelations.filter((relation) => !oldMap.has(toRelationKey(relation)));
+  const removed = normalizedOldRelations.filter((relation) => !newMap.has(toRelationKey(relation)));
 
   if (added.length === 0 && removed.length === 0) {
     return;
@@ -413,9 +368,7 @@ export const updateBidirectionalRelations = async (
           if (targetSnap.exists()) {
             const targetData = targetSnap.data();
             const targetRelations = normalizeRelations(
-              Array.isArray(targetData.relations)
-                ? (targetData.relations as RelationInput[])
-                : [],
+              Array.isArray(targetData.relations) ? (targetData.relations as RelationInput[]) : [],
             );
             const updatedTargetRelations = targetRelations.filter(
               (tr) => !(tr.targetId === sourceId && !tr.inferred),
@@ -450,13 +403,10 @@ export const updateBidirectionalRelations = async (
           if (targetSnap.exists()) {
             const targetData = targetSnap.data();
             const targetRelations = normalizeRelations(
-              Array.isArray(targetData.relations)
-                ? (targetData.relations as RelationInput[])
-                : [],
+              Array.isArray(targetData.relations) ? (targetData.relations as RelationInput[]) : [],
             );
             const pairExplicitRelations = targetRelations.filter(
-              (relation) =>
-                relation.targetId === sourceId && !relation.inferred,
+              (relation) => relation.targetId === sourceId && !relation.inferred,
             );
             const existingExactInverse = pairExplicitRelations.find(
               (relation) => relation.type === inverseType,
@@ -467,18 +417,14 @@ export const updateBidirectionalRelations = async (
             }
 
             const baseRelations = targetRelations.filter(
-              (relation) =>
-                !(relation.targetId === sourceId && !relation.inferred),
+              (relation) => !(relation.targetId === sourceId && !relation.inferred),
             );
             const inverseRelation: RelationRecord = {
               targetId: sourceId,
               type: inverseType,
               createdAtMs: existingExactInverse?.createdAtMs ?? Date.now(),
             };
-            const nextRelations = normalizeRelations([
-              ...baseRelations,
-              inverseRelation,
-            ]);
+            const nextRelations = normalizeRelations([...baseRelations, inverseRelation]);
 
             await updateDoc(targetRef, {
               relations: nextRelations.map((relation) => ({

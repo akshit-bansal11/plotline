@@ -10,9 +10,7 @@ export function ImageWithSkeleton({ className, alt, ...props }: ImageProps) {
 
   return (
     <>
-      {!loaded && (
-        <div className="absolute inset-0 animate-pulse bg-neutral-800/60" />
-      )}
+      {!loaded && <div className="absolute inset-0 animate-pulse bg-neutral-800/60" />}
       <Image
         {...props}
         sizes={sizes}

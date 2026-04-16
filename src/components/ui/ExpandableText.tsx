@@ -3,24 +3,13 @@
 import { useState } from "react";
 import { cn } from "@/utils";
 
-export function ExpandableText({
-  text,
-  className,
-}: {
-  text: string;
-  className?: string;
-}) {
+export function ExpandableText({ text, className }: { text: string; className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > 150;
 
   return (
     <div className={cn("mt-1", className)}>
-      <div
-        className={cn(
-          "text-xs text-neutral-400",
-          !expanded && isLong && "line-clamp-2",
-        )}
-      >
+      <div className={cn("text-xs text-neutral-400", !expanded && isLong && "line-clamp-2")}>
         {text}
       </div>
       {isLong && (

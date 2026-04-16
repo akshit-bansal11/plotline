@@ -61,9 +61,7 @@ export function MediaCard({
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement | null>(null);
   const [localRating, setLocalRating] = useState<number | null>(
-    typeof userRating === "number" && Number.isFinite(userRating)
-      ? userRating
-      : null,
+    typeof userRating === "number" && Number.isFinite(userRating) ? userRating : null,
   );
   const [isRatingMenuOpen, setIsRatingMenuOpen] = useState(false);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
@@ -71,9 +69,7 @@ export function MediaCard({
   const [isRelationsOpen, setIsRelationsOpen] = useState(false);
   const relationsMenuRef = useRef<HTMLDivElement | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [ottLogosLoaded, setOttLogosLoaded] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [ottLogosLoaded, setOttLogosLoaded] = useState<Record<string, boolean>>({});
 
   const { selectedCountry, entries } = useData();
   const ottProviders = getOTTAvailability(title, selectedCountry, type);
@@ -81,10 +77,7 @@ export function MediaCard({
   useEffect(() => {
     if (!isRelationsOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        relationsMenuRef.current &&
-        !relationsMenuRef.current.contains(event.target as Node)
-      ) {
+      if (relationsMenuRef.current && !relationsMenuRef.current.contains(event.target as Node)) {
         setIsRelationsOpen(false);
       }
     };
@@ -95,10 +88,7 @@ export function MediaCard({
   useEffect(() => {
     if (!isStatusOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        statusMenuRef.current &&
-        !statusMenuRef.current.contains(event.target as Node)
-      ) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
         setIsStatusOpen(false);
       }
     };
@@ -107,10 +97,7 @@ export function MediaCard({
   }, [isStatusOpen]);
 
   useEffect(() => {
-    const next =
-      typeof userRating === "number" && Number.isFinite(userRating)
-        ? userRating
-        : null;
+    const next = typeof userRating === "number" && Number.isFinite(userRating) ? userRating : null;
     setLocalRating(next);
   }, [userRating]);
 
@@ -134,8 +121,7 @@ export function MediaCard({
     "dropped",
     "unspecified",
   ];
-  const statusOptions =
-    type === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS;
+  const statusOptions = type === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS;
 
   const getStatusBadgeClass = (s: EntryStatus) => {
     if (type === "game") {
@@ -205,10 +191,8 @@ export function MediaCard({
       : "";
 
   const getRatingAccent = (value: number) => {
-    if (value >= 9)
-      return "border-emerald-400/50 bg-emerald-950/80 text-emerald-200";
-    if (value >= 7)
-      return "border-yellow-400/50 bg-yellow-950/80 text-yellow-200";
+    if (value >= 9) return "border-emerald-400/50 bg-emerald-950/80 text-emerald-200";
+    if (value >= 7) return "border-yellow-400/50 bg-yellow-950/80 text-yellow-200";
     if (value >= 4) return "border-red-400/50 bg-red-950/80 text-red-200";
     return "border-neutral-400/40 bg-neutral-950/80 text-neutral-200";
   };
@@ -230,8 +214,7 @@ export function MediaCard({
     }
   };
 
-  const isInvalid =
-    !!description && description.length > MAX_DESCRIPTION_LENGTH;
+  const isInvalid = !!description && description.length > MAX_DESCRIPTION_LENGTH;
 
   const actionButtons = showActions ? (
     <div className="flex gap-2 pointer-events-auto">
@@ -283,9 +266,7 @@ export function MediaCard({
       >
         {image ? (
           <>
-            {!imageLoaded && (
-              <div className="absolute inset-0 bg-neutral-800/60 animate-pulse" />
-            )}
+            {!imageLoaded && <div className="absolute inset-0 bg-neutral-800/60 animate-pulse" />}
             <Image
               src={image}
               alt={title}
@@ -317,9 +298,7 @@ export function MediaCard({
               className={cn(
                 "group/status flex items-center gap-2 rounded-full border backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 media-card-status-button",
                 getStatusBadgeClass(status),
-                isStatusUpdating
-                  ? "cursor-not-allowed opacity-70"
-                  : "cursor-pointer",
+                isStatusUpdating ? "cursor-not-allowed opacity-70" : "cursor-pointer",
               )}
               aria-haspopup="listbox"
               aria-expanded={isStatusOpen}
@@ -327,9 +306,7 @@ export function MediaCard({
               onMouseEnter={() => setIsStatusOpen(true)}
               onMouseLeave={() => setIsStatusOpen(false)}
             >
-              <span>
-                {isStatusUpdating ? "Updating..." : statusLabels[status]}
-              </span>
+              <span>{isStatusUpdating ? "Updating..." : statusLabels[status]}</span>
               <ChevronDown
                 size={11}
                 className={cn(
@@ -364,9 +341,7 @@ export function MediaCard({
                       )}
                     >
                       <span>{statusLabels[option]}</span>
-                      {option === status && (
-                        <div className="h-1 w-1 rounded-full bg-current" />
-                      )}
+                      {option === status && <div className="h-1 w-1 rounded-full bg-current" />}
                     </button>
                   ))}
                 </motion.div>
@@ -520,9 +495,7 @@ export function MediaCard({
                   </div>
                   <div className="space-y-1 max-h-48 overflow-y-auto">
                     {relations.map((rel) => {
-                      const match = entries.find(
-                        (e) => String(e.id) === rel.targetId,
-                      );
+                      const match = entries.find((e) => String(e.id) === rel.targetId);
                       return (
                         <div
                           key={`${rel.targetId}-${rel.type}`}
@@ -594,11 +567,7 @@ export function MediaCard({
     <motion.div
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.3 }}
-      className={cn(
-        "group relative media-card",
-        onClick ? "cursor-pointer" : "",
-        className,
-      )}
+      className={cn("group relative media-card", onClick ? "cursor-pointer" : "", className)}
       onClick={() => onClick?.()}
       onKeyDown={(event) => {
         if (!onClick) return;

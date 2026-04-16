@@ -9,9 +9,7 @@ interface MediaSectionProps<TItem> {
   href?: string;
   items: TItem[];
   getGenresThemes: (item: TItem) => string[] | null | undefined;
-  getFilterValues?: (
-    item: TItem,
-  ) => Array<string | number | null | undefined> | null | undefined;
+  getFilterValues?: (item: TItem) => Array<string | number | null | undefined> | null | undefined;
   children: (filteredItems: TItem[]) => React.ReactNode;
   className?: string;
   filterRaw?: string;
@@ -32,8 +30,7 @@ export function MediaSection<TItem>({
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [uncontrolledFilterRaw, setUncontrolledFilterRaw] = useState("");
-  const resolvedFilterRaw =
-    typeof filterRaw === "string" ? filterRaw : uncontrolledFilterRaw;
+  const resolvedFilterRaw = typeof filterRaw === "string" ? filterRaw : uncontrolledFilterRaw;
   const setResolvedFilterRaw = onFilterRawChange || setUncontrolledFilterRaw;
 
   const filterAccepted = useMemo(

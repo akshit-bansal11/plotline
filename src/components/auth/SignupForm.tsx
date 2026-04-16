@@ -1,12 +1,4 @@
-import {
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Mail,
-  ShieldCheck,
-  User,
-} from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck, User } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
@@ -48,9 +40,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
       return;
     }
     if (firstName.trim().length < 2 || lastName.trim().length < 2) {
-      setValidationError(
-        "First and last name must each be at least 2 characters.",
-      );
+      setValidationError("First and last name must each be at least 2 characters.");
       return;
     }
 
@@ -60,15 +50,11 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
       return;
     }
     if (!/[A-Z]/.test(password)) {
-      setValidationError(
-        "Password must contain at least one uppercase letter.",
-      );
+      setValidationError("Password must contain at least one uppercase letter.");
       return;
     }
     if (!/[a-z]/.test(password)) {
-      setValidationError(
-        "Password must contain at least one lowercase letter.",
-      );
+      setValidationError("Password must contain at least one lowercase letter.");
       return;
     }
     if (!/[0-9]/.test(password)) {
@@ -76,9 +62,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
       return;
     }
     if (!/[^A-Za-z0-9]/.test(password)) {
-      setValidationError(
-        "Password must contain at least one special character.",
-      );
+      setValidationError("Password must contain at least one special character.");
       return;
     }
     if (firstName && password.toLowerCase().includes(firstName.toLowerCase())) {
@@ -101,12 +85,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
     }
 
     const token = await executeRecaptcha("signup");
-    await signUpWithEmail(
-      email,
-      password,
-      `${firstName.trim()} ${lastName.trim()}`,
-      token,
-    );
+    await signUpWithEmail(email, password, `${firstName.trim()} ${lastName.trim()}`, token);
   };
 
   const error = validationError || authError;
@@ -116,10 +95,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
       {/* Name fields */}
       <div className="flex gap-3">
         <div className="flex-1 space-y-2">
-          <label
-            className="text-sm font-medium text-white/70 ml-1"
-            htmlFor="signup-first-name"
-          >
+          <label className="text-sm font-medium text-white/70 ml-1" htmlFor="signup-first-name">
             First Name
           </label>
           <div className="relative">
@@ -136,10 +112,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
           </div>
         </div>
         <div className="flex-1 space-y-2">
-          <label
-            className="text-sm font-medium text-white/70 ml-1"
-            htmlFor="signup-last-name"
-          >
+          <label className="text-sm font-medium text-white/70 ml-1" htmlFor="signup-last-name">
             Last Name
           </label>
           <div className="relative">
@@ -159,10 +132,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
 
       {/* Email */}
       <div className="space-y-2">
-        <label
-          className="text-sm font-medium text-white/70 ml-1"
-          htmlFor="signup-email"
-        >
+        <label className="text-sm font-medium text-white/70 ml-1" htmlFor="signup-email">
           Email
         </label>
         <div className="relative">
@@ -181,10 +151,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
 
       {/* Password + PasswordStrength */}
       <div className="space-y-2">
-        <label
-          className="text-sm font-medium text-white/70 ml-1"
-          htmlFor="signup-password"
-        >
+        <label className="text-sm font-medium text-white/70 ml-1" htmlFor="signup-password">
           Password
         </label>
         <div className="relative">
@@ -203,30 +170,19 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
           >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         <AnimatePresence>
           {password.length > 0 && (
-            <PasswordStrength
-              password={password}
-              firstName={firstName}
-              lastName={lastName}
-            />
+            <PasswordStrength password={password} firstName={firstName} lastName={lastName} />
           )}
         </AnimatePresence>
       </div>
 
       {/* Confirm Password */}
       <div className="space-y-2">
-        <label
-          className="text-sm font-medium text-white/70 ml-1"
-          htmlFor="confirm-password"
-        >
+        <label className="text-sm font-medium text-white/70 ml-1" htmlFor="confirm-password">
           Confirm Password
         </label>
         <div className="relative">
@@ -254,11 +210,7 @@ export function SignupForm({ onToggleLogin }: SignupFormProps) {
         disabled={loading}
         className="w-full flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-500 active:scale-[0.98] disabled:opacity-50"
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          "Create Account"
-        )}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Account"}
       </button>
 
       <p className="text-center text-xs text-white/40 mt-4">

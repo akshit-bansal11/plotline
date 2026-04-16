@@ -74,14 +74,11 @@ const toDisplaySubtype = (value: string | null | undefined) => {
   if (value === "one_shot") return "One-shot";
   if (value === "light_novel") return "Light Novel";
   if (value === "short_movie") return "Short Movie";
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+  return value.replace(/_/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
 };
 
 const getResultTypeLabel = (result: SearchResult) => {
-  if (result.type === "anime" && result.subtype === "movie")
-    return "Anime Movie";
+  if (result.type === "anime" && result.subtype === "movie") return "Anime Movie";
   return typeLabels[result.type];
 };
 
@@ -117,17 +114,11 @@ export function GlobalSearch({
   const [selectedYearId, setSelectedYearId] = useState("");
   const [ratingMin, setRatingMin] = useState<number | null>(null);
   const [minEpisodesOrChapters, setMinEpisodesOrChapters] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<ApiSearchStatus | null>(
-    null,
-  );
+  const [selectedStatus, setSelectedStatus] = useState<ApiSearchStatus | null>(null);
   const [selectedStudio, setSelectedStudio] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
-  const [selectedSerialization, setSelectedSerialization] = useState<
-    string | null
-  >(null);
-  const [pendingSelectionKey, setPendingSelectionKey] = useState<string | null>(
-    null,
-  );
+  const [selectedSerialization, setSelectedSerialization] = useState<string | null>(null);
+  const [pendingSelectionKey, setPendingSelectionKey] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -135,15 +126,11 @@ export function GlobalSearch({
   const abortRef = useRef<AbortController | null>(null);
 
   const baseType = getBaseTypeFromSearchType(selectedType);
-  const subtypeOptions = selectedType
-    ? GLOBAL_SEARCH_SUBTYPE_OPTIONS[selectedType] || []
-    : [];
+  const subtypeOptions = selectedType ? GLOBAL_SEARCH_SUBTYPE_OPTIONS[selectedType] || [] : [];
 
-  const showEpisodesFilter =
-    selectedType === "series" || selectedType === "anime";
+  const showEpisodesFilter = selectedType === "series" || selectedType === "anime";
   const showChaptersFilter = selectedType === "manga";
-  const showStudioFilter =
-    selectedType === "anime" || selectedType === "anime_movie";
+  const showStudioFilter = selectedType === "anime" || selectedType === "anime_movie";
   const showPlatformFilter = selectedType === "game";
   const showSerializationFilter = selectedType === "manga";
 
@@ -172,9 +159,7 @@ export function GlobalSearch({
       }
 
       const targetEl = target as HTMLElement;
-      const interactiveField = targetEl.closest(
-        "input, textarea, select, option",
-      );
+      const interactiveField = targetEl.closest("input, textarea, select, option");
       if (interactiveField) return;
 
       requestAnimationFrame(() => {
@@ -199,8 +184,7 @@ export function GlobalSearch({
     if (!showStudioFilter) setSelectedStudio(null);
     if (!showPlatformFilter) setSelectedPlatform(null);
     if (!showSerializationFilter) setSelectedSerialization(null);
-    if (!showEpisodesFilter && !showChaptersFilter)
-      setMinEpisodesOrChapters("");
+    if (!showEpisodesFilter && !showChaptersFilter) setMinEpisodesOrChapters("");
   }, [
     selectedType,
     baseType,
@@ -234,14 +218,11 @@ export function GlobalSearch({
     if (selectedSubtype) explicitTerms.push(selectedSubtype.replace(/_/g, " "));
     if (selectedStatus) explicitTerms.push(statusLabels[selectedStatus]);
 
-    const pool = baseType
-      ? discoveryQueryPool[baseType]
-      : discoveryQueryPool.all;
+    const pool = baseType ? discoveryQueryPool[baseType] : discoveryQueryPool.all;
     const candidates = [...explicitTerms, ...pool];
     if (candidates.length === 0) return "";
     const index =
-      (Math.floor(Math.random() * candidates.length) + discoveryNonce) %
-      candidates.length;
+      (Math.floor(Math.random() * candidates.length) + discoveryNonce) % candidates.length;
     return candidates[index];
   }, [
     baseType,
@@ -262,18 +243,15 @@ export function GlobalSearch({
 
   const requestParams = useMemo(() => {
     if (!isOpen) return null;
-    const effectiveQuery =
-      debouncedQuery.length > 0 ? debouncedQuery : discoveryQuery;
+    const effectiveQuery = debouncedQuery.length > 0 ? debouncedQuery : discoveryQuery;
     if (!effectiveQuery) return null;
 
     const params = new URLSearchParams({ q: effectiveQuery });
     if (debouncedQuery.length === 0) params.set("discover", "1");
 
     if (selectedType) params.set("type", selectedType);
-    if (selectedSubtype && selectedType !== "anime_movie")
-      params.set("subtype", selectedSubtype);
-    if (selectedGenres.length > 0)
-      params.set("genres", selectedGenres.join(","));
+    if (selectedSubtype && selectedType !== "anime_movie") params.set("subtype", selectedSubtype);
+    if (selectedGenres.length > 0) params.set("genres", selectedGenres.join(","));
     if (yearRange) {
       params.set("yearMin", String(yearRange.min));
       params.set("yearMax", String(yearRange.max));
@@ -286,8 +264,7 @@ export function GlobalSearch({
     if (selectedStatus) params.set("status", selectedStatus);
     if (selectedStudio) params.set("studio", selectedStudio);
     if (selectedPlatform) params.set("platform", selectedPlatform);
-    if (selectedSerialization)
-      params.set("serialization", selectedSerialization);
+    if (selectedSerialization) params.set("serialization", selectedSerialization);
 
     return params;
   }, [
@@ -370,9 +347,7 @@ export function GlobalSearch({
         });
         if (!res.ok) {
           throw new Error(
-            res.status === 429
-              ? "Search is rate limited. Try again shortly."
-              : "Search failed.",
+            res.status === 429 ? "Search is rate limited. Try again shortly." : "Search failed.",
           );
         }
 
@@ -421,9 +396,7 @@ export function GlobalSearch({
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((current) =>
-      current.includes(genre)
-        ? current.filter((item) => item !== genre)
-        : [...current, genre],
+      current.includes(genre) ? current.filter((item) => item !== genre) : [...current, genre],
     );
   };
 
@@ -433,9 +406,7 @@ export function GlobalSearch({
 
   const buildFallbackMedia = (result: SearchResult): LoggableMedia => {
     const resolvedType =
-      result.type === "anime" && result.subtype === "movie"
-        ? "anime_movie"
-        : result.type;
+      result.type === "anime" && result.subtype === "movie" ? "anime_movie" : result.type;
 
     return {
       id: result.id,
@@ -454,9 +425,7 @@ export function GlobalSearch({
     };
   };
 
-  const fetchMetadata = async (
-    result: SearchResult,
-  ): Promise<LoggableMedia> => {
+  const fetchMetadata = async (result: SearchResult): Promise<LoggableMedia> => {
     const fallback = buildFallbackMedia(result);
 
     try {
@@ -537,32 +506,20 @@ export function GlobalSearch({
     }
   };
 
-  const subtitleLabel = showEpisodesFilter
-    ? "Episodes"
-    : showChaptersFilter
-      ? "Chapters"
-      : "Count";
+  const subtitleLabel = showEpisodesFilter ? "Episodes" : showChaptersFilter ? "Chapters" : "Count";
   const showSearchLoadingLabel = debouncedQuery.length > 0 || hasActiveFilters;
   const visibleErrors = useMemo(
-    () =>
-      errors.filter((error) => !/fetch failed|failed to fetch/i.test(error)),
+    () => errors.filter((error) => !/fetch failed|failed to fetch/i.test(error)),
     [errors],
   );
 
   return (
     <div
       ref={containerRef}
-      className={cn(
-        "relative z-50 transition-[width] duration-300 ease-out",
-        className,
-      )}
+      className={cn("relative z-50 transition-[width] duration-300 ease-out", className)}
     >
       <div className="relative flex items-center rounded-full border border-white/10 bg-neutral-900/50 transition-colors focus-within:border-white/20 focus-within:bg-neutral-900/70">
-        <Search
-          size={15}
-          className="ml-3 text-neutral-500"
-          suppressHydrationWarning
-        />
+        <Search size={15} className="ml-3 text-neutral-500" suppressHydrationWarning />
         <input
           ref={inputRef}
           value={query}
@@ -704,9 +661,7 @@ export function GlobalSearch({
                               {typeof result.rating === "number" ? (
                                 <span>Rating {result.rating.toFixed(1)}</span>
                               ) : null}
-                              {result.status ? (
-                                <span>{statusLabels[result.status]}</span>
-                              ) : null}
+                              {result.status ? <span>{statusLabels[result.status]}</span> : null}
                               {typeof result.episodeCount === "number" ? (
                                 <span>{result.episodeCount} eps</span>
                               ) : null}
@@ -716,9 +671,7 @@ export function GlobalSearch({
                             </div>
                           </div>
                           {selecting ? (
-                            <div className="pt-1 text-[11px] text-neutral-500">
-                              Loading...
-                            </div>
+                            <div className="pt-1 text-[11px] text-neutral-500">Loading...</div>
                           ) : null}
                         </button>
                       );
@@ -729,9 +682,7 @@ export function GlobalSearch({
 
               <div className="min-h-0 overflow-y-auto border-t border-white/10 md:border-t-0 md:border-l md:border-white/10 custom-scrollbar">
                 <div className="flex items-center justify-between px-4 py-3">
-                  <div className="text-sm font-semibold text-white">
-                    Search Filters
-                  </div>
+                  <div className="text-sm font-semibold text-white">Search Filters</div>
                   {hasActiveFilters ? (
                     <button
                       type="button"
@@ -767,8 +718,7 @@ export function GlobalSearch({
                     </div>
                   </div>
 
-                  {subtypeOptions.length > 0 &&
-                  selectedType !== "anime_movie" ? (
+                  {subtypeOptions.length > 0 && selectedType !== "anime_movie" ? (
                     <div className="space-y-2 md:col-span-2">
                       <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                         Subtype
@@ -826,9 +776,7 @@ export function GlobalSearch({
                     </div>
                     <select
                       value={selectedYearId}
-                      onChange={(event) =>
-                        setSelectedYearId(event.target.value)
-                      }
+                      onChange={(event) => setSelectedYearId(event.target.value)}
                       className="w-full rounded-xl border border-white/10 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:ring-1 focus:ring-white/20"
                     >
                       <option value="">Any</option>
@@ -847,9 +795,7 @@ export function GlobalSearch({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-neutral-500">
                       <span>Rating</span>
-                      <span className="text-neutral-400">
-                        {ratingMinDisplay}
-                      </span>
+                      <span className="text-neutral-400">{ratingMinDisplay}</span>
                     </div>
                     <input
                       type="range"
@@ -857,9 +803,7 @@ export function GlobalSearch({
                       max={10}
                       step={0.1}
                       value={ratingMin ?? 0}
-                      onChange={(event) =>
-                        setRatingMin(Number(event.target.value))
-                      }
+                      onChange={(event) => setRatingMin(Number(event.target.value))}
                       className="w-full"
                     />
                     <button
@@ -880,9 +824,7 @@ export function GlobalSearch({
                         type="number"
                         min={1}
                         value={minEpisodesOrChapters}
-                        onChange={(event) =>
-                          setMinEpisodesOrChapters(event.target.value)
-                        }
+                        onChange={(event) => setMinEpisodesOrChapters(event.target.value)}
                         placeholder="Optional"
                         className="w-full rounded-xl border border-white/10 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white/20"
                       />
@@ -923,9 +865,7 @@ export function GlobalSearch({
                       </div>
                       <select
                         value={selectedStudio || ""}
-                        onChange={(event) =>
-                          setSelectedStudio(event.target.value || null)
-                        }
+                        onChange={(event) => setSelectedStudio(event.target.value || null)}
                         className="w-full rounded-xl border border-white/10 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:ring-1 focus:ring-white/20"
                       >
                         <option value="">Any</option>
@@ -983,9 +923,7 @@ export function GlobalSearch({
                             type="button"
                             onClick={() =>
                               setSelectedSerialization((current) =>
-                                current === serialization
-                                  ? null
-                                  : serialization,
+                                current === serialization ? null : serialization,
                               )
                             }
                             className={cn(

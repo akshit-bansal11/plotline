@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  collection,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-} from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import {
   createContext,
   type ReactNode,
@@ -88,10 +82,7 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const entriesCache = new Map<
-  string,
-  { entries: EntryDoc[]; updatedAt: number }
->();
+const entriesCache = new Map<string, { entries: EntryDoc[]; updatedAt: number }>();
 
 const coerceMediaType = (value: unknown): EntryMediaType => {
   if (
@@ -142,9 +133,7 @@ const toMillis = (value: unknown): number | null => {
     typeof (value as { toMillis?: unknown }).toMillis === "function"
   ) {
     const millis = (value as { toMillis: () => number }).toMillis();
-    return typeof millis === "number" && Number.isFinite(millis)
-      ? millis
-      : null;
+    return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
   }
   return null;
 };
@@ -173,8 +162,7 @@ const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
           const targetId = String(relation.targetId || "").trim();
           const type = String(relation.type || "").trim();
           if (!targetId || !type) continue;
-          const createdAtMs =
-            toMillis(relation.createdAtMs) ?? toMillis(relation.createdAt) ?? 0;
+          const createdAtMs = toMillis(relation.createdAtMs) ?? toMillis(relation.createdAt) ?? 0;
           const key = `${targetId}::${type}`;
           if (!deduped.has(key)) {
             deduped.set(key, {
@@ -213,16 +201,8 @@ const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
     notes: String(raw.notes || ""),
     description: String(raw.description || ""),
     image: raw.image ? String(raw.image) : null,
-    releaseYear: raw.releaseYear
-      ? String(raw.releaseYear)
-      : raw.year
-        ? String(raw.year)
-        : null,
-    year: raw.year
-      ? String(raw.year)
-      : raw.releaseYear
-        ? String(raw.releaseYear)
-        : null,
+    releaseYear: raw.releaseYear ? String(raw.releaseYear) : raw.year ? String(raw.year) : null,
+    year: raw.year ? String(raw.year) : raw.releaseYear ? String(raw.releaseYear) : null,
     externalId: raw.externalId ? String(raw.externalId) : null,
     lengthMinutes: toNumber(raw.lengthMinutes),
     episodeCount: toNumber(raw.episodeCount),
@@ -249,15 +229,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState(0);
   const [selectedEntry, setSelectedEntry] = useState<EntryDoc | null>(null);
-  const [selectedCountry, setSelectedCountryState] = useState<string | null>(
-    () => {
-      try {
-        return localStorage.getItem("plotline_selected_country") ?? null;
-      } catch {
-        return null;
-      }
-    },
-  );
+  const [selectedCountry, setSelectedCountryState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("plotline_selected_country") ?? null;
+    } catch {
+      return null;
+    }
+  });
 
   const setSelectedCountry = useCallback((country: string | null) => {
     setSelectedCountryState(country);
@@ -333,16 +311,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setSelectedCountry,
       refresh,
     };
-  }, [
-    uid,
-    entries,
-    status,
-    error,
-    selectedEntry,
-    selectedCountry,
-    setSelectedCountry,
-    refresh,
-  ]);
+  }, [uid, entries, status, error, selectedEntry, selectedCountry, setSelectedCountry, refresh]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

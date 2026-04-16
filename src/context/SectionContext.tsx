@@ -1,20 +1,8 @@
 "use client";
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
-export type SectionKey =
-  | "home"
-  | "movies"
-  | "series"
-  | "anime"
-  | "manga"
-  | "games";
+export type SectionKey = "home" | "movies" | "series" | "anime" | "manga" | "games";
 
 interface SectionContextType {
   activeSection: SectionKey;

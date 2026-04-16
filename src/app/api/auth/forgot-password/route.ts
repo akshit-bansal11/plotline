@@ -44,9 +44,7 @@ export async function POST(request: NextRequest) {
     const { email } = result.data;
 
     // Rate limiting by email
-    const { success, limit, reset, remaining } = await ratelimit.limit(
-      `forgot-password:${email}`,
-    );
+    const { success, limit, reset, remaining } = await ratelimit.limit(`forgot-password:${email}`);
 
     if (!success) {
       const retryAfter = Math.ceil((reset - Date.now()) / 1000 / 60);
@@ -79,9 +77,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Forgot password error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

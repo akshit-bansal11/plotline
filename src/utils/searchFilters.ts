@@ -71,11 +71,7 @@ const GENRE_ALIASES: Record<string, (typeof SHARED_GENRE_OPTIONS)[number]> = {
 
 export const normalizeGenreName = (value: string | null | undefined) => {
   if (!value) return null;
-  const key = value
-    .trim()
-    .toLowerCase()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ");
+  const key = value.trim().toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
   return GENRE_ALIASES[key] || null;
 };
 
@@ -91,8 +87,7 @@ export const SEARCH_STATUS_OPTIONS: Array<{
 
 const STATUS_ALIASES: Array<{ pattern: RegExp; value: ApiSearchStatus }> = [
   {
-    pattern:
-      /(finished|ended|complete|released|finished airing|finished publishing)/i,
+    pattern: /(finished|ended|complete|released|finished airing|finished publishing)/i,
     value: "finished",
   },
   {
@@ -107,9 +102,7 @@ const STATUS_ALIASES: Array<{ pattern: RegExp; value: ApiSearchStatus }> = [
   },
 ];
 
-export const normalizeStatusName = (
-  value: string | null | undefined,
-): ApiSearchStatus | null => {
+export const normalizeStatusName = (value: string | null | undefined): ApiSearchStatus | null => {
   if (!value) return null;
   for (const entry of STATUS_ALIASES) {
     if (entry.pattern.test(value)) return entry.value;
@@ -196,16 +189,9 @@ export const normalizeGamePlatform = (value: string | null | undefined) => {
   return null;
 };
 
-export const MANGA_SERIALIZATION_OPTIONS = [
-  "Shonen Jump",
-  "KakaoPage",
-  "Naver Webtoon",
-] as const;
+export const MANGA_SERIALIZATION_OPTIONS = ["Shonen Jump", "KakaoPage", "Naver Webtoon"] as const;
 
-const SERIALIZATION_ALIASES: Record<
-  string,
-  (typeof MANGA_SERIALIZATION_OPTIONS)[number]
-> = {
+const SERIALIZATION_ALIASES: Record<string, (typeof MANGA_SERIALIZATION_OPTIONS)[number]> = {
   "shonen jump": "Shonen Jump",
   "weekly shonen jump": "Shonen Jump",
   kakaopage: "KakaoPage",
@@ -213,9 +199,7 @@ const SERIALIZATION_ALIASES: Record<
   webtoon: "Naver Webtoon",
 };
 
-export const normalizeSerializationName = (
-  value: string | null | undefined,
-) => {
+export const normalizeSerializationName = (value: string | null | undefined) => {
   if (!value) return null;
   const key = value.trim().toLowerCase().replace(/\s+/g, " ");
   return SERIALIZATION_ALIASES[key] || null;
@@ -262,10 +246,7 @@ const MAL_MANGA_SUBTYPE_ALIASES: Record<string, string> = {
   doujinshi: "doujinshi",
 };
 
-export const normalizeSubtype = (
-  type: ApiBaseType,
-  value: string | null | undefined,
-) => {
+export const normalizeSubtype = (type: ApiBaseType, value: string | null | undefined) => {
   if (!value) return null;
   const normalized = value
     .trim()
@@ -287,9 +268,7 @@ export const normalizeSubtype = (
   return null;
 };
 
-export const getBaseTypeFromSearchType = (
-  type: ApiSearchType | null,
-): ApiBaseType | null => {
+export const getBaseTypeFromSearchType = (type: ApiSearchType | null): ApiBaseType | null => {
   if (!type) return null;
   if (type === "anime_movie") return "anime";
   return type;

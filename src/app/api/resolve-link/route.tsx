@@ -20,16 +20,12 @@ type ResolvedMedia = {
 
 type FetchResult = { ok: true; data: unknown } | { ok: false; error: string };
 
-const safeFetchJson = async (
-  url: string,
-  init?: RequestInit,
-): Promise<FetchResult> => {
+const safeFetchJson = async (url: string, init?: RequestInit): Promise<FetchResult> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
     const res = await fetch(url, { ...init, signal: controller.signal });
-    if (!res.ok)
-      return { ok: false, error: `Request failed with status ${res.status}` };
+    if (!res.ok) return { ok: false, error: `Request failed with status ${res.status}` };
     const data = await res.json();
     return { ok: true, data };
   } catch (error) {
@@ -78,9 +74,7 @@ const decodeHtmlEntities = (s: string) =>
     .replace(/&#x27;/g, "'")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, code: string) =>
-      String.fromCharCode(Number(code)),
-    )
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
     .replace(/&apos;/g, "'");
 
 const stripServiceSuffix = (s: string) =>
@@ -91,10 +85,7 @@ const stripServiceSuffix = (s: string) =>
       "",
     )
     // Strip trailing " - Netflix" / " | Prime Video" etc.
-    .replace(
-      /\s*[-–—|:]\s*(Netflix|Amazon|Prime Video|Watch|Stream|IMDb).*$/i,
-      "",
-    )
+    .replace(/\s*[-–—|:]\s*(Netflix|Amazon|Prime Video|Watch|Stream|IMDb).*$/i, "")
     .replace(/\s*\(\d{4}\).*$/, "")
     .trim();
 
@@ -117,9 +108,7 @@ const extractTitleFromHtml = (html: string): string | null => {
 
   // 2. og:title meta tag
   const ogMatch =
-    html.match(
-      /<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
-    ) ||
+    html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
     html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:title["']/i);
   if (ogMatch) {
     const title = decodeHtmlEntities(stripServiceSuffix(ogMatch[1]));
@@ -136,15 +125,12 @@ const extractTitleFromHtml = (html: string): string | null => {
   return null;
 };
 
-const parseYear = (value?: string | null) =>
-  value ? value.split("-")[0] : undefined;
+const parseYear = (value?: string | null) => (value ? value.split("-")[0] : undefined);
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
 // ---- Resolvers for each source ----
 
-async function resolveImdb(
-  parsed: ParsedMediaUrl,
-): Promise<ResolvedMedia | null> {
+async function resolveImdb(parsed: ParsedMediaUrl): Promise<ResolvedMedia | null> {
   if (!parsed.id) return null;
 
   // Use OMDB to get full details from IMDb ID
@@ -170,14 +156,9 @@ async function resolveImdb(
   if (data.Response === "False") return null;
 
   const type: MediaType = data.Type === "series" ? "series" : "movie";
-  const rawRating =
-    data.imdbRating && data.imdbRating !== "N/A"
-      ? Number(data.imdbRating)
-      : null;
+  const rawRating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
   const rating =
-    typeof rawRating === "number" && Number.isFinite(rawRating)
-      ? round1(rawRating)
-      : null;
+    typeof rawRating === "number" && Number.isFinite(rawRating) ? round1(rawRating) : null;
   const genres =
     data.Genre && data.Genre !== "N/A"
       ? data.Genre.split(",")
@@ -202,9 +183,7 @@ async function resolveImdb(
     const findUrl = bearerToken
       ? `https://api.themoviedb.org/3/find/${parsed.id}?external_source=imdb_id&language=en-US`
       : `https://api.themoviedb.org/3/find/${parsed.id}?external_source=imdb_id&language=en-US&api_key=${tmdbApiKey}`;
-    const headers = bearerToken
-      ? { Authorization: `Bearer ${bearerToken}` }
-      : undefined;
+    const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
     const findResponse = await safeFetchJson(findUrl, { headers });
 
     if (findResponse.ok) {
@@ -221,11 +200,9 @@ async function resolveImdb(
         }>;
       };
       const posterPath =
-        findData.movie_results?.[0]?.poster_path ||
-        findData.tv_results?.[0]?.poster_path;
+        findData.movie_results?.[0]?.poster_path || findData.tv_results?.[0]?.poster_path;
       const tmdbRating =
-        findData.movie_results?.[0]?.vote_average ||
-        findData.tv_results?.[0]?.vote_average;
+        findData.movie_results?.[0]?.vote_average || findData.tv_results?.[0]?.vote_average;
 
       if (posterPath) {
         tmdbResult = {
@@ -260,9 +237,7 @@ async function resolveImdb(
   );
 }
 
-async function resolveTmdb(
-  parsed: ParsedMediaUrl,
-): Promise<ResolvedMedia | null> {
+async function resolveTmdb(parsed: ParsedMediaUrl): Promise<ResolvedMedia | null> {
   if (!parsed.id || !parsed.mediaType) return null;
 
   const bearerToken = process.env.TMDB_BEARER_TOKEN;
@@ -272,9 +247,7 @@ async function resolveTmdb(
   const tmdbType = parsed.mediaType === "series" ? "tv" : "movie";
   const baseUrl = `https://api.themoviedb.org/3/${tmdbType}/${parsed.id}?language=en-US`;
   const url = bearerToken ? baseUrl : `${baseUrl}&api_key=${apiKey}`;
-  const headers = bearerToken
-    ? { Authorization: `Bearer ${bearerToken}` }
-    : undefined;
+  const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
 
   const response = await safeFetchJson(url, { headers });
   if (!response.ok) return null;
@@ -309,11 +282,7 @@ async function resolveTmdb(
           imdbRating?: string;
           Response?: string;
         };
-        if (
-          omdbData.Response !== "False" &&
-          omdbData.imdbRating &&
-          omdbData.imdbRating !== "N/A"
-        ) {
+        if (omdbData.Response !== "False" && omdbData.imdbRating && omdbData.imdbRating !== "N/A") {
           imdbRating = round1(Number(omdbData.imdbRating));
           if (!Number.isFinite(imdbRating)) imdbRating = null;
         }
@@ -324,33 +293,23 @@ async function resolveTmdb(
   return {
     id: parsed.id,
     title: data.title || data.name || "",
-    image: data.poster_path
-      ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
-      : null,
-    year: parseYear(
-      parsed.mediaType === "movie" ? data.release_date : data.first_air_date,
-    ),
+    image: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
+    year: parseYear(parsed.mediaType === "movie" ? data.release_date : data.first_air_date),
     type: parsed.mediaType,
     description: data.overview || undefined,
-    rating:
-      typeof data.vote_average === "number" ? round1(data.vote_average) : null,
+    rating: typeof data.vote_average === "number" ? round1(data.vote_average) : null,
     imdbRating,
     lengthMinutes:
-      parsed.mediaType === "movie" && typeof data.runtime === "number"
-        ? data.runtime
-        : null,
+      parsed.mediaType === "movie" && typeof data.runtime === "number" ? data.runtime : null,
     episodeCount:
-      parsed.mediaType === "series" &&
-      typeof data.number_of_episodes === "number"
+      parsed.mediaType === "series" && typeof data.number_of_episodes === "number"
         ? data.number_of_episodes
         : null,
     genresThemes: genres,
   };
 }
 
-async function resolveMal(
-  parsed: ParsedMediaUrl,
-): Promise<ResolvedMedia | null> {
+async function resolveMal(parsed: ParsedMediaUrl): Promise<ResolvedMedia | null> {
   if (!parsed.id || !parsed.mediaType) return null;
 
   const clientId = process.env.MAL_CLIENT_ID;
@@ -396,13 +355,9 @@ async function resolveMal(
         ? Math.round(data.average_episode_duration / 60)
         : null,
     episodeCount:
-      malType === "anime" && typeof data.num_episodes === "number"
-        ? data.num_episodes
-        : null,
+      malType === "anime" && typeof data.num_episodes === "number" ? data.num_episodes : null,
     chapterCount:
-      malType === "manga" && typeof data.num_chapters === "number"
-        ? data.num_chapters
-        : null,
+      malType === "manga" && typeof data.num_chapters === "number" ? data.num_chapters : null,
     genresThemes: genres,
   };
 }
@@ -419,9 +374,7 @@ async function resolveByTitleSearch(
     const searchUrl = bearerToken
       ? `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(title)}&include_adult=false`
       : `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(title)}&include_adult=false&api_key=${apiKey}`;
-    const headers = bearerToken
-      ? { Authorization: `Bearer ${bearerToken}` }
-      : undefined;
+    const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
     const response = await safeFetchJson(searchUrl, { headers });
 
     if (response.ok) {
@@ -447,16 +400,11 @@ async function resolveByTitleSearch(
         return {
           id: String(match.id),
           title: match.title || match.name || title,
-          image: match.poster_path
-            ? `https://image.tmdb.org/t/p/w500${match.poster_path}`
-            : null,
+          image: match.poster_path ? `https://image.tmdb.org/t/p/w500${match.poster_path}` : null,
           year: parseYear(match.release_date || match.first_air_date),
           type: preferredType || type,
           description: match.overview || undefined,
-          rating:
-            typeof match.vote_average === "number"
-              ? round1(match.vote_average)
-              : null,
+          rating: typeof match.vote_average === "number" ? round1(match.vote_average) : null,
         };
       }
     }
@@ -481,13 +429,9 @@ async function resolveByTitleSearch(
       if (data.Response !== "False" && data.Title) {
         const type: MediaType = data.Type === "series" ? "series" : "movie";
         const rating =
-          data.imdbRating && data.imdbRating !== "N/A"
-            ? Number(data.imdbRating)
-            : null;
+          data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
         const ratingRounded =
-          typeof rating === "number" && Number.isFinite(rating)
-            ? round1(rating)
-            : null;
+          typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
         return {
           id: data.imdbID || title,
           title: data.Title,
@@ -505,9 +449,7 @@ async function resolveByTitleSearch(
   return null;
 }
 
-async function resolveNetflixOrPrime(
-  parsed: ParsedMediaUrl,
-): Promise<ResolvedMedia | null> {
+async function resolveNetflixOrPrime(parsed: ParsedMediaUrl): Promise<ResolvedMedia | null> {
   // Use the cleaned URL (no query-string noise) for scraping
   const scrapeUrl = parsed.cleanUrl ?? parsed.originalUrl;
   console.log(`[resolve-link] ${parsed.source} scraping:`, scrapeUrl);
@@ -532,10 +474,7 @@ async function resolveNetflixOrPrime(
   let titleFromPage: string | null = null;
   if (html) {
     titleFromPage = extractTitleFromHtml(html);
-    console.log(
-      `[resolve-link] ${parsed.source} extracted title:`,
-      titleFromPage,
-    );
+    console.log(`[resolve-link] ${parsed.source} extracted title:`, titleFromPage);
   }
 
   if (titleFromPage) {
@@ -586,18 +525,12 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { data: null, error: "Invalid request body." },
-      { status: 400 },
-    );
+    return NextResponse.json({ data: null, error: "Invalid request body." }, { status: 400 });
   }
 
   const rawUrl = body.url?.trim();
   if (!rawUrl) {
-    return NextResponse.json(
-      { data: null, error: "No URL provided." },
-      { status: 400 },
-    );
+    return NextResponse.json({ data: null, error: "No URL provided." }, { status: 400 });
   }
 
   const parsed = parseMediaUrl(rawUrl);
@@ -605,8 +538,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         data: null,
-        error:
-          "Unrecognized link. Supported: IMDb, TMDB, MyAnimeList, Netflix, Prime Video.",
+        error: "Unrecognized link. Supported: IMDb, TMDB, MyAnimeList, Netflix, Prime Video.",
       },
       { status: 400 },
     );

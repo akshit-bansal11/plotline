@@ -8,10 +8,7 @@ interface LoginFormProps {
   onToggleForgotPassword: () => void;
 }
 
-export function LoginForm({
-  onToggleSignup,
-  onToggleForgotPassword,
-}: LoginFormProps) {
+export function LoginForm({ onToggleSignup, onToggleForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,10 +29,7 @@ export function LoginForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <label
-          className="text-sm font-medium text-white/70 ml-1"
-          htmlFor="email"
-        >
+        <label className="text-sm font-medium text-white/70 ml-1" htmlFor="email">
           Email
         </label>
         <div className="relative">
@@ -54,10 +48,7 @@ export function LoginForm({
 
       <div className="space-y-2">
         <div className="flex justify-between items-center px-1">
-          <label
-            className="text-sm font-medium text-white/70"
-            htmlFor="password"
-          >
+          <label className="text-sm font-medium text-white/70" htmlFor="password">
             Password
           </label>
           <button
@@ -84,11 +75,7 @@ export function LoginForm({
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
           >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
       </div>

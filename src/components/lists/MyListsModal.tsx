@@ -63,13 +63,7 @@ const listTypeLabels: Record<EntryMediaType, string> = {
   game: "Game",
 };
 
-const allMediaTypes: EntryMediaType[] = [
-  "movie",
-  "series",
-  "anime",
-  "manga",
-  "game",
-];
+const allMediaTypes: EntryMediaType[] = ["movie", "series", "anime", "manga", "game"];
 
 const isEntryMediaType = (value: unknown): value is EntryMediaType =>
   value === "movie" ||
@@ -78,10 +72,7 @@ const isEntryMediaType = (value: unknown): value is EntryMediaType =>
   value === "manga" ||
   value === "game";
 
-const normalizeEntryMediaTypes = (
-  value: unknown,
-  fallback: EntryMediaType,
-): EntryMediaType[] => {
+const normalizeEntryMediaTypes = (value: unknown, fallback: EntryMediaType): EntryMediaType[] => {
   if (!Array.isArray(value)) return [fallback];
   const deduped: EntryMediaType[] = [];
   for (const candidate of value) {
@@ -129,18 +120,9 @@ export function MyListsModal({
   const { user } = useAuth();
   const uid = user?.uid || null;
 
-  const normalizedViewListId = useMemo(
-    () => viewListId?.trim() || null,
-    [viewListId],
-  );
-  const normalizedEditListId = useMemo(
-    () => editListId?.trim() || null,
-    [editListId],
-  );
-  const normalizedDeleteListId = useMemo(
-    () => deleteListId?.trim() || null,
-    [deleteListId],
-  );
+  const normalizedViewListId = useMemo(() => viewListId?.trim() || null, [viewListId]);
+  const normalizedEditListId = useMemo(() => editListId?.trim() || null, [editListId]);
+  const normalizedDeleteListId = useMemo(() => deleteListId?.trim() || null, [deleteListId]);
   const normalizedInitialViewListId = useMemo(
     () => initialViewListId?.trim() || null,
     [initialViewListId],
@@ -193,9 +175,7 @@ export function MyListsModal({
     name: string;
   } | null>(null);
   const [isDeletingList, setIsDeletingList] = useState(false);
-  const [pendingDeleteListId, setPendingDeleteListId] = useState<string | null>(
-    null,
-  );
+  const [pendingDeleteListId, setPendingDeleteListId] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<EntryMediaType | "all">("all");
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
@@ -245,8 +225,7 @@ export function MyListsModal({
         setList({
           id: snap.id,
           name: typeof data.name === "string" ? data.name : "",
-          description:
-            typeof data.description === "string" ? data.description : "",
+          description: typeof data.description === "string" ? data.description : "",
           type: singleType,
           types,
           updatedAt: toMillis(data.updatedAt),
@@ -301,9 +280,7 @@ export function MyListsModal({
         setItems(nextItems);
       },
       (err) => {
-        setError(
-          err instanceof Error ? err.message : "Failed to load list items.",
-        );
+        setError(err instanceof Error ? err.message : "Failed to load list items.");
         setItems([]);
       },
     );
@@ -332,10 +309,8 @@ export function MyListsModal({
     () => (list ? normalizeEntryMediaTypes(list.types, list.type) : []),
     [list],
   );
-  const shouldShowViewFilters =
-    !isEditingMetadata && listSupportedTypes.length > 1;
-  const shouldShowTitleTypeBadges =
-    !isEditingMetadata && listSupportedTypes.length === 1;
+  const shouldShowViewFilters = !isEditingMetadata && listSupportedTypes.length > 1;
+  const shouldShowTitleTypeBadges = !isEditingMetadata && listSupportedTypes.length === 1;
 
   const listItems = useMemo(() => {
     if (isEditingMetadata || filter === "all") return items;
@@ -378,9 +353,7 @@ export function MyListsModal({
     setIsDeletingList(true);
     try {
       const listId = deleteTarget.id;
-      const itemsSnap = await getDocs(
-        collection(db, "users", uid, "lists", listId, "items"),
-      );
+      const itemsSnap = await getDocs(collection(db, "users", uid, "lists", listId, "items"));
       let batch = writeBatch(db);
       let opCount = 0;
       const commitBatch = async () => {
@@ -391,11 +364,7 @@ export function MyListsModal({
       };
       for (const itemDoc of itemsSnap.docs) {
         const data = itemDoc.data() as { externalId?: unknown };
-        if (
-          mode === "delete" &&
-          typeof data.externalId === "string" &&
-          data.externalId
-        ) {
+        if (mode === "delete" && typeof data.externalId === "string" && data.externalId) {
           batch.delete(doc(db, "users", uid, "entries", data.externalId));
           opCount += 1;
           if (opCount >= 400) await commitBatch();
@@ -463,9 +432,7 @@ export function MyListsModal({
         limit(3),
       );
       const nameSnapshot = await getDocs(nameQuery);
-      const hasDuplicate = nameSnapshot.docs.some(
-        (docSnap) => docSnap.id !== activeListId,
-      );
+      const hasDuplicate = nameSnapshot.docs.some((docSnap) => docSnap.id !== activeListId);
       if (hasDuplicate) {
         setError("A list with this name already exists.");
         setIsSaving(false);
@@ -475,9 +442,7 @@ export function MyListsModal({
       if (itemsPendingRemoval.length > 0) {
         const batch = writeBatch(db);
         for (const item of itemsPendingRemoval) {
-          batch.delete(
-            doc(db, "users", uid, "lists", activeListId, "items", item.id),
-          );
+          batch.delete(doc(db, "users", uid, "lists", activeListId, "items", item.id));
         }
         batch.update(doc(db, "users", uid, "lists", activeListId), {
           name,
@@ -522,17 +487,7 @@ export function MyListsModal({
     setInfo(null);
     setIsSaving(true);
     try {
-      await deleteDoc(
-        doc(
-          db,
-          "users",
-          uid,
-          "lists",
-          activeListId,
-          "items",
-          deleteItemTarget.id,
-        ),
-      );
+      await deleteDoc(doc(db, "users", uid, "lists", activeListId, "items", deleteItemTarget.id));
       await updateDoc(doc(db, "users", uid, "lists", activeListId), {
         updatedAt: serverTimestamp(),
       });
@@ -614,8 +569,7 @@ export function MyListsModal({
               ) : (
                 <DescriptionErrorWrapper
                   isInvalid={
-                    !!list?.description &&
-                    list.description.length > MAX_DESCRIPTION_LENGTH
+                    !!list?.description && list.description.length > MAX_DESCRIPTION_LENGTH
                   }
                 >
                   <div className="space-y-4">
@@ -658,9 +612,7 @@ export function MyListsModal({
               )}
               <button
                 type="button"
-                onClick={() =>
-                  list && setDeleteTarget({ id: list.id, name: list.name })
-                }
+                onClick={() => list && setDeleteTarget({ id: list.id, name: list.name })}
                 className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/5 p-4 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-300 transition-colors hover:bg-red-500/10 hover:text-red-300"
                 aria-label="Delete list"
               >
@@ -730,9 +682,7 @@ export function MyListsModal({
                 <Filter size={40} className="opacity-20" />
               </div>
               <div className="text-center space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.3em]">
-                  No entries added
-                </p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.3em]">No entries added</p>
                 <p className="text-xs text-neutral-700 uppercase tracking-widest">
                   {shouldShowViewFilters
                     ? "Select a different filter or add items to this list"
@@ -822,9 +772,7 @@ export function MyListsModal({
                 setIsEditingMetadata(false);
                 setEditName(list?.name || "");
                 setEditDescription(list?.description || "");
-                setEditTypes(
-                  normalizeEntryMediaTypes(list?.types, list?.type || "movie"),
-                );
+                setEditTypes(normalizeEntryMediaTypes(list?.types, list?.type || "movie"));
                 setIsCommitConfirmOpen(false);
               }}
               disabled={isSaving}
@@ -853,21 +801,17 @@ export function MyListsModal({
       >
         <div className="space-y-5 text-sm text-neutral-300">
           <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-4 text-amber-100">
-            Are you sure you want to commit these changes? These changes are
-            permanent.
+            Are you sure you want to commit these changes? These changes are permanent.
           </div>
           {itemsPendingRemoval.length > 0 && (
             <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-200">
               <div>
                 {itemsPendingRemoval.length} item
-                {itemsPendingRemoval.length === 1 ? "" : "s"} will be removed
-                from this list.
+                {itemsPendingRemoval.length === 1 ? "" : "s"} will be removed from this list.
               </div>
               <div className="mt-1 text-xs uppercase tracking-wider text-red-200/80">
                 Categories:{" "}
-                {itemsPendingRemovalTypes
-                  .map((type) => listTypeLabels[type])
-                  .join(", ")}
+                {itemsPendingRemovalTypes.map((type) => listTypeLabels[type]).join(", ")}
               </div>
             </div>
           )}
@@ -901,8 +845,7 @@ export function MyListsModal({
       >
         <div className="space-y-4 text-sm text-neutral-300">
           <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/10 text-red-200">
-            Are you sure you want to delete{" "}
-            <strong>{deleteTarget?.name}</strong>?
+            Are you sure you want to delete <strong>{deleteTarget?.name}</strong>?
             <br />
             This action cannot be undone.
           </div>

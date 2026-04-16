@@ -23,8 +23,7 @@ export function AvailabilityInfographic() {
           <div className="space-y-1">
             <p className="text-sm font-semibold text-white">Select a country</p>
             <p className="text-xs text-neutral-400 leading-relaxed">
-              Choose your region in the navbar to see available streaming
-              services.
+              Choose your region in the navbar to see available streaming services.
             </p>
           </div>
         </motion.div>

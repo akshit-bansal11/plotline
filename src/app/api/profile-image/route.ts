@@ -35,17 +35,11 @@ export async function POST(request: Request) {
     }
 
     if (!file.type.startsWith("image/")) {
-      return NextResponse.json(
-        { error: "Only image uploads are allowed." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Only image uploads are allowed." }, { status: 400 });
     }
 
     if (file.size > MAX_PROFILE_IMAGE_BYTES) {
-      return NextResponse.json(
-        { error: "Profile image must be 5MB or smaller." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Profile image must be 5MB or smaller." }, { status: 400 });
     }
 
     const uid = sanitizeUid(uidRaw);
@@ -56,28 +50,26 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
 
-    const uploadResult = await new Promise<{ secure_url: string }>(
-      (resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder: PROFILE_IMAGE_FOLDER,
-            public_id: `${uid}-${Date.now()}`,
-            resource_type: "image",
-            overwrite: true,
-            invalidate: true,
-          },
-          (error, result) => {
-            if (error || !result?.secure_url) {
-              reject(error ?? new Error("Cloudinary upload failed."));
-              return;
-            }
-            resolve({ secure_url: result.secure_url });
-          },
-        );
+    const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: PROFILE_IMAGE_FOLDER,
+          public_id: `${uid}-${Date.now()}`,
+          resource_type: "image",
+          overwrite: true,
+          invalidate: true,
+        },
+        (error, result) => {
+          if (error || !result?.secure_url) {
+            reject(error ?? new Error("Cloudinary upload failed."));
+            return;
+          }
+          resolve({ secure_url: result.secure_url });
+        },
+      );
 
-        stream.end(fileBuffer);
-      },
-    );
+      stream.end(fileBuffer);
+    });
 
     return NextResponse.json({ url: uploadResult.secure_url }, { status: 200 });
   } catch (err) {

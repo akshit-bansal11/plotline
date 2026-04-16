@@ -22,11 +22,7 @@ export interface AuthContextType {
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (
-    email: string,
-    password: string,
-    captchaToken?: string,
-  ) => Promise<void>;
+  signInWithEmail: (email: string, password: string, captchaToken?: string) => Promise<void>;
   signUpWithEmail: (
     email: string,
     password: string,
@@ -34,10 +30,7 @@ export interface AuthContextType {
     captchaToken?: string,
   ) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
-  updateUserProfile: (
-    displayName: string,
-    photoURL: string | null,
-  ) => Promise<void>;
+  updateUserProfile: (displayName: string, photoURL: string | null) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -67,20 +60,13 @@ const syncSession = async (user: User | null) => {
 };
 
 const normalizeAuthError = (error: unknown) => {
-  if (!error || typeof error !== "object")
-    return "Something went wrong. Please try again.";
+  if (!error || typeof error !== "object") return "Something went wrong. Please try again.";
   const message = "message" in error ? String(error.message) : "";
   const code = "code" in error ? String(error.code) : "";
 
-  if (
-    code === "auth/invalid-credential" ||
-    message.includes("auth/invalid-credential")
-  )
+  if (code === "auth/invalid-credential" || message.includes("auth/invalid-credential"))
     return "Invalid email or password.";
-  if (
-    code === "auth/email-already-in-use" ||
-    message.includes("auth/email-already-in-use")
-  )
+  if (code === "auth/email-already-in-use" || message.includes("auth/email-already-in-use"))
     return "Email already in use.";
   if (code === "auth/weak-password" || message.includes("auth/weak-password"))
     return "Password should be at least 6 characters.";
@@ -88,10 +74,7 @@ const normalizeAuthError = (error: unknown) => {
     return "Please enter a valid email.";
   if (code === "auth/user-not-found" || message.includes("auth/user-not-found"))
     return "No account found for this email.";
-  if (
-    code === "auth/too-many-requests" ||
-    message.includes("auth/too-many-requests")
-  )
+  if (code === "auth/too-many-requests" || message.includes("auth/too-many-requests"))
     return "Too many attempts. Try again later.";
   if (message.includes("reCAPTCHA")) return message;
 
@@ -104,12 +87,8 @@ const buildProfile = (
 ) => {
   const displayName = overrides?.displayName ?? user.displayName ?? "";
   const email = user.email || "";
-  const hasPhotoOverride = Boolean(
-    overrides && Object.hasOwn(overrides, "photoURL"),
-  );
-  const photoURL = hasPhotoOverride
-    ? (overrides?.photoURL ?? null)
-    : (user.photoURL ?? "");
+  const hasPhotoOverride = Boolean(overrides && Object.hasOwn(overrides, "photoURL"));
+  const photoURL = hasPhotoOverride ? (overrides?.photoURL ?? null) : (user.photoURL ?? "");
   if (!user.uid) {
     throw new Error("Missing user id.");
   }
@@ -170,9 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const verifyCaptcha = async (token?: string) => {
-    const isRecaptchaEnabled = Boolean(
-      process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
-    );
+    const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
     if (!token) {
       if (isRecaptchaEnabled) {
         throw new Error("CAPTCHA verification failed. Please try again.");
@@ -208,11 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithEmail = async (
-    email: string,
-    password: string,
-    captchaToken?: string,
-  ) => {
+  const signInWithEmail = async (email: string, password: string, captchaToken?: string) => {
     setError(null);
     try {
       await verifyCaptcha(captchaToken);
@@ -236,11 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       await verifyCaptcha(captchaToken);
-      const result = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
+      const result = await createUserWithEmailAndPassword(auth, email, password);
       if (result.user) {
         if (displayName) {
           await updateProfile(result.user, { displayName });
@@ -279,10 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateUserProfile = async (
-    displayName: string,
-    photoURL: string | null,
-  ) => {
+  const updateUserProfile = async (displayName: string, photoURL: string | null) => {
     setError(null);
     if (!auth.currentUser) throw new Error("No active account.");
     try {

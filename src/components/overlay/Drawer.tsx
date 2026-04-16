@@ -14,13 +14,7 @@ interface DrawerProps {
   className?: string;
 }
 
-export function Drawer({
-  isOpen,
-  onClose,
-  children,
-  side = "right",
-  className,
-}: DrawerProps) {
+export function Drawer({ isOpen, onClose, children, side = "right", className }: DrawerProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {

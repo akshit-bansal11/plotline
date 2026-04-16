@@ -17,8 +17,7 @@ export function Hero({
   username = "Traveler",
   stats = { movies: 0, series: 0, anime: 0, manga: 0, games: 0 },
 }: HeroProps) {
-  const totalTracked =
-    stats.movies + stats.series + stats.anime + stats.manga + stats.games;
+  const totalTracked = stats.movies + stats.series + stats.anime + stats.manga + stats.games;
 
   return (
     <div className="relative w-full overflow-hidden pt-22">
@@ -31,12 +30,11 @@ export function Hero({
         >
           <div className="space-y-4">
             <h1 className="text-4xl md:text-5xl font-geoma-light tracking-wide text-white">
-              Welcome back,{" "}
-              <span className="text-neutral-400 font-geoma">{username}</span>
+              Welcome back, <span className="text-neutral-400 font-geoma">{username}</span>
             </h1>
             <p className="text-lg text-neutral-400 max-w-xl">
-              Track what you&apos;ve watched, manage your backlog, and build
-              your ultimate collection.
+              Track what you&apos;ve watched, manage your backlog, and build your ultimate
+              collection.
             </p>
             <p className="text-sm text-neutral-500">
               {totalTracked.toLocaleString()} total tracked entries

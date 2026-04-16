@@ -1,29 +1,14 @@
 "use client";
 
-import {
-  Download,
-  LogIn,
-  LogOut,
-  Settings,
-  Upload,
-  UserCircle,
-} from "lucide-react";
-import {
-  AnimatePresence,
-  motion,
-  useMotionValueEvent,
-  useScroll,
-} from "motion/react";
+import { Download, LogIn, LogOut, Settings, Upload, UserCircle } from "lucide-react";
+import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { ProfileModal } from "@/components/auth/ProfileModal";
 import { SettingsModal } from "@/components/auth/SettingsModal";
 import { LinkDropZone } from "@/components/entry/LinkDropZone";
-import {
-  LogEntryModal,
-  type LoggableMedia,
-} from "@/components/entry/LogEntryModal";
+import { LogEntryModal, type LoggableMedia } from "@/components/entry/LogEntryModal";
 import { CountrySelector } from "@/components/layout/CountrySelector";
 import { MenuItem } from "@/components/layout/MenuItem";
 import { MobileMenu } from "@/components/layout/MobileMenu";
@@ -146,11 +131,7 @@ export function Navbar() {
     if (!isProfileMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (
-        menuRef.current?.contains(target) ||
-        triggerRef.current?.contains(target)
-      )
-        return;
+      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
       setIsProfileMenuOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -181,13 +162,10 @@ export function Navbar() {
   const handleMenuKeyDown = (event: React.KeyboardEvent) => {
     const items = menuItemRefs.current.filter(Boolean) as HTMLButtonElement[];
     if (!items.length) return;
-    const currentIndex = items.indexOf(
-      document.activeElement as HTMLButtonElement,
-    );
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      const nextIndex =
-        currentIndex === -1 ? 0 : (currentIndex + 1) % items.length;
+      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % items.length;
       items[nextIndex]?.focus();
     }
     if (event.key === "ArrowUp") {
@@ -238,9 +216,7 @@ export function Navbar() {
         transition={{ duration: 0.35, ease: "easeInOut" }}
         className={cn(
           "fixed left-0 right-0 top-0 z-40 transition-all duration-300",
-          isScrolled
-            ? "bg-neutral-950/55 py-3 backdrop-blur-xl"
-            : "bg-transparent py-5",
+          isScrolled ? "bg-neutral-950/55 py-3 backdrop-blur-xl" : "bg-transparent py-5",
         )}
       >
         <div className="flex w-full items-center justify-between px-4 md:px-8">
@@ -307,9 +283,7 @@ export function Navbar() {
                             <div className="truncate text-sm font-semibold text-white">
                               {userLabel}
                             </div>
-                            <div className="text-[11px] text-neutral-500">
-                              {user?.email || ""}
-                            </div>
+                            <div className="text-[11px] text-neutral-500">{user?.email || ""}</div>
                           </div>
                           <CountrySelector />
                         </div>
@@ -377,14 +351,8 @@ export function Navbar() {
         }}
         initialMedia={pendingItem}
       />
-      <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-      />
-      <ImportExportModal
-        isOpen={isImportExportOpen}
-        onClose={() => setIsImportExportOpen(false)}
-      />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      <ImportExportModal isOpen={isImportExportOpen} onClose={() => setIsImportExportOpen(false)} />
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

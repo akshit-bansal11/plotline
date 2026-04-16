@@ -25,14 +25,12 @@ export function PasswordStrength({
       label: "Doesn't contain your name",
       met:
         password.length > 0 &&
-        (!firstName ||
-          !password.toLowerCase().includes(firstName.toLowerCase())) &&
+        (!firstName || !password.toLowerCase().includes(firstName.toLowerCase())) &&
         (!lastName || !password.toLowerCase().includes(lastName.toLowerCase())),
     },
   ];
 
-  const strengthScore =
-    password.length === 0 ? 0 : reqs.filter((r) => r.met).length;
+  const strengthScore = password.length === 0 ? 0 : reqs.filter((r) => r.met).length;
 
   const getStrengthColor = (score: number) => {
     if (score === 0) return "bg-neutral-800";
@@ -51,10 +49,7 @@ export function PasswordStrength({
     >
       <div className="flex gap-1.5 mb-4">
         {[1, 2, 3, 4, 5].map((index) => (
-          <div
-            key={index}
-            className="h-1.5 flex-1 rounded-full overflow-hidden bg-neutral-800/80"
-          >
+          <div key={index} className="h-1.5 flex-1 rounded-full overflow-hidden bg-neutral-800/80">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: index <= strengthScore ? "100%" : "0%" }}

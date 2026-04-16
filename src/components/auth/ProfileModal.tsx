@@ -6,13 +6,7 @@ import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/utils";
 
-export function ProfileModal({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export function ProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { user, updateUserProfile } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -104,13 +98,9 @@ export function ProfileModal({
       setInfo("Profile updated.");
       setSelectedFile(null);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to update profile.";
+      const message = err instanceof Error ? err.message : "Failed to update profile.";
       const normalized = message.toLowerCase();
-      if (
-        normalized.includes("cloudinary") ||
-        normalized.includes("cloudinary_url")
-      ) {
+      if (normalized.includes("cloudinary") || normalized.includes("cloudinary_url")) {
         setError(
           "Profile upload failed because Cloudinary is not configured. Set CLOUDINARY_URL and restart the app.",
         );
@@ -122,12 +112,8 @@ export function ProfileModal({
     }
   };
 
-  const displayPhoto = removePhoto
-    ? null
-    : previewUrl || user?.photoURL || null;
-  const initials = (displayName.trim() || user?.email || "U")
-    .slice(0, 1)
-    .toUpperCase();
+  const displayPhoto = removePhoto ? null : previewUrl || user?.photoURL || null;
+  const initials = (displayName.trim() || user?.email || "U").slice(0, 1).toUpperCase();
 
   return (
     <Modal
@@ -181,9 +167,7 @@ export function ProfileModal({
           </div>
           <div className="flex-1 space-y-4">
             <div className="space-y-2">
-              <div className="text-xs font-medium text-neutral-400">
-                Display name
-              </div>
+              <div className="text-xs font-medium text-neutral-400">Display name</div>
               <input
                 value={displayName}
                 onChange={(event) => {

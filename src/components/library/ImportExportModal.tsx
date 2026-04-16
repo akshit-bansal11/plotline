@@ -19,13 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { cn } from "@/utils";
 
-type EntryMediaType =
-  | "movie"
-  | "series"
-  | "anime"
-  | "anime_movie"
-  | "manga"
-  | "game";
+type EntryMediaType = "movie" | "series" | "anime" | "anime_movie" | "manga" | "game";
 type EntryStatus =
   | "watching"
   | "completed"
@@ -53,11 +47,7 @@ type EntryExportRow = {
 
 const escapeCsv = (value: string) => {
   const normalized = value.replace(/"/g, '""');
-  if (
-    normalized.includes(",") ||
-    normalized.includes("\n") ||
-    normalized.includes('"')
-  ) {
+  if (normalized.includes(",") || normalized.includes("\n") || normalized.includes('"')) {
     return `"${normalized}"`;
   }
   return normalized;
@@ -113,11 +103,7 @@ const parseYearValue = (value: string | null | undefined) => {
   return match[0];
 };
 
-const parseRatingValue = (
-  value: string | null | undefined,
-  min: number,
-  max: number,
-) => {
+const parseRatingValue = (value: string | null | undefined, min: number, max: number) => {
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -128,10 +114,8 @@ const parseRatingValue = (
 
 const mapImdbType = (value: string): EntryMediaType => {
   const normalized = value.trim().toLowerCase();
-  if (normalized.includes("tv") || normalized.includes("series"))
-    return "series";
-  if (normalized.includes("video game") || normalized.includes("game"))
-    return "game";
+  if (normalized.includes("tv") || normalized.includes("series")) return "series";
+  if (normalized.includes("video game") || normalized.includes("game")) return "game";
   if (normalized.includes("anime")) return "anime";
   if (normalized.includes("manga")) return "manga";
   return "movie";
@@ -147,13 +131,7 @@ const formatDate = (millis: number | null) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-export function ImportExportModal({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -185,10 +163,7 @@ export function ImportExportModal({
     setImportInfo(null);
     try {
       const snapshot = await getDocs(
-        query(
-          collection(db, "users", user.uid, "entries"),
-          orderBy("createdAt", "desc"),
-        ),
+        query(collection(db, "users", user.uid, "entries"), orderBy("createdAt", "desc")),
       );
       const rows: EntryExportRow[] = [];
       snapshot.forEach((docSnap) => {
@@ -205,28 +180,16 @@ export function ImportExportModal({
           mediaType: data.mediaType as EntryMediaType,
           status: data.status as EntryStatus,
           userRating,
-          imdbRating:
-            typeof data.imdbRating === "number" ? data.imdbRating : null,
-          lengthMinutes:
-            typeof data.lengthMinutes === "number" ? data.lengthMinutes : null,
-          episodeCount:
-            typeof data.episodeCount === "number" ? data.episodeCount : null,
-          chapterCount:
-            typeof data.chapterCount === "number" ? data.chapterCount : null,
-          genresThemes: Array.isArray(data.genresThemes)
-            ? (data.genresThemes as string[])
-            : [],
+          imdbRating: typeof data.imdbRating === "number" ? data.imdbRating : null,
+          lengthMinutes: typeof data.lengthMinutes === "number" ? data.lengthMinutes : null,
+          episodeCount: typeof data.episodeCount === "number" ? data.episodeCount : null,
+          chapterCount: typeof data.chapterCount === "number" ? data.chapterCount : null,
+          genresThemes: Array.isArray(data.genresThemes) ? (data.genresThemes as string[]) : [],
           description: String(data.description || ""),
           releaseYear: releaseYearRaw ? String(releaseYearRaw) : null,
           image: typeof data.image === "string" ? data.image : null,
-          completedAt:
-            data.completedAt instanceof Timestamp
-              ? data.completedAt.toMillis()
-              : null,
-          createdAt:
-            data.createdAt instanceof Timestamp
-              ? data.createdAt.toMillis()
-              : null,
+          completedAt: data.completedAt instanceof Timestamp ? data.completedAt.toMillis() : null,
+          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : null,
         });
       });
       const headers = [
@@ -256,15 +219,9 @@ export function ImportExportModal({
             escapeCsv(row.userRating !== null ? String(row.userRating) : ""),
             escapeCsv(row.imdbRating !== null ? String(row.imdbRating) : ""),
             escapeCsv(row.image || ""),
-            escapeCsv(
-              row.lengthMinutes !== null ? String(row.lengthMinutes) : "",
-            ),
-            escapeCsv(
-              row.episodeCount !== null ? String(row.episodeCount) : "",
-            ),
-            escapeCsv(
-              row.chapterCount !== null ? String(row.chapterCount) : "",
-            ),
+            escapeCsv(row.lengthMinutes !== null ? String(row.lengthMinutes) : ""),
+            escapeCsv(row.episodeCount !== null ? String(row.episodeCount) : ""),
+            escapeCsv(row.chapterCount !== null ? String(row.chapterCount) : ""),
             escapeCsv(row.genresThemes.join(", ")),
             escapeCsv(row.description),
             escapeCsv(formatDate(row.completedAt)),
@@ -303,24 +260,18 @@ export function ImportExportModal({
         return;
       }
       const headerRow = rows[0].map(normalizeHeader);
-      const headerIndex = new Map(
-        headerRow.map((value, index) => [value, index]),
-      );
+      const headerIndex = new Map(headerRow.map((value, index) => [value, index]));
       const titleIndex = headerIndex.get("title");
       if (titleIndex === undefined) {
         setImportError("CSV is missing a Title column.");
         return;
       }
       const typeIndex = headerIndex.get("title type");
-      const releaseYearIndex =
-        headerIndex.get("release year") ?? headerIndex.get("year");
-      const runtimeIndex =
-        headerIndex.get("runtime (mins)") ?? headerIndex.get("runtime");
+      const releaseYearIndex = headerIndex.get("release year") ?? headerIndex.get("year");
+      const runtimeIndex = headerIndex.get("runtime (mins)") ?? headerIndex.get("runtime");
       const genresIndex = headerIndex.get("genres");
-      const imdbRatingIndex =
-        headerIndex.get("imdb rating") ?? headerIndex.get("imdb");
-      const yourRatingIndex =
-        headerIndex.get("your rating") ?? headerIndex.get("rating");
+      const imdbRatingIndex = headerIndex.get("imdb rating") ?? headerIndex.get("imdb");
+      const yourRatingIndex = headerIndex.get("your rating") ?? headerIndex.get("rating");
       const imageIndex =
         headerIndex.get("image") ??
         headerIndex.get("image url") ??
@@ -346,8 +297,7 @@ export function ImportExportModal({
       const minIntervalMs = 350;
       const maxPerWindow = 50;
 
-      const wait = (ms: number) =>
-        new Promise((resolve) => setTimeout(resolve, ms));
+      const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
       const fetchFullMetadata = async (
         title: string,
@@ -402,10 +352,8 @@ export function ImportExportModal({
       existingEntriesSnapshot.forEach((entryDoc) => {
         const raw = entryDoc.data() as Record<string, unknown>;
         existingLibrary.push({
-          title:
-            typeof raw.title === "string" ? raw.title.trim().toLowerCase() : "",
-          mediaType:
-            typeof raw.mediaType === "string" ? raw.mediaType : "movie",
+          title: typeof raw.title === "string" ? raw.title.trim().toLowerCase() : "",
+          mediaType: typeof raw.mediaType === "string" ? raw.mediaType : "movie",
           year:
             typeof raw.releaseYear === "string"
               ? raw.releaseYear
@@ -433,31 +381,20 @@ export function ImportExportModal({
           continue;
         }
         const typeValue = typeIndex !== undefined ? row[typeIndex] || "" : "";
-        const releaseYearRaw =
-          releaseYearIndex !== undefined ? row[releaseYearIndex]?.trim() : "";
-        const runtimeValue =
-          runtimeIndex !== undefined ? Number(row[runtimeIndex]) : null;
-        const genresValue =
-          genresIndex !== undefined ? row[genresIndex] || "" : "";
-        const imdbRatingRaw =
-          imdbRatingIndex !== undefined ? row[imdbRatingIndex] || "" : "";
-        const yourRatingRaw =
-          yourRatingIndex !== undefined ? row[yourRatingIndex] || "" : "";
+        const releaseYearRaw = releaseYearIndex !== undefined ? row[releaseYearIndex]?.trim() : "";
+        const runtimeValue = runtimeIndex !== undefined ? Number(row[runtimeIndex]) : null;
+        const genresValue = genresIndex !== undefined ? row[genresIndex] || "" : "";
+        const imdbRatingRaw = imdbRatingIndex !== undefined ? row[imdbRatingIndex] || "" : "";
+        const yourRatingRaw = yourRatingIndex !== undefined ? row[yourRatingIndex] || "" : "";
         const releaseYearValue = parseYearValue(releaseYearRaw);
         const imdbRatingValue = parseRatingValue(imdbRatingRaw, 0, 10);
         const userRatingValue = parseRatingValue(yourRatingRaw, 1, 10);
         const mediaType = mapImdbType(typeValue);
         const imageRaw = imageIndex !== undefined ? row[imageIndex] || "" : "";
 
-        const metadata = await fetchFullMetadata(
-          title,
-          releaseYearValue,
-          mediaType,
-        );
+        const metadata = await fetchFullMetadata(title, releaseYearValue, mediaType);
 
-        const finalImage = imageRaw?.trim()
-          ? imageRaw.trim()
-          : (metadata?.image ?? null);
+        const finalImage = imageRaw?.trim() ? imageRaw.trim() : (metadata?.image ?? null);
         const finalDescription = metadata?.description ?? "";
         const finalReleaseYear = releaseYearValue || metadata?.year || null;
         const finalLengthMinutes = Number.isFinite(runtimeValue as number)
@@ -479,8 +416,7 @@ export function ImportExportModal({
         const duplicateExists = existingLibrary.some((e) => {
           if (e.mediaType !== mediaType) return false;
           if (e.title !== titleLower) return false;
-          if (e.year && finalReleaseYear && e.year !== finalReleaseYear)
-            return false;
+          if (e.year && finalReleaseYear && e.year !== finalReleaseYear) return false;
           return true;
         });
 
@@ -561,18 +497,12 @@ export function ImportExportModal({
         <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-white">
-                Import IMDB CSV
-              </div>
+              <div className="text-sm font-semibold text-white">Import IMDB CSV</div>
               <div className="mt-1 text-xs text-neutral-500">
                 Upload your IMDB list export to bring items into Plotline.
               </div>
             </div>
-            <Upload
-              size={20}
-              className="text-neutral-500"
-              suppressHydrationWarning
-            />
+            <Upload size={20} className="text-neutral-500" suppressHydrationWarning />
           </div>
           <div className="flex flex-col gap-2 w-full sm:w-auto flex-1">
             <div className="flex gap-3 sm:items-center">
@@ -593,9 +523,7 @@ export function ImportExportModal({
                 disabled={!importFile || isImporting}
                 className={cn(
                   "rounded-full bg-neutral-100/90 px-5 py-2 text-xs font-semibold text-neutral-950 transition-all hover:bg-neutral-100 min-w-25 flex items-center justify-center gap-2",
-                  !importFile || isImporting
-                    ? "cursor-not-allowed opacity-70"
-                    : "",
+                  !importFile || isImporting ? "cursor-not-allowed opacity-70" : "",
                 )}
               >
                 {isImporting ? (
@@ -632,18 +560,12 @@ export function ImportExportModal({
         <div className="rounded-2xl border border-white/5 bg-neutral-900/40 p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-white">
-                Export to CSV
-              </div>
+              <div className="text-sm font-semibold text-white">Export to CSV</div>
               <div className="mt-1 text-xs text-neutral-500">
                 Download a CSV of your current items.
               </div>
             </div>
-            <Download
-              size={20}
-              className="text-neutral-500"
-              suppressHydrationWarning
-            />
+            <Download size={20} className="text-neutral-500" suppressHydrationWarning />
           </div>
           <div className="mt-4">
             <button
@@ -659,12 +581,8 @@ export function ImportExportModal({
             </button>
           </div>
         </div>
-        {importError && (
-          <div className="text-sm text-red-400">{importError}</div>
-        )}
-        {importInfo && (
-          <div className="text-sm text-emerald-300">{importInfo}</div>
-        )}
+        {importError && <div className="text-sm text-red-400">{importError}</div>}
+        {importInfo && <div className="text-sm text-emerald-300">{importInfo}</div>}
       </div>
       <InfographicToast
         isOpen={Boolean(duplicateToast)}

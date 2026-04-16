@@ -17,12 +17,7 @@ export function NavLinks({ className }: { className?: string }) {
   // So we can rely on activeSection from context which syncs with hash.
 
   return (
-    <nav
-      className={cn(
-        "relative flex items-center gap-1 overflow-hidden",
-        className,
-      )}
-    >
+    <nav className={cn("relative flex items-center gap-1 overflow-hidden", className)}>
       {allSectionLinks.map((link) => {
         const isActive = activeSection === link.section;
         const Icon = link.icon;
@@ -48,10 +43,7 @@ export function NavLinks({ className }: { className?: string }) {
             {Icon ? (
               <Icon
                 size={18}
-                className={cn(
-                  "relative z-10",
-                  isActive ? "text-white" : "text-neutral-400",
-                )}
+                className={cn("relative z-10", isActive ? "text-white" : "text-neutral-400")}
                 suppressHydrationWarning
               />
             ) : null}

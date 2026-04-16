@@ -46,10 +46,7 @@ interface MediaGridProps {
     position: "before" | "after";
     sourceListId: string | null;
   }) => void;
-  onItemDropOnItem?: (details: {
-    targetEntryId: string;
-    sourceListId: string | null;
-  }) => void;
+  onItemDropOnItem?: (details: { targetEntryId: string; sourceListId: string | null }) => void;
   dropIndicatorEntryId?: string | null;
   dropIndicatorPosition?: "before" | "after" | null;
 }
@@ -97,8 +94,7 @@ export function MediaGrid({
     >
       {items.map((item) => {
         const isActiveDrag =
-          activeDragEntryId !== null &&
-          String(activeDragEntryId) === String(item.id);
+          activeDragEntryId !== null && String(activeDragEntryId) === String(item.id);
         const isDropIndicator =
           dropIndicatorEntryId !== null &&
           String(dropIndicatorEntryId) === String(item.id) &&
@@ -114,10 +110,7 @@ export function MediaGrid({
               suppressClickRef.current = true;
               event.dataTransfer.effectAllowed = "move";
               // Tag this as an internal app drag to avoid triggering external URL drop zones
-              event.dataTransfer.setData(
-                "application/x-plotline-entry",
-                String(item.id),
-              );
+              event.dataTransfer.setData("application/x-plotline-entry", String(item.id));
               onItemDragStart({
                 entryId: item.id,
                 sourceListId,
@@ -140,8 +133,7 @@ export function MediaGrid({
               const y = event.clientY - rect.top;
               const x = event.clientX - rect.left;
 
-              const isCenterY =
-                y > rect.height * 0.25 && y < rect.height * 0.75;
+              const isCenterY = y > rect.height * 0.25 && y < rect.height * 0.75;
               const isCenterX = x > rect.width * 0.25 && x < rect.width * 0.75;
 
               if (isCenterY && isCenterX && onItemDropOnItem) {
@@ -149,8 +141,7 @@ export function MediaGrid({
                 event.currentTarget.classList.add("media-card-drop-target"); // Add a subtle visual cue if CSS exists
               } else if (onItemDragOverPosition) {
                 event.currentTarget.classList.remove("media-card-drop-target");
-                const position: "before" | "after" =
-                  y < rect.height / 2 ? "before" : "after";
+                const position: "before" | "after" = y < rect.height / 2 ? "before" : "after";
                 onItemDragOverPosition({
                   targetEntryId: String(item.id),
                   position,
@@ -171,8 +162,7 @@ export function MediaGrid({
               const y = event.clientY - rect.top;
               const x = event.clientX - rect.left;
 
-              const isCenterY =
-                y > rect.height * 0.25 && y < rect.height * 0.75;
+              const isCenterY = y > rect.height * 0.25 && y < rect.height * 0.75;
               const isCenterX = x > rect.width * 0.25 && x < rect.width * 0.75;
 
               if (isCenterY && isCenterX && onItemDropOnItem) {
@@ -181,8 +171,7 @@ export function MediaGrid({
                   sourceListId,
                 });
               } else if (onItemDropPosition) {
-                const position: "before" | "after" =
-                  y < rect.height / 2 ? "before" : "after";
+                const position: "before" | "after" = y < rect.height / 2 ? "before" : "after";
                 onItemDropPosition({
                   targetEntryId: String(item.id),
                   position,

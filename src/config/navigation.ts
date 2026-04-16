@@ -25,7 +25,4 @@ export const categorySectionLinks: SectionLink[] = [
   { href: "/#games", label: "Games", section: "games", icon: Gamepad2 },
 ];
 
-export const allSectionLinks: SectionLink[] = [
-  homeSectionLink,
-  ...categorySectionLinks,
-];
+export const allSectionLinks: SectionLink[] = [homeSectionLink, ...categorySectionLinks];

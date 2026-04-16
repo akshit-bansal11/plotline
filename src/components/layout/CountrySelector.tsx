@@ -29,18 +29,7 @@ function FlagImg({ code, size = 18 }: { code: string; size?: number }) {
 }
 
 /* â”€â”€ Country data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const POPULAR_CODES = [
-  "US",
-  "GB",
-  "IN",
-  "CA",
-  "AU",
-  "JP",
-  "DE",
-  "FR",
-  "BR",
-  "KR",
-];
+const POPULAR_CODES = ["US", "GB", "IN", "CA", "AU", "JP", "DE", "FR", "BR", "KR"];
 
 const ALL_COUNTRIES: { code: string; name: string }[] = [
   { code: "AD", name: "Andorra" },
@@ -277,10 +266,7 @@ export function CountrySelector() {
   // Click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -309,8 +295,7 @@ export function CountrySelector() {
   const filteredCountries = lowerSearch
     ? ALL_COUNTRIES.filter(
         (c) =>
-          c.name.toLowerCase().includes(lowerSearch) ||
-          c.code.toLowerCase().includes(lowerSearch),
+          c.name.toLowerCase().includes(lowerSearch) || c.code.toLowerCase().includes(lowerSearch),
       )
     : ALL_COUNTRIES;
 
@@ -334,10 +319,7 @@ export function CountrySelector() {
         )}
         <ChevronDown
           size={12}
-          className={cn(
-            "text-neutral-500 transition-transform",
-            isOpen && "rotate-180",
-          )}
+          className={cn("text-neutral-500 transition-transform", isOpen && "rotate-180")}
         />
       </button>
 
@@ -374,9 +356,7 @@ export function CountrySelector() {
                 onClick={() => selectCountry(null)}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-white/5",
-                  !selectedCountry
-                    ? "bg-white/10 text-white"
-                    : "text-neutral-400",
+                  !selectedCountry ? "bg-white/10 text-white" : "text-neutral-400",
                 )}
               >
                 <Globe size={14} />

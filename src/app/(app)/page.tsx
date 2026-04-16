@@ -17,14 +17,7 @@ import {
 } from "firebase/firestore";
 import { LayoutGrid, List, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EntryDetailModal } from "@/components/entry/EntryDetailModal";
 import { LogEntryModal } from "@/components/entry/LogEntryModal";
 import { Hero } from "@/components/library/Hero";
@@ -37,11 +30,7 @@ import { LibrarySearchBar } from "@/components/search/LibrarySearchBar";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
-import {
-  type EntryDoc,
-  type EntryMediaType,
-  useData,
-} from "@/context/DataContext";
+import { type EntryDoc, type EntryMediaType, useData } from "@/context/DataContext";
 import { type SectionKey, useSection } from "@/context/SectionContext";
 import { db } from "@/lib/firebase";
 import {
@@ -147,8 +136,7 @@ function DashboardSection({
       // Game specific completion statuses
       if (
         entry.mediaType === "game" &&
-        (entry.status === "main_story_completed" ||
-          entry.status === "fully_completed")
+        (entry.status === "main_story_completed" || entry.status === "fully_completed")
       )
         return true;
       return false;
@@ -158,11 +146,7 @@ function DashboardSection({
   const metricsByType = useMemo(() => {
     const now = new Date();
     const nowMs = now.getTime();
-    const startMonthMs = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      1,
-    ).getTime();
+    const startMonthMs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     const startYearMs = new Date(now.getFullYear(), 0, 1).getTime();
 
     const base: Record<EntryMediaType, MetricCounts> = {
@@ -228,11 +212,7 @@ function DashboardSection({
 
       <section className="w-full px-4 md:px-8">
         <div className="flex items-end justify-between gap-6">
-          {!uid && (
-            <div className="text-sm text-neutral-500">
-              Sign in to start tracking.
-            </div>
-          )}
+          {!uid && <div className="text-sm text-neutral-500">Sign in to start tracking.</div>}
         </div>
         {uid && status === "loading" ? (
           <div className="mt-3 text-sm text-neutral-500">Syncingâ€¦</div>
@@ -253,18 +233,11 @@ function DashboardSection({
         <div className="mt-6 grid not-sm:grid-cols-1 grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {(Object.keys(contentTypeLabels) as EntryMediaType[]).map((type) => (
             <GlassCard key={type} className="p-5" hoverEffect>
-              <div className="text-sm font-semibold text-white">
-                {contentTypeLabels[type]}
-              </div>
+              <div className="text-sm font-semibold text-white">{contentTypeLabels[type]}</div>
               <div className="mt-4 space-y-3">
                 {metricLabels.map(({ key, label }) => (
-                  <div
-                    key={key}
-                    className="flex items-baseline justify-between gap-4"
-                  >
-                    <div className="text-xs font-medium text-neutral-500">
-                      {label}
-                    </div>
+                  <div key={key} className="flex items-baseline justify-between gap-4">
+                    <div className="text-xs font-medium text-neutral-500">{label}</div>
                     <div className="text-2xl font-bold text-white tabular-nums">
                       {metricsByType[type][key].toLocaleString()}
                     </div>
@@ -284,14 +257,10 @@ function DashboardSection({
 
             return (
               <GlassCard key={type} className="p-5" hoverEffect>
-                <div className="text-sm font-semibold text-white">
-                  {contentTypeLabels[type]}
-                </div>
+                <div className="text-sm font-semibold text-white">{contentTypeLabels[type]}</div>
 
                 {uid && items.length === 0 ? (
-                  <div className="mt-4 text-sm text-neutral-400">
-                    No recent activity
-                  </div>
+                  <div className="mt-4 text-sm text-neutral-400">No recent activity</div>
                 ) : null}
 
                 {!uid ? (
@@ -373,12 +342,8 @@ function DashboardSection({
                           {entry.releaseYear || entry.completedAtMs ? (
                             <div className="mt-1 text-xs text-neutral-500">
                               {entry.releaseYear ? `${entry.releaseYear}` : ""}
-                              {entry.releaseYear && entry.completedAtMs
-                                ? " â€¢ "
-                                : ""}
-                              {entry.completedAtMs
-                                ? formatISODate(entry.completedAtMs)
-                                : ""}
+                              {entry.releaseYear && entry.completedAtMs ? " â€¢ " : ""}
+                              {entry.completedAtMs ? formatISODate(entry.completedAtMs) : ""}
                             </div>
                           ) : null}
                         </div>
@@ -450,9 +415,7 @@ function LibrarySection({
   const { user } = useAuth();
   const uid = user?.uid || null;
   const [lists, setLists] = useState<ListRow[]>([]);
-  const [listItemsById, setListItemsById] = useState<
-    Record<string, ListItemRow[]>
-  >({});
+  const [listItemsById, setListItemsById] = useState<Record<string, ListItemRow[]>>({});
   const [activeDrag, setActiveDrag] = useState<{
     entryId: string;
     sourceListId: string | null;
@@ -469,9 +432,7 @@ function LibrarySection({
   } | null>(null);
   const [isRemoveTargetActive, setIsRemoveTargetActive] = useState(false);
   const [dragAnnouncement, setDragAnnouncement] = useState("");
-  const [otherStatusFilter, setOtherStatusFilter] = useState<
-    EntryDoc["status"] | "all"
-  >("all");
+  const [otherStatusFilter, setOtherStatusFilter] = useState<EntryDoc["status"] | "all">("all");
 
   const [relationModal, setRelationModal] = useState<{
     sourceId: string;
@@ -480,9 +441,7 @@ function LibrarySection({
     targetTitle: string;
     sourceTitle: string;
   } | null>(null);
-  const [relationModalError, setRelationModalError] = useState<string | null>(
-    null,
-  );
+  const [relationModalError, setRelationModalError] = useState<string | null>(null);
   const [isRelationSaving, setIsRelationSaving] = useState(false);
 
   const handleRelationDrop = (sourceId: string, targetId: string) => {
@@ -534,20 +493,15 @@ function LibrarySection({
           types?: unknown;
         };
         const singleType = coerceListType(data.type);
-        const types = Array.isArray(data.types)
-          ? (data.types as EntryMediaType[])
-          : [singleType];
+        const types = Array.isArray(data.types) ? (data.types as EntryMediaType[]) : [singleType];
 
         // Normalize types for filtering: if it has anime or anime_movie, it counts for both
-        const normalizedTypes = types.map((t) =>
-          (t as string) === "anime_movie" ? "anime" : t,
-        );
+        const normalizedTypes = types.map((t) => ((t as string) === "anime_movie" ? "anime" : t));
 
         return {
           id: snap.id,
           name: typeof data.name === "string" ? data.name : "",
-          description:
-            typeof data.description === "string" ? data.description : "",
+          description: typeof data.description === "string" ? data.description : "",
           type: singleType,
           types,
           normalizedTypes,
@@ -611,20 +565,17 @@ function LibrarySection({
               id: snap.id,
               title: typeof data.title === "string" ? data.title : "",
               mediaType: coerceListType(data.mediaType),
-              externalId:
-                typeof data.externalId === "string" ? data.externalId : "",
+              externalId: typeof data.externalId === "string" ? data.externalId : "",
               image: data.image ? String(data.image) : null,
               year: data.year ? String(data.year) : null,
-              sortOrder:
-                typeof data.sortOrder === "number" ? data.sortOrder : null,
+              sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : null,
               addedAtMs: toMillis((data as Record<string, unknown>).addedAt),
             };
           });
           const sortedItems = [...nextItems].sort((a, b) => {
             const aSort = a.sortOrder;
             const bSort = b.sortOrder;
-            if (typeof aSort === "number" && typeof bSort === "number")
-              return aSort - bSort;
+            if (typeof aSort === "number" && typeof bSort === "number") return aSort - bSort;
             if (typeof aSort === "number") return -1;
             if (typeof bSort === "number") return 1;
             return (b.addedAtMs ?? 0) - (a.addedAtMs ?? 0);
@@ -717,9 +668,7 @@ function LibrarySection({
       sourceListId: details.sourceListId,
       isKeyboard: details.mode === "keyboard",
     });
-    setDragAnnouncement(
-      `Picked up ${details.title}. Navigate to a list and drop to move it.`,
-    );
+    setDragAnnouncement(`Picked up ${details.title}. Navigate to a list and drop to move it.`);
     setReorderIndicator(null);
     setIsRemoveTargetActive(false);
   };
@@ -737,9 +686,7 @@ function LibrarySection({
 
   const handleDropOnList = async (targetListId: string | null) => {
     if (!uid || !activeDrag) return;
-    const entry = sectionEntries.find(
-      (candidate) => candidate.id === activeDrag.entryId,
-    );
+    const entry = sectionEntries.find((candidate) => candidate.id === activeDrag.entryId);
     if (!entry) {
       setDragAnnouncement("Could not find this item in the current view.");
       setActiveDrag(null);
@@ -751,9 +698,7 @@ function LibrarySection({
     }
 
     const sourceListId = activeDrag.sourceListId;
-    const targetList = targetListId
-      ? lists.find((list) => list.id === targetListId) || null
-      : null;
+    const targetList = targetListId ? lists.find((list) => list.id === targetListId) || null : null;
     const targetItems = targetList ? listItemsById[targetList.id] || [] : [];
 
     if (targetListId && !targetList) {
@@ -778,9 +723,7 @@ function LibrarySection({
 
     if (targetList) {
       const normalizedEntryType: EntryMediaType =
-        (entry.mediaType as string) === "anime_movie"
-          ? "anime"
-          : entry.mediaType;
+        (entry.mediaType as string) === "anime_movie" ? "anime" : entry.mediaType;
       if (!targetList.types.includes(normalizedEntryType)) {
         setDragAnnouncement(
           `This list only accepts ${targetList.types.map((t) => entryMediaTypeLabels[t]).join(", ")} items.`,
@@ -792,9 +735,7 @@ function LibrarySection({
         clearExpandTimeout();
         return;
       }
-      const alreadyInTarget = targetItems.some(
-        (item) => item.externalId === entry.id,
-      );
+      const alreadyInTarget = targetItems.some((item) => item.externalId === entry.id);
       if (alreadyInTarget) {
         setDragAnnouncement("This item is already in the target list.");
         setActiveDrag(null);
@@ -812,21 +753,16 @@ function LibrarySection({
           .map((item) => item.sortOrder)
           .filter((value): value is number => typeof value === "number");
         const nextSortOrder =
-          manualOrderValues.length > 0
-            ? Math.max(...manualOrderValues) + 1
-            : null;
-        await addDoc(
-          collection(db, "users", uid, "lists", targetList.id, "items"),
-          {
-            title: entry.title,
-            mediaType: entry.mediaType,
-            externalId: entry.id,
-            image: entry.image || null,
-            year: entry.releaseYear || null,
-            sortOrder: nextSortOrder,
-            addedAt: serverTimestamp(),
-          },
-        );
+          manualOrderValues.length > 0 ? Math.max(...manualOrderValues) + 1 : null;
+        await addDoc(collection(db, "users", uid, "lists", targetList.id, "items"), {
+          title: entry.title,
+          mediaType: entry.mediaType,
+          externalId: entry.id,
+          image: entry.image || null,
+          year: entry.releaseYear || null,
+          sortOrder: nextSortOrder,
+          addedAt: serverTimestamp(),
+        });
         await updateDoc(doc(db, "users", uid, "lists", targetList.id), {
           updatedAt: serverTimestamp(),
         });
@@ -834,21 +770,9 @@ function LibrarySection({
 
       if (sourceListId) {
         const sourceItems = listItemsById[sourceListId] || [];
-        const sourceItem = sourceItems.find(
-          (item) => item.externalId === entry.id,
-        );
+        const sourceItem = sourceItems.find((item) => item.externalId === entry.id);
         if (sourceItem) {
-          await deleteDoc(
-            doc(
-              db,
-              "users",
-              uid,
-              "lists",
-              sourceListId,
-              "items",
-              sourceItem.id,
-            ),
-          );
+          await deleteDoc(doc(db, "users", uid, "lists", sourceListId, "items", sourceItem.id));
           await updateDoc(doc(db, "users", uid, "lists", sourceListId), {
             updatedAt: serverTimestamp(),
           });
@@ -856,9 +780,7 @@ function LibrarySection({
       }
 
       if (!targetList && sourceListId) {
-        setDragAnnouncement(
-          `Removed ${entry.title} from the list. It remains in Unspecified.`,
-        );
+        setDragAnnouncement(`Removed ${entry.title} from the list. It remains in Unspecified.`);
       } else {
         const targetName = targetList ? targetList.name || "List" : "Other";
         setDragAnnouncement(`Moved ${entry.title} to ${targetName}.`);
@@ -879,9 +801,7 @@ function LibrarySection({
   return (
     <div className="pt-12">
       <div className="w-full px-4 md:px-8 mb-4">
-        <h1 className="text-3xl font-bold tracking-tight text-white">
-          {title}
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
       </div>
 
       {!uid ? (
@@ -891,15 +811,11 @@ function LibrarySection({
       ) : (
         <>
           {uid && status === "loading" && entries.length === 0 ? (
-            <div className="w-full px-4 md:px-8 text-sm text-neutral-400">
-              Loadingâ€¦
-            </div>
+            <div className="w-full px-4 md:px-8 text-sm text-neutral-400">Loadingâ€¦</div>
           ) : null}
           {visibleEntriesError ? (
             <div className="w-full px-4 md:px-8 flex flex-wrap items-center gap-3 text-sm text-red-400">
-              <div className="min-w-0 flex-1 truncate">
-                {visibleEntriesError}
-              </div>
+              <div className="min-w-0 flex-1 truncate">{visibleEntriesError}</div>
               <button
                 type="button"
                 onClick={onRetry}
@@ -963,20 +879,14 @@ function LibrarySection({
           <MediaSection
             items={sectionEntries}
             getGenresThemes={(entry) => entry.genresThemes}
-            getFilterValues={(entry) => [
-              entry.releaseYear,
-              entry.userRating,
-              entry.imdbRating,
-            ]}
+            getFilterValues={(entry) => [entry.releaseYear, entry.userRating, entry.imdbRating]}
             title="Results"
             filterRaw={filterRaw}
             onFilterRawChange={onFilterRawChange}
             showFilterInput={false}
           >
             {(filteredEntries) => {
-              const filteredById = new Map(
-                filteredEntries.map((entry) => [entry.id, entry]),
-              );
+              const filteredById = new Map(filteredEntries.map((entry) => [entry.id, entry]));
               const listedIds = new Set<string>();
 
               const listSectionsData = lists.map((list) => {
@@ -990,18 +900,14 @@ function LibrarySection({
                 return { list, listEntries, allListItems };
               });
 
-              const otherEntries = filteredEntries.filter(
-                (entry) => !listedIds.has(entry.id),
-              );
+              const otherEntries = filteredEntries.filter((entry) => !listedIds.has(entry.id));
               const otherStatusOptions = Array.from(
                 new Set(otherEntries.map((entry) => entry.status)),
               ) as EntryDoc["status"][];
               const filteredOtherEntries =
                 otherStatusFilter === "all"
                   ? otherEntries
-                  : otherEntries.filter(
-                      (entry) => entry.status === otherStatusFilter,
-                    );
+                  : otherEntries.filter((entry) => entry.status === otherStatusFilter);
               const listSections = listSectionsData.sort((a, b) => {
                 const aEmpty = a.listEntries.length === 0;
                 const bEmpty = b.listEntries.length === 0;
@@ -1015,9 +921,7 @@ function LibrarySection({
                 <div
                   className={cn(
                     "flex flex-col gap-10",
-                    isListView && listSections.length > 0
-                      ? "lg:flex-row lg:items-start"
-                      : "",
+                    isListView && listSections.length > 0 ? "lg:flex-row lg:items-start" : "",
                   )}
                 >
                   {isListView && listSections.length > 0 && (
@@ -1056,12 +960,8 @@ function LibrarySection({
                                   }}
                                   onDragLeave={(event) => {
                                     if (!activeDrag) return;
-                                    const related =
-                                      event.relatedTarget as HTMLElement | null;
-                                    if (
-                                      !related ||
-                                      !event.currentTarget.contains(related)
-                                    ) {
+                                    const related = event.relatedTarget as HTMLElement | null;
+                                    if (!related || !event.currentTarget.contains(related)) {
                                       if (
                                         activeDropTarget?.listId === list.id &&
                                         activeDropTarget.bucket === "list"
@@ -1188,9 +1088,7 @@ function LibrarySection({
                       <div className="space-y-4">
                         <div className="flex flex-wrap items-center gap-4">
                           <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500">
-                            {otherEntries.length > 0
-                              ? "Library"
-                              : "No Unlisted Items"}
+                            {otherEntries.length > 0 ? "Library" : "No Unlisted Items"}
                           </h2>
                           {otherStatusOptions.length > 1 && (
                             <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-neutral-900/30 border border-white/5">
@@ -1212,9 +1110,7 @@ function LibrarySection({
                                   type="button"
                                   onClick={() =>
                                     setOtherStatusFilter(
-                                      otherStatusFilter === statusOption
-                                        ? "all"
-                                        : statusOption,
+                                      otherStatusFilter === statusOption ? "all" : statusOption,
                                     )
                                   }
                                   className={cn(
@@ -1256,10 +1152,7 @@ function LibrarySection({
                             onItemDragEnd={handleItemDragEnd}
                             onItemDropOnItem={({ targetEntryId }) => {
                               if (activeDrag) {
-                                handleRelationDrop(
-                                  String(activeDrag.entryId),
-                                  targetEntryId,
-                                );
+                                handleRelationDrop(String(activeDrag.entryId), targetEntryId);
                               }
                             }}
                           />
@@ -1292,10 +1185,7 @@ function LibrarySection({
                         onItemDragEnd={handleItemDragEnd}
                         onItemDropOnItem={({ targetEntryId }) => {
                           if (activeDrag) {
-                            handleRelationDrop(
-                              String(activeDrag.entryId),
-                              targetEntryId,
-                            );
+                            handleRelationDrop(String(activeDrag.entryId), targetEntryId);
                           }
                         }}
                       />
@@ -1372,10 +1262,7 @@ function LibrarySection({
               <strong>{relationModal.targetTitle}</strong>.
             </p>
             <div className="space-y-2">
-              <label
-                className="text-xs font-medium text-neutral-400"
-                htmlFor="relationship-type"
-              >
+              <label className="text-xs font-medium text-neutral-400" htmlFor="relationship-type">
                 Relationship Type
               </label>
               <select
@@ -1384,9 +1271,7 @@ function LibrarySection({
                 onChange={(e) => {
                   setRelationModalError(null);
                   setRelationModal((prev) =>
-                    prev
-                      ? { ...prev, type: e.target.value as RelationType }
-                      : null,
+                    prev ? { ...prev, type: e.target.value as RelationType } : null,
                   );
                 }}
                 className="w-full bg-neutral-950 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-white/20"
@@ -1398,13 +1283,8 @@ function LibrarySection({
                 ))}
               </select>
               <p className="text-[10px] text-neutral-500 mt-1">
-                This will set{" "}
-                <span className="text-white">{relationModal.sourceTitle}</span>{" "}
-                as a{" "}
-                <span className="text-white font-medium">
-                  {relationModal.type}
-                </span>{" "}
-                of{" "}
+                This will set <span className="text-white">{relationModal.sourceTitle}</span> as a{" "}
+                <span className="text-white font-medium">{relationModal.type}</span> of{" "}
                 <span className="text-white">{relationModal.targetTitle}</span>.
               </p>
             </div>
@@ -1428,18 +1308,14 @@ function LibrarySection({
                 type="button"
                 onClick={async () => {
                   if (!uid || !relationModal || isRelationSaving) return;
-                  const sourceDoc = entries.find(
-                    (e) => String(e.id) === relationModal.sourceId,
-                  );
+                  const sourceDoc = entries.find((e) => String(e.id) === relationModal.sourceId);
                   const oldRelations = Array.isArray(sourceDoc?.relations)
                     ? sourceDoc.relations.filter(
-                        (r) =>
-                          Boolean(r.targetId) && Boolean(r.type) && !r.inferred,
+                        (r) => Boolean(r.targetId) && Boolean(r.type) && !r.inferred,
                       )
                     : [];
                   const sourceRelationType =
-                    inverseRelationMap[relationModal.type] ||
-                    relationModal.type;
+                    inverseRelationMap[relationModal.type] || relationModal.type;
 
                   const relationsForTarget = oldRelations.filter(
                     (r) => r.targetId === relationModal.targetId,
@@ -1460,22 +1336,17 @@ function LibrarySection({
                   };
 
                   const newRelations = [
-                    ...oldRelations.filter(
-                      (r) => r.targetId !== relationModal.targetId,
-                    ),
+                    ...oldRelations.filter((r) => r.targetId !== relationModal.targetId),
                     updatedRelation,
                   ];
 
                   setRelationModalError(null);
                   setIsRelationSaving(true);
                   try {
-                    await updateDoc(
-                      doc(db, "users", uid, "entries", relationModal.sourceId),
-                      {
-                        relations: newRelations,
-                        updatedAt: serverTimestamp(),
-                      },
-                    );
+                    await updateDoc(doc(db, "users", uid, "entries", relationModal.sourceId), {
+                      relations: newRelations,
+                      updatedAt: serverTimestamp(),
+                    });
 
                     await updateBidirectionalRelations(
                       uid,
@@ -1490,9 +1361,7 @@ function LibrarySection({
                     );
                     setRelationModal(null);
                   } catch {
-                    setRelationModalError(
-                      "Failed to save relationship. Please try again.",
-                    );
+                    setRelationModalError("Failed to save relationship. Please try again.");
                   } finally {
                     setIsRelationSaving(false);
                   }
@@ -1514,17 +1383,16 @@ export default function Home() {
   const { user } = useAuth();
   const uid = user?.uid || null;
   const { activeSection } = useSection();
-  const { entries, status, error, refresh, selectedEntry, setSelectedEntry } =
-    useData();
-  const [libraryFilters, setLibraryFilters] = useState<
-    Record<Exclude<SectionKey, "home">, string>
-  >({
-    movies: "",
-    series: "",
-    anime: "",
-    manga: "",
-    games: "",
-  });
+  const { entries, status, error, refresh, selectedEntry, setSelectedEntry } = useData();
+  const [libraryFilters, setLibraryFilters] = useState<Record<Exclude<SectionKey, "home">, string>>(
+    {
+      movies: "",
+      series: "",
+      anime: "",
+      manga: "",
+      games: "",
+    },
+  );
   const [libraryViewModes, setLibraryViewModes] = useState<
     Record<Exclude<SectionKey, "home">, "list" | "card">
   >({
@@ -1537,15 +1405,10 @@ export default function Home() {
   const [isEditingEntry, setIsEditingEntry] = useState<EntryDoc | null>(null);
   const [isListsModalOpen, setIsListsModalOpen] = useState(false);
   const [isNewListOpen, setIsNewListOpen] = useState(false);
-  const [newListDefaultType, setNewListDefaultType] =
-    useState<ListModalType>("movie");
+  const [newListDefaultType, setNewListDefaultType] = useState<ListModalType>("movie");
   const [listsModalListId, setListsModalListId] = useState<string | null>(null);
-  const [listsModalType, setListsModalType] = useState<ListModalType | null>(
-    null,
-  );
-  const [listsModalMode, setListsModalMode] = useState<
-    "edit" | "delete" | "view"
-  >("view");
+  const [listsModalType, setListsModalType] = useState<ListModalType | null>(null);
+  const [listsModalMode, setListsModalMode] = useState<"edit" | "delete" | "view">("view");
   const setFilterFor = useCallback(
     (key: Exclude<SectionKey, "home">) => (next: string) =>
       setLibraryFilters((prev) => ({ ...prev, [key]: next })),
@@ -1559,8 +1422,7 @@ export default function Home() {
 
   const handleEditEntry = useCallback(
     (entry: EntryDoc) => {
-      const latestEntry =
-        entries.find((candidate) => candidate.id === entry.id) || entry;
+      const latestEntry = entries.find((candidate) => candidate.id === entry.id) || entry;
       setIsEditingEntry(latestEntry);
     },
     [entries],
@@ -1568,27 +1430,21 @@ export default function Home() {
 
   const handleEditList = useCallback((list: ListRow) => {
     setListsModalListId(list.id);
-    setListsModalType(
-      (list.type as string) === "anime_movie" ? "anime" : list.type,
-    );
+    setListsModalType((list.type as string) === "anime_movie" ? "anime" : list.type);
     setListsModalMode("edit");
     setIsListsModalOpen(true);
   }, []);
 
   const handleDeleteList = useCallback((list: ListRow) => {
     setListsModalListId(list.id);
-    setListsModalType(
-      (list.type as string) === "anime_movie" ? "anime" : list.type,
-    );
+    setListsModalType((list.type as string) === "anime_movie" ? "anime" : list.type);
     setListsModalMode("delete");
     setIsListsModalOpen(true);
   }, []);
 
   const handleViewList = useCallback((list: ListRow) => {
     setListsModalListId(list.id);
-    setListsModalType(
-      (list.type as string) === "anime_movie" ? "anime" : list.type,
-    );
+    setListsModalType((list.type as string) === "anime_movie" ? "anime" : list.type);
     setListsModalMode("view");
     setIsListsModalOpen(true);
   }, []);
@@ -1604,19 +1460,12 @@ export default function Home() {
         if (!uid) return false;
         const entryRef = doc(db, "users", uid, "entries", entry.id);
 
-        await updateBidirectionalRelations(
-          uid,
-          entry.id,
-          entry.relations || [],
-          [],
-        );
+        await updateBidirectionalRelations(uid, entry.id, entry.relations || [], []);
 
         const danglingRelationSources = entries.filter(
           (candidate) =>
             candidate.id !== entry.id &&
-            candidate.relations.some(
-              (relation) => relation.targetId === entry.id,
-            ),
+            candidate.relations.some((relation) => relation.targetId === entry.id),
         );
 
         await Promise.all(
@@ -1660,9 +1509,7 @@ export default function Home() {
 
   const handleDeleteEntry = useCallback(
     async (entry: EntryDoc) => {
-      const confirmed = confirm(
-        `Are you sure you want to delete "${entry.title}"?`,
-      );
+      const confirmed = confirm(`Are you sure you want to delete "${entry.title}"?`);
       if (!confirmed) {
         return;
       }
@@ -1712,16 +1559,10 @@ export default function Home() {
         title={config.title}
         mediaTypes={config.mediaTypes}
         gridType={config.gridType}
-        viewMode={
-          libraryViewModes[activeSection as Exclude<SectionKey, "home">]
-        }
-        onViewModeChange={setViewModeFor(
-          activeSection as Exclude<SectionKey, "home">,
-        )}
+        viewMode={libraryViewModes[activeSection as Exclude<SectionKey, "home">]}
+        onViewModeChange={setViewModeFor(activeSection as Exclude<SectionKey, "home">)}
         filterRaw={libraryFilters[activeSection as Exclude<SectionKey, "home">]}
-        onFilterRawChange={setFilterFor(
-          activeSection as Exclude<SectionKey, "home">,
-        )}
+        onFilterRawChange={setFilterFor(activeSection as Exclude<SectionKey, "home">)}
         entries={entries}
         status={status}
         error={error}
@@ -1732,9 +1573,7 @@ export default function Home() {
         onEditList={handleEditList}
         onDeleteList={handleDeleteList}
         onViewList={handleViewList}
-        onOpenNewList={() =>
-          handleOpenNewList(config.gridType as ListModalType)
-        }
+        onOpenNewList={() => handleOpenNewList(config.gridType as ListModalType)}
       />
     );
   }, [
@@ -1822,9 +1661,7 @@ export default function Home() {
         mediaType={listsModalType}
         initialViewListId={listsModalMode === "view" ? listsModalListId : null}
         initialEditListId={listsModalMode === "edit" ? listsModalListId : null}
-        initialDeleteListId={
-          listsModalMode === "delete" ? listsModalListId : null
-        }
+        initialDeleteListId={listsModalMode === "delete" ? listsModalListId : null}
       />
       <NewListModal
         isOpen={isNewListOpen}

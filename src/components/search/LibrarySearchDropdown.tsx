@@ -11,9 +11,7 @@ interface LibrarySearchDropdownProps {
   className?: string;
 }
 
-export function LibrarySearchDropdown({
-  className,
-}: LibrarySearchDropdownProps) {
+export function LibrarySearchDropdown({ className }: LibrarySearchDropdownProps) {
   const { entries, setSelectedEntry } = useData();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -46,9 +44,7 @@ export function LibrarySearchDropdown({
     return entries
       .filter((entry) => {
         if (entry.title.toLowerCase().includes(q)) return true;
-        return entry.genresThemes.some((genre) =>
-          genre.toLowerCase().includes(q),
-        );
+        return entry.genresThemes.some((genre) => genre.toLowerCase().includes(q));
       })
       .slice(0, 15);
   }, [entries, query]);
@@ -89,9 +85,7 @@ export function LibrarySearchDropdown({
 
             <div className="max-h-[52vh] overflow-y-auto custom-scrollbar">
               {filtered.length === 0 ? (
-                <div className="p-4 text-sm text-neutral-500">
-                  No local results.
-                </div>
+                <div className="p-4 text-sm text-neutral-500">No local results.</div>
               ) : (
                 <div className="py-2">
                   {filtered.map((entry) => (
@@ -125,8 +119,7 @@ export function LibrarySearchDropdown({
                         </div>
                         <div className="truncate text-xs text-neutral-500">
                           {entry.releaseYear ? `${entry.releaseYear} - ` : ""}
-                          {entryMediaTypeLabels[entry.mediaType] ||
-                            entry.mediaType}
+                          {entryMediaTypeLabels[entry.mediaType] || entry.mediaType}
                         </div>
                       </div>
                     </button>

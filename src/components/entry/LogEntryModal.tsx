@@ -227,20 +227,11 @@ const parseISODate = (value: string): { date: Date; millis: number } | null => {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day)
-  )
-    return null;
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
   if (month < 1 || month > 12) return null;
   if (day < 1 || day > 31) return null;
   const date = new Date(year, month - 1, day, 12, 0, 0, 0);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  )
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day)
     return null;
   return { date, millis: date.getTime() };
 };
@@ -267,10 +258,7 @@ export function LogEntryModal({
   const [searchType, setSearchType] = useState<EntryMediaType>("movie");
   const abortRef = useRef<AbortController | null>(null);
   const cacheRef = useRef<
-    Map<
-      string,
-      { timestamp: number; results: SearchResult[]; errors: string[] }
-    >
+    Map<string, { timestamp: number; results: SearchResult[]; errors: string[] }>
   >(new Map());
 
   const [title, setTitle] = useState("");
@@ -313,19 +301,15 @@ export function LogEntryModal({
   const [relations, setRelations] = useState<EditableRelation[]>([]);
   const [isRelationSearchOpen, setIsRelationSearchOpen] = useState(false);
   const [relationSearchQuery, setRelationSearchQuery] = useState("");
-  const [selectedRelationDoc, setSelectedRelationDoc] =
-    useState<EntryDoc | null>(null);
-  const [selectedRelationType, setSelectedRelationType] =
-    useState<RelationType>("Sequel");
+  const [selectedRelationDoc, setSelectedRelationDoc] = useState<EntryDoc | null>(null);
+  const [selectedRelationType, setSelectedRelationType] = useState<RelationType>("Sequel");
 
   const [lists, setLists] = useState<
     { id: string; name: string; type: ListMediaType; types: ListMediaType[] }[]
   >([]);
 
   // Multi-list support
-  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(new Set());
   const [initialListIds, setInitialListIds] = useState<Set<string>>(new Set()); // For tracking changes
 
   const [isNewListOpen, setIsNewListOpen] = useState(false);
@@ -348,11 +332,7 @@ export function LogEntryModal({
       return;
     }
 
-    const q = query(
-      collection(db, "users", uid, "lists"),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    );
+    const q = query(collection(db, "users", uid, "lists"), orderBy("createdAt", "desc"), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setLists(
         snapshot.docs.map((doc) => {
@@ -403,9 +383,7 @@ export function LogEntryModal({
 
     if (cached && now - cached.timestamp < 1000 * 60 * 5) {
       setSearchResults(cached.results);
-      setSearchError(
-        cached.errors && cached.errors.length > 0 ? cached.errors[0] : null,
-      );
+      setSearchError(cached.errors && cached.errors.length > 0 ? cached.errors[0] : null);
       return;
     }
 
@@ -426,9 +404,7 @@ export function LogEntryModal({
       );
       if (!res.ok) {
         throw new Error(
-          res.status === 429
-            ? "Search is rate limited. Try again shortly."
-            : "Search failed.",
+          res.status === 429 ? "Search is rate limited. Try again shortly." : "Search failed.",
         );
       }
       const data = (await res.json()) as SearchResponse;
@@ -479,8 +455,7 @@ export function LogEntryModal({
         const payload = await res.json();
         const data = payload.data;
         if (data) {
-          if (data.description)
-            setDescription(sanitizeImportedDescription(data.description));
+          if (data.description) setDescription(sanitizeImportedDescription(data.description));
           if (data.year) setReleaseYear(data.year);
           if (data.rating) setImdbRating(data.rating.toFixed(1));
           if (data.lengthMinutes) setLengthMinutes(String(data.lengthMinutes));
@@ -518,8 +493,7 @@ export function LogEntryModal({
                 : "movie";
 
     // Check if it was anime_movie to set isMovie flag
-    const isMovieFlag =
-      initialMedia.type === "anime_movie" || initialMedia.isMovie;
+    const isMovieFlag = initialMedia.type === "anime_movie" || initialMedia.isMovie;
 
     return { ...initialMedia, inferredType, inferredIsMovie: isMovieFlag };
   }, [initialMedia]);
@@ -597,14 +571,7 @@ export function LogEntryModal({
     return () => {
       cancelled = true;
     };
-  }, [
-    uid,
-    isOpen,
-    isEditing,
-    normalizedInitial?.id,
-    normalizedInitial?.listIds,
-    lists,
-  ]);
+  }, [uid, isOpen, isEditing, normalizedInitial?.id, normalizedInitial?.listIds, lists]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -618,10 +585,7 @@ export function LogEntryModal({
     if (normalizedInitial) {
       // If we already initialized for this specific entry ID, don't re-initialize
       // This prevents the form from resetting when the parent component re-renders
-      if (
-        normalizedInitial.id &&
-        initializedRef.current === normalizedInitial.id
-      ) {
+      if (normalizedInitial.id && initializedRef.current === normalizedInitial.id) {
         return;
       }
 
@@ -633,9 +597,7 @@ export function LogEntryModal({
       setSearchResults([]);
       setSearchError(null);
 
-      setActiveTab(
-        normalizedInitial ? "manual" : isEditing ? "manual" : "search",
-      );
+      setActiveTab(normalizedInitial ? "manual" : isEditing ? "manual" : "search");
       setTitle(normalizedInitial.title);
       setMediaType(normalizedInitial.inferredType);
       setIsMovie(!!normalizedInitial.inferredIsMovie);
@@ -673,41 +635,19 @@ export function LogEntryModal({
         setImdbRating("");
       }
 
-      setReleaseYear(
-        normalizedInitial.releaseYear || normalizedInitial.year || "",
-      );
+      setReleaseYear(normalizedInitial.releaseYear || normalizedInitial.year || "");
       setLengthMinutes(
-        normalizedInitial.lengthMinutes
-          ? String(normalizedInitial.lengthMinutes)
-          : "",
+        normalizedInitial.lengthMinutes ? String(normalizedInitial.lengthMinutes) : "",
       );
-      setEpisodeCount(
-        normalizedInitial.episodeCount
-          ? String(normalizedInitial.episodeCount)
-          : "",
-      );
-      setChapterCount(
-        normalizedInitial.chapterCount
-          ? String(normalizedInitial.chapterCount)
-          : "",
-      );
+      setEpisodeCount(normalizedInitial.episodeCount ? String(normalizedInitial.episodeCount) : "");
+      setChapterCount(normalizedInitial.chapterCount ? String(normalizedInitial.chapterCount) : "");
 
-      setPlayTime(
-        normalizedInitial.playTime ? String(normalizedInitial.playTime) : "",
-      );
-      setAchievements(
-        normalizedInitial.achievements
-          ? String(normalizedInitial.achievements)
-          : "",
-      );
+      setPlayTime(normalizedInitial.playTime ? String(normalizedInitial.playTime) : "");
+      setAchievements(normalizedInitial.achievements ? String(normalizedInitial.achievements) : "");
       setTotalAchievements(
-        normalizedInitial.totalAchievements
-          ? String(normalizedInitial.totalAchievements)
-          : "",
+        normalizedInitial.totalAchievements ? String(normalizedInitial.totalAchievements) : "",
       );
-      const isPredefined = PLATFORM_OPTIONS.some(
-        (p) => p.id === normalizedInitial.platform,
-      );
+      const isPredefined = PLATFORM_OPTIONS.some((p) => p.id === normalizedInitial.platform);
       if (normalizedInitial.platform && !isPredefined) {
         setIsCustomPlatform(true);
       } else {
@@ -749,14 +689,11 @@ export function LogEntryModal({
             targetId: String(relation.targetId || "").trim(),
             type: String(relation.type || "").trim(),
             createdAtMs:
-              typeof relation.createdAtMs === "number" &&
-              Number.isFinite(relation.createdAtMs)
+              typeof relation.createdAtMs === "number" && Number.isFinite(relation.createdAtMs)
                 ? relation.createdAtMs
                 : Date.now(),
           }))
-          .filter(
-            (relation) => Boolean(relation.targetId) && Boolean(relation.type),
-          );
+          .filter((relation) => Boolean(relation.targetId) && Boolean(relation.type));
 
         setOriginalRelations(initialRelations);
         setRelations(buildEditableRelations(initialRelations, entries));
@@ -810,9 +747,7 @@ export function LogEntryModal({
     setRelations((prev) => {
       let changed = false;
       const next = prev.map((relation) => {
-        const match = entries.find(
-          (entry) => String(entry.id) === relation.targetId,
-        );
+        const match = entries.find((entry) => String(entry.id) === relation.targetId);
         if (!match) return relation;
         if (
           relation.title === match.title &&
@@ -849,8 +784,7 @@ export function LogEntryModal({
   const userRatingError = useMemo(() => {
     const raw = userRating.trim();
     if (!raw) return null;
-    if (!/^\d+$/.test(raw))
-      return "Rating must be a whole number from 1 to 10.";
+    if (!/^\d+$/.test(raw)) return "Rating must be a whole number from 1 to 10.";
     const value = Number(raw);
     if (!Number.isInteger(value) || value < 1 || value > 10)
       return "Rating must be between 1 and 10.";
@@ -860,8 +794,7 @@ export function LogEntryModal({
   const imdbRatingError = useMemo(() => {
     const raw = imdbRating.trim();
     if (!raw) return null;
-    if (!/^\d+(\.\d{1,2})?$/.test(raw))
-      return "IMDb rating must be a number from 0 to 10.";
+    if (!/^\d+(\.\d{1,2})?$/.test(raw)) return "IMDb rating must be a number from 0 to 10.";
     const value = Number(raw);
     if (!Number.isFinite(value) || value < 0 || value > 10)
       return "IMDb rating must be between 0 and 10.";
@@ -874,8 +807,7 @@ export function LogEntryModal({
     if (!/^\d{4}$/.test(raw)) return "Release year must be a 4-digit year.";
     const value = Number(raw);
     const currentYear = new Date().getFullYear() + 1;
-    if (value < 1888 || value > currentYear)
-      return "Release year must be a valid year.";
+    if (value < 1888 || value > currentYear) return "Release year must be a valid year.";
     return null;
   }, [releaseYear]);
 
@@ -906,8 +838,7 @@ export function LogEntryModal({
     if (!numericField) return null;
     const raw = numericField.value.trim();
     if (!raw) return null;
-    if (!/^\d+$/.test(raw))
-      return `${numericField.label} must be a positive integer.`;
+    if (!/^\d+$/.test(raw)) return `${numericField.label} must be a positive integer.`;
     const value = Number(raw);
     if (!Number.isInteger(value) || value <= 0)
       return `${numericField.label} must be a positive integer.`;
@@ -938,12 +869,8 @@ export function LogEntryModal({
       setError(userRatingError || imdbRatingError || releaseYearError);
       return;
     }
-    const userRatingValue = userRating.trim()
-      ? Number(userRating.trim())
-      : null;
-    const imdbRatingValue = imdbRating.trim()
-      ? Number(imdbRating.trim())
-      : null;
+    const userRatingValue = userRating.trim() ? Number(userRating.trim()) : null;
+    const imdbRatingValue = imdbRating.trim() ? Number(imdbRating.trim()) : null;
     const releaseYearValue = releaseYear.trim() ? releaseYear.trim() : null;
 
     if (numericFieldError) {
@@ -963,33 +890,20 @@ export function LogEntryModal({
           : null
         : null;
     const chapterCountValue =
-      mediaType === "manga"
-        ? chapterCount.trim()
-          ? Number(chapterCount.trim())
-          : null
-        : null;
+      mediaType === "manga" ? (chapterCount.trim() ? Number(chapterCount.trim()) : null) : null;
 
     // Game fields
     const playTimeValue =
-      mediaType === "game"
-        ? playTime.trim()
-          ? Number(playTime.trim())
-          : null
-        : null;
+      mediaType === "game" ? (playTime.trim() ? Number(playTime.trim()) : null) : null;
     const achievementsValue =
-      mediaType === "game"
-        ? achievements.trim()
-          ? Number(achievements.trim())
-          : null
-        : null;
+      mediaType === "game" ? (achievements.trim() ? Number(achievements.trim()) : null) : null;
     const totalAchievementsValue =
       mediaType === "game"
         ? totalAchievements.trim()
           ? Number(totalAchievements.trim())
           : null
         : null;
-    const platformValue =
-      mediaType === "game" ? (platform.trim() ? platform.trim() : null) : null;
+    const platformValue = mediaType === "game" ? (platform.trim() ? platform.trim() : null) : null;
 
     if (tags.length > 10) {
       setError("You can only add up to 10 genres/themes.");
@@ -1033,9 +947,7 @@ export function LogEntryModal({
         if (list && !list.types.includes(listMediaType)) {
           // Allow saving but maybe warn? Or just filter out?
           // Strict mode:
-          setError(
-            `List "${list.name}" does not accept ${listMediaType} items.`,
-          );
+          setError(`List "${list.name}" does not accept ${listMediaType} items.`);
           return;
         }
       }
@@ -1044,8 +956,7 @@ export function LogEntryModal({
     if (!isEditing) {
       const candidateTitleLower = trimmedTitle.toLowerCase();
       const duplicateExists = entries.some((e) => {
-        if (externalId && String(e.externalId) === String(externalId))
-          return true;
+        if (externalId && String(e.externalId) === String(externalId)) return true;
         if (e.mediaType !== mediaType) return false;
         if (e.title.toLowerCase() !== candidateTitleLower) return false;
         const eYear = e.releaseYear || e.year || "";
@@ -1066,16 +977,12 @@ export function LogEntryModal({
 
     setIsSaving(true);
     try {
-      const entryId =
-        isEditing && normalizedInitial?.id
-          ? String(normalizedInitial.id)
-          : null;
+      const entryId = isEditing && normalizedInitial?.id ? String(normalizedInitial.id) : null;
       const relationPayload = relations.reduce<
         { targetId: string; type: string; createdAtMs: number }[]
       >((acc, relation) => {
         if (!relation.targetId || !relation.type) return acc;
-        if (acc.some((existing) => existing.targetId === relation.targetId))
-          return acc;
+        if (acc.some((existing) => existing.targetId === relation.targetId)) return acc;
         acc.push({
           targetId: relation.targetId,
           type: relation.type,
@@ -1132,15 +1039,11 @@ export function LogEntryModal({
       if (!finalEntryId) throw new Error("Failed to get entry ID");
 
       // 2. Handle Lists (Add/Remove)
-      const addedIds = Array.from(effectiveSelectedListIds).filter(
-        (id) => !initialListIds.has(id),
-      );
+      const addedIds = Array.from(effectiveSelectedListIds).filter((id) => !initialListIds.has(id));
       const removedIds = Array.from(initialListIds).filter(
         (id) => !effectiveSelectedListIds.has(id),
       );
-      const commonIds = Array.from(effectiveSelectedListIds).filter((id) =>
-        initialListIds.has(id),
-      );
+      const commonIds = Array.from(effectiveSelectedListIds).filter((id) => initialListIds.has(id));
 
       // Batch or Parallel processing? Parallel is fine for Firestore
       const promises = [];
@@ -1175,17 +1078,7 @@ export function LogEntryModal({
             );
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
-              await deleteDoc(
-                doc(
-                  db,
-                  "users",
-                  uid,
-                  "lists",
-                  listId,
-                  "items",
-                  snapshot.docs[0].id,
-                ),
-              );
+              await deleteDoc(doc(db, "users", uid, "lists", listId, "items", snapshot.docs[0].id));
               await updateDoc(doc(db, "users", uid, "lists", listId), {
                 updatedAt: serverTimestamp(),
               });
@@ -1206,15 +1099,7 @@ export function LogEntryModal({
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
               await updateDoc(
-                doc(
-                  db,
-                  "users",
-                  uid,
-                  "lists",
-                  listId,
-                  "items",
-                  snapshot.docs[0].id,
-                ),
+                doc(db, "users", uid, "lists", listId, "items", snapshot.docs[0].id),
                 {
                   title: trimmedTitle,
                   mediaType: listMediaType,
@@ -1233,12 +1118,7 @@ export function LogEntryModal({
         targetId: relation.targetId,
         type: relation.type,
       }));
-      await updateBidirectionalRelations(
-        uid,
-        finalEntryId,
-        originalRelations,
-        relationsToSave,
-      );
+      await updateBidirectionalRelations(uid, finalEntryId, originalRelations, relationsToSave);
 
       if (!isEditing) {
         // Reset form
@@ -1325,15 +1205,7 @@ export function LogEntryModal({
                 }}
                 className="rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-2 px-3 text-sm text-neutral-100 focus:outline-none focus:border-neutral-100/20 transition-all"
               >
-                {(
-                  [
-                    "movie",
-                    "series",
-                    "anime",
-                    "manga",
-                    "game",
-                  ] as EntryMediaType[]
-                ).map((t) => (
+                {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map((t) => (
                   <option key={t} value={t}>
                     {mediaTypeLabels[t]}
                   </option>
@@ -1403,9 +1275,7 @@ export function LogEntryModal({
                           {result.year ? `${result.year} • ` : ""}
                           {mediaTypeLabels[result.type]}
                         </div>
-                        {result.overview && (
-                          <ExpandableText text={result.overview} />
-                        )}
+                        {result.overview && <ExpandableText text={result.overview} />}
                       </div>
                     </button>
                   );
@@ -1442,9 +1312,7 @@ export function LogEntryModal({
                 </div>
               )}
               <div className="space-y-2">
-                <div className="text-xs font-medium text-neutral-400">
-                  Title
-                </div>
+                <div className="text-xs font-medium text-neutral-400">Title</div>
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -1455,29 +1323,19 @@ export function LogEntryModal({
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-neutral-400">
-                    Type
-                  </div>
+                  <div className="text-xs font-medium text-neutral-400">Type</div>
                   <select
                     value={mediaType}
-                    onChange={(e) =>
-                      setMediaType(e.target.value as EntryMediaType)
-                    }
+                    onChange={(e) => setMediaType(e.target.value as EntryMediaType)}
                     className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                   >
-                    {(
-                      [
-                        "movie",
-                        "series",
-                        "anime",
-                        "manga",
-                        "game",
-                      ] as EntryMediaType[]
-                    ).map((value) => (
-                      <option key={value} value={value}>
-                        {mediaTypeLabels[value]}
-                      </option>
-                    ))}
+                    {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map(
+                      (value) => (
+                        <option key={value} value={value}>
+                          {mediaTypeLabels[value]}
+                        </option>
+                      ),
+                    )}
                   </select>
                   {mediaType === "anime" && (
                     <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer pt-1">
@@ -1492,9 +1350,7 @@ export function LogEntryModal({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-neutral-400">
-                    Status
-                  </div>
+                  <div className="text-xs font-medium text-neutral-400">Status</div>
                   <div className="relative">
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
                       <ChevronDown size={14} />
@@ -1517,14 +1373,13 @@ export function LogEntryModal({
                       className="w-full appearance-none rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 pl-4 pr-10 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                     >
                       <option value="unspecified">Select status...</option>
-                      {(mediaType === "game"
-                        ? GAME_STATUS_OPTIONS
-                        : STANDARD_STATUS_OPTIONS
-                      ).map((s) => (
-                        <option key={s} value={s}>
-                          {statusLabels[s]}
-                        </option>
-                      ))}
+                      {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
+                        (s) => (
+                          <option key={s} value={s}>
+                            {statusLabels[s]}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1532,9 +1387,7 @@ export function LogEntryModal({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-neutral-400">
-                    Add to Lists
-                  </div>
+                  <div className="text-xs font-medium text-neutral-400">Add to Lists</div>
                   <button
                     type="button"
                     onClick={() => setIsNewListOpen(true)}
@@ -1562,9 +1415,7 @@ export function LogEntryModal({
                           }}
                           className="h-4 w-4 rounded border border-neutral-100/10 bg-neutral-800/50"
                         />
-                        <span className="text-sm text-neutral-200">
-                          {list.name}
-                        </span>
+                        <span className="text-sm text-neutral-200">{list.name}</span>
                       </label>
                     ))
                   ) : (
@@ -1577,20 +1428,15 @@ export function LogEntryModal({
 
               {numericField ? (
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-neutral-400">
-                    {numericField.label}
-                  </div>
+                  <div className="text-xs font-medium text-neutral-400">{numericField.label}</div>
                   <input
                     type="number"
                     value={numericField.value}
                     onChange={(e) => {
                       const next = e.target.value;
-                      if (numericField.key === "lengthMinutes")
-                        setLengthMinutes(next);
-                      if (numericField.key === "episodeCount")
-                        setEpisodeCount(next);
-                      if (numericField.key === "chapterCount")
-                        setChapterCount(next);
+                      if (numericField.key === "lengthMinutes") setLengthMinutes(next);
+                      if (numericField.key === "episodeCount") setEpisodeCount(next);
+                      if (numericField.key === "chapterCount") setChapterCount(next);
                     }}
                     placeholder="Optional"
                     inputMode="numeric"
@@ -1599,9 +1445,7 @@ export function LogEntryModal({
                     className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                   />
                   {numericFieldError ? (
-                    <div className="text-xs text-red-400">
-                      {numericFieldError}
-                    </div>
+                    <div className="text-xs text-red-400">{numericFieldError}</div>
                   ) : null}
                 </div>
               ) : null}
@@ -1610,9 +1454,7 @@ export function LogEntryModal({
               {mediaType === "game" && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-neutral-400">
-                      Play Time (hours)
-                    </div>
+                    <div className="text-xs font-medium text-neutral-400">Play Time (hours)</div>
                     <input
                       type="number"
                       value={playTime}
@@ -1622,9 +1464,7 @@ export function LogEntryModal({
                     />
                   </div>
                   <div className="space-y-2 col-span-1 sm:col-span-2">
-                    <div className="text-xs font-medium text-neutral-400">
-                      Platform
-                    </div>
+                    <div className="text-xs font-medium text-neutral-400">Platform</div>
                     {!isCustomPlatform ? (
                       <div className="space-y-3">
                         <div className="max-h-48 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-2 custom-scrollbar">
@@ -1681,9 +1521,7 @@ export function LogEntryModal({
                     )}
                   </div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-neutral-400">
-                      Achievements
-                    </div>
+                    <div className="text-xs font-medium text-neutral-400">Achievements</div>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -1706,9 +1544,7 @@ export function LogEntryModal({
               )}
 
               <div className="space-y-2">
-                <div className="text-xs font-medium text-neutral-400">
-                  Release year
-                </div>
+                <div className="text-xs font-medium text-neutral-400">Release year</div>
                 <input
                   value={releaseYear}
                   onChange={(e) => setReleaseYear(e.target.value)}
@@ -1725,9 +1561,7 @@ export function LogEntryModal({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-medium text-neutral-400">
-                      Your rating
-                    </div>
+                    <div className="text-xs font-medium text-neutral-400">Your rating</div>
                     <div className="text-xs text-neutral-500">1â€“10</div>
                   </div>
                   <input
@@ -1742,9 +1576,7 @@ export function LogEntryModal({
                     className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                   />
                   {userRatingError ? (
-                    <div className="text-xs text-red-400">
-                      {userRatingError}
-                    </div>
+                    <div className="text-xs text-red-400">{userRatingError}</div>
                   ) : null}
                 </div>
                 <div className="space-y-2">
@@ -1770,18 +1602,14 @@ export function LogEntryModal({
                     className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
                   />
                   {imdbRatingError ? (
-                    <div className="text-xs text-red-400">
-                      {imdbRatingError}
-                    </div>
+                    <div className="text-xs text-red-400">{imdbRatingError}</div>
                   ) : null}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs font-medium text-neutral-400">
-                    Date of completion
-                  </div>
+                  <div className="text-xs font-medium text-neutral-400">Date of completion</div>
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
@@ -1861,12 +1689,8 @@ export function LogEntryModal({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-neutral-400">
-                    Genres / themes
-                  </div>
-                  <div className="text-xs text-neutral-500">
-                    {tags.length}/10 tags
-                  </div>
+                  <div className="text-xs font-medium text-neutral-400">Genres / themes</div>
+                  <div className="text-xs text-neutral-500">{tags.length}/10 tags</div>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {tags.map((tag, index) => (
@@ -1949,9 +1773,7 @@ export function LogEntryModal({
                   }}
                   disabled={tags.length >= 10}
                   placeholder={
-                    tags.length >= 10
-                      ? "Limit reached"
-                      : "e.g. dark_fantasy, coming_of_age"
+                    tags.length >= 10 ? "Limit reached" : "e.g. dark_fantasy, coming_of_age"
                   }
                   className={cn(
                     "w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all",
@@ -1960,17 +1782,13 @@ export function LogEntryModal({
                 />
                 <div className="space-y-1 text-xs text-neutral-500">
                   <div>
-                    Type a comma to add a tag. Allowed: letters (Aâ€“Z),
-                    underscores, spaces.
+                    Type a comma to add a tag. Allowed: letters (Aâ€“Z), underscores, spaces.
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label
-                  className="text-sm font-medium text-neutral-300"
-                  htmlFor="description"
-                >
+                <label className="text-sm font-medium text-neutral-300" htmlFor="description">
                   Description
                 </label>
                 <DescriptionTextarea
@@ -1984,10 +1802,7 @@ export function LogEntryModal({
 
               <div className="space-y-2 pt-2 border-t border-white/5 mt-4">
                 <div className="flex items-center justify-between">
-                  <label
-                    className="text-sm font-medium text-neutral-300"
-                    htmlFor="related-entries"
-                  >
+                  <label className="text-sm font-medium text-neutral-300" htmlFor="related-entries">
                     Related Entries
                   </label>
                 </div>
@@ -1999,12 +1814,7 @@ export function LogEntryModal({
                     >
                       {rel.image ? (
                         <div className="w-8 h-12 relative rounded overflow-hidden shrink-0 bg-neutral-800 hidden sm:block">
-                          <ImageWithSkeleton
-                            src={rel.image}
-                            alt=""
-                            fill
-                            className="object-cover"
-                          />
+                          <ImageWithSkeleton src={rel.image} alt="" fill className="object-cover" />
                         </div>
                       ) : (
                         <div className="w-8 h-12 rounded bg-neutral-800 shrink-0 hidden sm:block" />
@@ -2013,17 +1823,11 @@ export function LogEntryModal({
                         <div className="text-xs font-semibold text-neutral-200 truncate">
                           {rel.title}
                         </div>
-                        <div className="text-[10px] text-neutral-500">
-                          {rel.type}
-                        </div>
+                        <div className="text-[10px] text-neutral-500">{rel.type}</div>
                       </div>
                       <button
                         type="button"
-                        onClick={() =>
-                          setRelations((prev) =>
-                            prev.filter((_, i) => i !== idx),
-                          )
-                        }
+                        onClick={() => setRelations((prev) => prev.filter((_, i) => i !== idx))}
                         className="text-neutral-500 hover:text-red-400 p-2"
                       >
                         <X className="w-4 h-4" />
@@ -2064,11 +1868,8 @@ export function LogEntryModal({
                                 return (
                                   entry.title
                                     .toLowerCase()
-                                    .includes(
-                                      relationSearchQuery.toLowerCase(),
-                                    ) &&
-                                  entryId !==
-                                    String(normalizedInitial?.id || "new") &&
+                                    .includes(relationSearchQuery.toLowerCase()) &&
+                                  entryId !== String(normalizedInitial?.id || "new") &&
                                   !relatedTargetIdSet.has(entryId)
                                 );
                               })
@@ -2093,9 +1894,7 @@ export function LogEntryModal({
                           <select
                             value={selectedRelationType}
                             onChange={(e) =>
-                              setSelectedRelationType(
-                                e.target.value as RelationType,
-                              )
+                              setSelectedRelationType(e.target.value as RelationType)
                             }
                             className="flex-1 bg-neutral-900/50 border border-white/5 rounded-lg py-2 px-3 text-sm text-neutral-200 focus:outline-none focus:border-white/20"
                           >
@@ -2109,20 +1908,11 @@ export function LogEntryModal({
                             type="button"
                             onClick={() => {
                               const targetId = String(selectedRelationDoc.id);
-                              if (
-                                targetId ===
-                                String(normalizedInitial?.id || "new")
-                              ) {
-                                setError(
-                                  "You cannot relate an entry to itself.",
-                                );
+                              if (targetId === String(normalizedInitial?.id || "new")) {
+                                setError("You cannot relate an entry to itself.");
                                 return;
                               }
-                              if (
-                                relations.some(
-                                  (relation) => relation.targetId === targetId,
-                                )
-                              ) {
+                              if (relations.some((relation) => relation.targetId === targetId)) {
                                 setError(
                                   "This entry is already related. Remove it first to change the relation type.",
                                 );

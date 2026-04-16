@@ -54,10 +54,7 @@ export function EntryDetailModal({
   useEffect(() => {
     if (!isStatusOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        statusMenuRef.current &&
-        !statusMenuRef.current.contains(event.target as Node)
-      ) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
         setIsStatusOpen(false);
       }
     };
@@ -65,11 +62,7 @@ export function EntryDetailModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isStatusOpen]);
   if (!entry) return null;
-  const subtitle = [
-    entry.releaseYear,
-    mediaTypeLabels[entry.mediaType],
-    statusLabels[entry.status],
-  ]
+  const subtitle = [entry.releaseYear, mediaTypeLabels[entry.mediaType], statusLabels[entry.status]]
     .filter(Boolean)
     .join(" â€¢ ");
   const completionValue =
@@ -103,9 +96,7 @@ export function EntryDetailModal({
         setTimeout(() => onClose(), 600);
       }
     } catch (error) {
-      setActionError(
-        error instanceof Error ? error.message : "Failed to delete item.",
-      );
+      setActionError(error instanceof Error ? error.message : "Failed to delete item.");
     } finally {
       setIsWorking(false);
     }
@@ -131,8 +122,7 @@ export function EntryDetailModal({
     "dropped",
     "unspecified",
   ];
-  const statusOptions =
-    entry?.mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS;
+  const statusOptions = entry?.mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS;
 
   const getStatusBadgeClass = (value: EntryStatus) => {
     if (entry?.mediaType === "game") {
@@ -191,9 +181,7 @@ export function EntryDetailModal({
       });
       setIsStatusOpen(false);
     } catch (error) {
-      setActionError(
-        error instanceof Error ? error.message : "Failed to update status.",
-      );
+      setActionError(error instanceof Error ? error.message : "Failed to update status.");
     } finally {
       setIsStatusUpdating(false);
     }
@@ -209,9 +197,7 @@ export function EntryDetailModal({
     >
       <DescriptionErrorWrapper
         isInvalid={
-          !!entry &&
-          !!entry.description &&
-          entry.description.length > MAX_DESCRIPTION_LENGTH
+          !!entry && !!entry.description && entry.description.length > MAX_DESCRIPTION_LENGTH
         }
         actions={
           !!entry &&
@@ -254,9 +240,7 @@ export function EntryDetailModal({
                 className={cn(
                   "group/status mt-1 mr-1 flex items-center gap-2 rounded-full border backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
                   getStatusBadgeClass(entry.status),
-                  isStatusUpdating
-                    ? "cursor-not-allowed opacity-70"
-                    : "cursor-pointer",
+                  isStatusUpdating ? "cursor-not-allowed opacity-70" : "cursor-pointer",
                 )}
                 aria-haspopup="listbox"
                 aria-expanded={isStatusOpen}
@@ -264,11 +248,7 @@ export function EntryDetailModal({
                 onMouseEnter={() => setIsStatusOpen(true)}
                 onMouseLeave={() => setIsStatusOpen(false)}
               >
-                <span>
-                  {isStatusUpdating
-                    ? "Updating..."
-                    : statusLabels[entry.status]}
-                </span>
+                <span>{isStatusUpdating ? "Updating..." : statusLabels[entry.status]}</span>
                 <ChevronDown
                   size={14}
                   className={cn(
@@ -327,17 +307,12 @@ export function EntryDetailModal({
           </div>
           <div className="flex-1 space-y-4">
             <div className="space-y-1">
-              <div className="text-xl font-semibold text-white">
-                {entry.title || "Untitled"}
-              </div>
-              {subtitle ? (
-                <div className="text-sm text-neutral-400">{subtitle}</div>
-              ) : null}
+              <div className="text-xl font-semibold text-white">{entry.title || "Untitled"}</div>
+              {subtitle ? <div className="text-sm text-neutral-400">{subtitle}</div> : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {onEdit &&
-              (!entry.description ||
-                entry.description.length <= MAX_DESCRIPTION_LENGTH) ? (
+              (!entry.description || entry.description.length <= MAX_DESCRIPTION_LENGTH) ? (
                 <button
                   type="button"
                   onClick={handleEdit}
@@ -347,8 +322,7 @@ export function EntryDetailModal({
                 </button>
               ) : null}
               {onDelete &&
-              (!entry.description ||
-                entry.description.length <= MAX_DESCRIPTION_LENGTH) ? (
+              (!entry.description || entry.description.length <= MAX_DESCRIPTION_LENGTH) ? (
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -362,12 +336,8 @@ export function EntryDetailModal({
                 </button>
               ) : null}
             </div>
-            {actionError ? (
-              <div className="text-sm text-red-400">{actionError}</div>
-            ) : null}
-            {actionInfo ? (
-              <div className="text-sm text-emerald-300">{actionInfo}</div>
-            ) : null}
+            {actionError ? <div className="text-sm text-red-400">{actionError}</div> : null}
+            {actionInfo ? <div className="text-sm text-emerald-300">{actionInfo}</div> : null}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {entry.userRating !== null ? (
                 <div className="rounded-xl border border-white/5 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-300">
@@ -424,14 +394,10 @@ export function EntryDetailModal({
             ) : null}
             {entry.relations && entry.relations.length > 0 ? (
               <div className="space-y-2 pt-2 border-t border-white/5">
-                <div className="text-sm font-medium text-neutral-300">
-                  Related Entries
-                </div>
+                <div className="text-sm font-medium text-neutral-300">Related Entries</div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {entry.relations.map((rel) => {
-                    const match = entries.find(
-                      (e) => String(e.id) === rel.targetId,
-                    );
+                    const match = entries.find((e) => String(e.id) === rel.targetId);
                     return (
                       <div
                         key={`${rel.targetId}-${rel.type}`}

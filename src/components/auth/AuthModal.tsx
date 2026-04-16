@@ -25,12 +25,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const {
-    signInWithGoogle,
-    signInWithEmail,
-    signUpWithEmail,
-    sendPasswordReset,
-  } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset } = useAuth();
 
   const toggleMode = () => setMode(mode === "signin" ? "signup" : "signin");
   const resetState = () => {
@@ -49,9 +44,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return;
     }
     if (!emailRegex.test(email.trim())) {
-      setError(
-        "Please enter a valid email address with a valid top-level domain.",
-      );
+      setError("Please enter a valid email address with a valid top-level domain.");
       return;
     }
 
@@ -81,10 +74,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setError("Password must contain at least one special character.");
         return;
       }
-      if (
-        firstName &&
-        password.toLowerCase().includes(firstName.toLowerCase())
-      ) {
+      if (firstName && password.toLowerCase().includes(firstName.toLowerCase())) {
         setError("Password cannot contain your first name.");
         return;
       }
@@ -139,9 +129,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       await sendPasswordReset(email.trim());
       setInfo("Password reset email sent.");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to send reset email.",
-      );
+      setError(err instanceof Error ? err.message : "Unable to send reset email.");
     } finally {
       setIsSubmitting(false);
     }
@@ -204,10 +192,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </AnimatePresence>
 
           <div className="relative">
-            <Mail
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
-              size={18}
-            />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={18} />
             <input
               type="email"
               placeholder="Email Address"
@@ -233,11 +218,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </div>
             <AnimatePresence>
               {mode === "signup" && (
-                <PasswordStrength
-                  password={password}
-                  firstName={firstName}
-                  lastName={lastName}
-                />
+                <PasswordStrength password={password} firstName={firstName} lastName={lastName} />
               )}
             </AnimatePresence>
           </div>
@@ -270,9 +251,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <div className="w-full border-t border-white/5"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-neutral-900/60 px-2 text-neutral-500">
-              Or continue with
-            </span>
+            <span className="bg-neutral-900/60 px-2 text-neutral-500">Or continue with</span>
           </div>
         </div>
 
@@ -288,9 +267,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </button>
 
         <div className="text-center text-sm text-neutral-400">
-          {mode === "signin"
-            ? "Don't have an account? "
-            : "Already have an account? "}
+          {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
           <button
             type="button"
             onClick={toggleMode}

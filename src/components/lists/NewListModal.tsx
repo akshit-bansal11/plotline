@@ -31,12 +31,7 @@ interface NewListModalProps {
   }) => void;
 }
 
-export function NewListModal({
-  isOpen,
-  onClose,
-  defaultType,
-  onCreated,
-}: NewListModalProps) {
+export function NewListModal({ isOpen, onClose, defaultType, onCreated }: NewListModalProps) {
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -123,10 +118,7 @@ export function NewListModal({
     >
       <form onSubmit={handleCreateList} className="space-y-4">
         <div>
-          <label
-            htmlFor="list-name"
-            className="block text-sm font-medium text-neutral-200 mb-2"
-          >
+          <label htmlFor="list-name" className="block text-sm font-medium text-neutral-200 mb-2">
             List name
           </label>
           <input
@@ -139,9 +131,7 @@ export function NewListModal({
           />
         </div>
         <fieldset>
-          <legend className="block text-sm font-medium text-neutral-200 mb-2">
-            Category
-          </legend>
+          <legend className="block text-sm font-medium text-neutral-200 mb-2">Category</legend>
 
           <div className="flex flex-wrap gap-2">
             {mediaTypeOptions.map((option) => (
@@ -162,10 +152,7 @@ export function NewListModal({
           </div>
         </fieldset>
         <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium text-neutral-200 mb-2"
-          >
+          <label htmlFor="description" className="block text-sm font-medium text-neutral-200 mb-2">
             Description
           </label>
           <DescriptionTextarea

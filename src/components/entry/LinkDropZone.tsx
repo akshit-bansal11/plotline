@@ -34,11 +34,7 @@ const SOURCE_LABELS: Record<string, string> = {
   prime: "Prime Video",
 };
 
-export function LinkDropZone({
-  onResolved,
-  disabled,
-  onRequireAuth,
-}: LinkDropZoneProps) {
+export function LinkDropZone({ onResolved, disabled, onRequireAuth }: LinkDropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,9 +92,7 @@ export function LinkDropZone({
   useEffect(() => {
     const handleDragEnter = (e: DragEvent) => {
       // Only show overlay if the drag contains text/URLs and is NOT an internal app drag
-      const isInternalDrag = e.dataTransfer?.types.includes(
-        "application/x-plotline-entry",
-      );
+      const isInternalDrag = e.dataTransfer?.types.includes("application/x-plotline-entry");
       const hasUrlType =
         e.dataTransfer?.types.includes("text/plain") ||
         e.dataTransfer?.types.includes("text/uri-list");
@@ -114,9 +108,7 @@ export function LinkDropZone({
     };
 
     const handleDragOver = (e: DragEvent) => {
-      const isInternalDrag = e.dataTransfer?.types.includes(
-        "application/x-plotline-entry",
-      );
+      const isInternalDrag = e.dataTransfer?.types.includes("application/x-plotline-entry");
       const hasUrlType =
         e.dataTransfer?.types.includes("text/plain") ||
         e.dataTransfer?.types.includes("text/uri-list");
@@ -153,17 +145,13 @@ export function LinkDropZone({
 
       const url = extractUrlFromDragEvent(e.dataTransfer);
       if (!url) {
-        setError(
-          "No URL detected. Drag a link from IMDb, TMDB, MAL, Netflix, or Prime Video.",
-        );
+        setError("No URL detected. Drag a link from IMDb, TMDB, MAL, Netflix, or Prime Video.");
         return;
       }
 
       const parsed = parseMediaUrl(url);
       if (!parsed) {
-        setError(
-          "Unrecognized link. Try IMDb, TMDB, MyAnimeList, Netflix, or Prime Video.",
-        );
+        setError("Unrecognized link. Try IMDb, TMDB, MyAnimeList, Netflix, or Prime Video.");
         return;
       }
 
@@ -221,9 +209,7 @@ export function LinkDropZone({
                 <Link2 size={32} className="text-blue-400" />
               </motion.div>
               <div className="space-y-2">
-                <div className="text-lg font-semibold text-white">
-                  Drop media link
-                </div>
+                <div className="text-lg font-semibold text-white">Drop media link</div>
                 <div className="text-sm text-neutral-400 max-w-xs">
                   IMDb Â· TMDB Â· MyAnimeList Â· Netflix Â· Prime Video
                 </div>

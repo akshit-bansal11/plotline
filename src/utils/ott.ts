@@ -47,11 +47,7 @@ const GAME_PROVIDERS: OTTProvider[] = [
   { name: "Xbox", logo: XboxLogo },
 ];
 
-function pickProviders(
-  pool: OTTProvider[],
-  title: string,
-  seed: string,
-): OTTProvider[] {
+function pickProviders(pool: OTTProvider[], title: string, seed: string): OTTProvider[] {
   let hash = 0;
   const str = (title + seed).toLowerCase();
   for (let i = 0; i < str.length; i++) {

@@ -145,8 +145,7 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
     const detailMatch = path.match(/\/detail\/([A-Z0-9]+)/i);
     const dpMatch = path.match(/\/dp\/([A-Z0-9]+)/i);
     const videoDetailMatch = path.match(/\/gp\/video\/detail\/([A-Z0-9]+)/i);
-    const id =
-      detailMatch?.[1] || dpMatch?.[1] || videoDetailMatch?.[1] || null;
+    const id = detailMatch?.[1] || dpMatch?.[1] || videoDetailMatch?.[1] || null;
     if (id) {
       // Build a clean base URL: strip query params, fragments, and trailing ref segments
       const cleanUrl = detailMatch
@@ -172,21 +171,14 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
  * Extract a URL from drag-and-drop data transfer.
  * Tries text/uri-list first, then text/plain.
  */
-export function extractUrlFromDragEvent(
-  dataTransfer: DataTransfer,
-): string | null {
+export function extractUrlFromDragEvent(dataTransfer: DataTransfer): string | null {
   // Try text/uri-list first (standard for dragged links)
   const uriList = dataTransfer.getData("text/uri-list");
   if (uriList) {
     // text/uri-list can contain multiple URLs and comments
-    const urls = uriList
-      .split("\n")
-      .filter((line) => line.trim() && !line.startsWith("#"));
+    const urls = uriList.split("\n").filter((line) => line.trim() && !line.startsWith("#"));
     const first = urls[0]?.trim();
-    if (
-      first &&
-      (first.startsWith("http://") || first.startsWith("https://"))
-    ) {
+    if (first && (first.startsWith("http://") || first.startsWith("https://"))) {
       return first;
     }
   }
@@ -195,9 +187,7 @@ export function extractUrlFromDragEvent(
   const text = dataTransfer.getData("text/plain")?.trim();
   if (
     text &&
-    (text.startsWith("http://") ||
-      text.startsWith("https://") ||
-      text.startsWith("www."))
+    (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("www."))
   ) {
     // Take only the first line if multi-line
     const firstLine = text.split("\n")[0]?.trim();

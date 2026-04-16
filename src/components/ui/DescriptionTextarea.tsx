@@ -4,8 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { cn } from "@/utils";
 import { MAX_DESCRIPTION_LENGTH } from "@/utils/validation";
 
-interface DescriptionTextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface DescriptionTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
   onValueChange: (val: string) => void;
   maxLengthLimit?: number;
@@ -54,8 +53,7 @@ export function DescriptionTextarea({
           <div className="flex items-center gap-1.5 text-red-400 font-medium overflow-hidden">
             <AlertTriangle size={12} className="shrink-0" />
             <span className="truncate">
-              {errorText ||
-                `Description exceeds the ${maxLengthLimit} character limit.`}
+              {errorText || `Description exceeds the ${maxLengthLimit} character limit.`}
             </span>
           </div>
         ) : (

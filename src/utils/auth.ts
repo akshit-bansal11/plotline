@@ -29,9 +29,7 @@ export function saveLastUsedProvider(provider: AuthProvider) {
 
 export function getLastUsedProvider(): AuthProvider | null {
   if (typeof window !== "undefined") {
-    return localStorage.getItem(
-      "last_used_auth_provider",
-    ) as AuthProvider | null;
+    return localStorage.getItem("last_used_auth_provider") as AuthProvider | null;
   }
   return null;
 }

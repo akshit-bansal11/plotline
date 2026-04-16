@@ -117,10 +117,7 @@ interface IgdbGame {
   total_rating?: number;
 }
 
-const cache = new Map<
-  string,
-  { timestamp: number; results: SearchResult[]; errors: string[] }
->();
+const cache = new Map<string, { timestamp: number; results: SearchResult[]; errors: string[] }>();
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
 const igdbTokenCache = { token: null as string | null, expiresAt: 0 };
 
@@ -171,10 +168,7 @@ const checkRateLimit = (key: string) => {
 
 type FetchResult = { ok: true; data: unknown } | { ok: false; error: string };
 
-const safeFetchJson = async (
-  url: string,
-  init?: RequestInit,
-): Promise<FetchResult> => {
+const safeFetchJson = async (url: string, init?: RequestInit): Promise<FetchResult> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
@@ -192,8 +186,7 @@ const safeFetchJson = async (
   }
 };
 
-const normalizeTitle = (value: string) =>
-  value.toLowerCase().replace(/\s+/g, " ").trim();
+const normalizeTitle = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
 const normalizeYearKey = (value?: string) => (value ? value.trim() : "");
 
 const parseYearNumber = (value?: string | null) => {
@@ -225,9 +218,7 @@ const parseFilterParams = (searchParams: URLSearchParams): SearchFilters => {
       : null;
 
   const baseType = getBaseTypeFromSearchType(searchType);
-  const explicitSubtype = baseType
-    ? normalizeSubtype(baseType, searchParams.get("subtype"))
-    : null;
+  const explicitSubtype = baseType ? normalizeSubtype(baseType, searchParams.get("subtype")) : null;
   const subtype = searchType === "anime_movie" ? "movie" : explicitSubtype;
 
   const genreSet = new Set<string>();
@@ -252,9 +243,7 @@ const parseFilterParams = (searchParams: URLSearchParams): SearchFilters => {
 
   const studio = normalizeStudioName(searchParams.get("studio"));
   const platform = normalizeGamePlatform(searchParams.get("platform"));
-  const serialization = normalizeSerializationName(
-    searchParams.get("serialization"),
-  );
+  const serialization = normalizeSerializationName(searchParams.get("serialization"));
 
   return {
     searchType,
@@ -291,27 +280,16 @@ const parseRuntimeMinutes = (value?: string | null) => {
   return parsed;
 };
 
-const resolveSubtype = (
-  type: MediaType,
-  subtype: string | null,
-  lengthMinutes: number | null,
-) => {
+const resolveSubtype = (type: MediaType, subtype: string | null, lengthMinutes: number | null) => {
   if (type === "movie") {
     if (subtype) return subtype;
-    if (
-      typeof lengthMinutes === "number" &&
-      lengthMinutes > 0 &&
-      lengthMinutes <= 45
-    )
+    if (typeof lengthMinutes === "number" && lengthMinutes > 0 && lengthMinutes <= 45)
       return "short_movie";
   }
   return subtype;
 };
 
-const mergeSearchResult = (
-  primary: SearchResult,
-  secondary: SearchResult,
-): SearchResult => {
+const mergeSearchResult = (primary: SearchResult, secondary: SearchResult): SearchResult => {
   const primaryOverview = primary.overview || "";
   const secondaryOverview = secondary.overview || "";
 
@@ -330,9 +308,7 @@ const mergeSearchResult = (
     image: primary.image ?? secondary.image,
     year: primary.year || secondary.year,
     overview:
-      primaryOverview.length >= secondaryOverview.length
-        ? primaryOverview
-        : secondaryOverview,
+      primaryOverview.length >= secondaryOverview.length ? primaryOverview : secondaryOverview,
     rating: primary.rating ?? secondary.rating ?? null,
     genres: mergedGenres,
     subtype: resolveSubtype(
@@ -350,10 +326,7 @@ const mergeSearchResult = (
   };
 };
 
-const mergeMovieSeriesResults = (
-  primary: SearchResult[],
-  secondary: SearchResult[],
-) => {
+const mergeMovieSeriesResults = (primary: SearchResult[], secondary: SearchResult[]) => {
   const seen = new Map<string, SearchResult>();
 
   for (const item of primary) {
@@ -384,9 +357,7 @@ const buildTmdbUrl = (path: string) => {
     };
   }
 
-  const headers = bearerToken
-    ? { Authorization: `Bearer ${bearerToken}` }
-    : undefined;
+  const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   if (bearerToken) {
     return { url: `https://api.themoviedb.org/3${path}`, headers };
   }
@@ -425,17 +396,14 @@ const fetchTmdbDetails = async (id: number, type: "movie" | "tv") => {
 
   const runtime = typeof payload.runtime === "number" ? payload.runtime : null;
   const episodeRuntime =
-    Array.isArray(payload.episode_run_time) &&
-    payload.episode_run_time.length > 0
+    Array.isArray(payload.episode_run_time) && payload.episode_run_time.length > 0
       ? payload.episode_run_time[0] || null
       : null;
 
   return {
     status: normalizeStatusName(payload.status),
     episodeCount:
-      typeof payload.number_of_episodes === "number"
-        ? payload.number_of_episodes
-        : null,
+      typeof payload.number_of_episodes === "number" ? payload.number_of_episodes : null,
     lengthMinutes: type === "movie" ? runtime : episodeRuntime,
     genres,
   };
@@ -467,28 +435,19 @@ const searchTMDB = async (
     .slice(0, 12);
 
   const detailPayloads = await Promise.all(
-    rawResults.map((item) =>
-      fetchTmdbDetails(item.id, item.media_type === "tv" ? "tv" : "movie"),
-    ),
+    rawResults.map((item) => fetchTmdbDetails(item.id, item.media_type === "tv" ? "tv" : "movie")),
   );
 
   const results: SearchResult[] = rawResults.map((item, index) => {
     const type: MediaType = item.media_type === "tv" ? "series" : "movie";
     const detail = detailPayloads[index];
-    const baseGenres = mapTmdbGenreIds(
-      item.genre_ids,
-      item.media_type === "tv" ? "tv" : "movie",
-    );
-    const mergedGenres = Array.from(
-      new Set([...baseGenres, ...(detail?.genres || [])]),
-    );
+    const baseGenres = mapTmdbGenreIds(item.genre_ids, item.media_type === "tv" ? "tv" : "movie");
+    const mergedGenres = Array.from(new Set([...baseGenres, ...(detail?.genres || [])]));
 
     const base: SearchResult = {
       id: String(item.id),
       title: item.title || item.name || "",
-      image: item.poster_path
-        ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-        : null,
+      image: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
       year: (item.release_date || item.first_air_date || "").split("-")[0],
       type,
       overview: item.overview || "",
@@ -508,10 +467,7 @@ const searchTMDB = async (
   return { results, error: "" };
 };
 
-const fetchOmdbDetails = async (
-  imdbID: string,
-  apiKey: string,
-): Promise<OmdbDetail | null> => {
+const fetchOmdbDetails = async (imdbID: string, apiKey: string): Promise<OmdbDetail | null> => {
   const response = await safeFetchJson(
     `https://www.omdbapi.com/?apikey=${apiKey}&i=${encodeURIComponent(imdbID)}&plot=short`,
   );
@@ -557,13 +513,9 @@ const searchOMDB = async (
     const resultType: MediaType = item.Type === "series" ? "series" : "movie";
     const detail = details[index];
     const rating =
-      detail?.imdbRating && detail.imdbRating !== "N/A"
-        ? Number(detail.imdbRating)
-        : null;
+      detail?.imdbRating && detail.imdbRating !== "N/A" ? Number(detail.imdbRating) : null;
     const lengthMinutes = parseRuntimeMinutes(detail?.Runtime || null);
-    const genres = normalizeGenres(
-      (detail?.Genre || "").split(",").map((part) => part.trim()),
-    );
+    const genres = normalizeGenres((detail?.Genre || "").split(",").map((part) => part.trim()));
 
     const base: SearchResult = {
       id: item.imdbID,
@@ -572,8 +524,7 @@ const searchOMDB = async (
       year: item.Year,
       type: resultType,
       overview: "",
-      rating:
-        typeof rating === "number" && Number.isFinite(rating) ? rating : null,
+      rating: typeof rating === "number" && Number.isFinite(rating) ? rating : null,
       genres,
       lengthMinutes,
     };
@@ -592,15 +543,10 @@ const extractMalSerialization = (value: MalNode["serialization"]) => {
 
   for (const entry of value) {
     if (entry && typeof entry === "object") {
-      const directName =
-        "name" in entry ? (entry as { name?: string }).name : null;
+      const directName = "name" in entry ? (entry as { name?: string }).name : null;
       const nestedName =
-        "node" in entry
-          ? (entry as { node?: { name?: string } }).node?.name
-          : null;
-      const normalized = normalizeSerializationName(
-        directName || nestedName || null,
-      );
+        "node" in entry ? (entry as { node?: { name?: string } }).node?.name : null;
+      const normalized = normalizeSerializationName(directName || nestedName || null);
       if (normalized) return normalized;
     }
   }
@@ -630,14 +576,10 @@ const searchMALAnime = async (
   const rawResults = payload.data || [];
 
   const results: SearchResult[] = rawResults.map((item) => {
-    const genres = normalizeGenres(
-      (item.node.genres || []).map((genre) => genre.name),
-    );
+    const genres = normalizeGenres((item.node.genres || []).map((genre) => genre.name));
     const studioCandidates = (item.node.studios || [])
       .map((candidate) => normalizeStudioName(candidate.name))
-      .filter((candidate): candidate is NonNullable<typeof candidate> =>
-        Boolean(candidate),
-      );
+      .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
     const studio = studioCandidates[0] || null;
     const subtype = normalizeSubtype("anime", item.node.media_type);
 
@@ -652,10 +594,7 @@ const searchMALAnime = async (
       genres,
       subtype,
       status: normalizeStatusName(item.node.status),
-      episodeCount:
-        typeof item.node.num_episodes === "number"
-          ? item.node.num_episodes
-          : null,
+      episodeCount: typeof item.node.num_episodes === "number" ? item.node.num_episodes : null,
       studio,
     };
   });
@@ -685,9 +624,7 @@ const searchMALManga = async (
   const rawResults = payload.data || [];
 
   const results: SearchResult[] = rawResults.map((item) => {
-    const genres = normalizeGenres(
-      (item.node.genres || []).map((genre) => genre.name),
-    );
+    const genres = normalizeGenres((item.node.genres || []).map((genre) => genre.name));
 
     return {
       id: String(item.node.id),
@@ -700,10 +637,7 @@ const searchMALManga = async (
       genres,
       subtype: normalizeSubtype("manga", item.node.media_type),
       status: normalizeStatusName(item.node.status),
-      chapterCount:
-        typeof item.node.num_chapters === "number"
-          ? item.node.num_chapters
-          : null,
+      chapterCount: typeof item.node.num_chapters === "number" ? item.node.num_chapters : null,
       serialization: extractMalSerialization(item.node.serialization),
     };
   });
@@ -792,14 +726,10 @@ const searchIGDBGames = async (
     const ratingValue = normalizeIgdbRating(
       item.aggregated_rating ?? item.total_rating ?? item.rating,
     );
-    const genres = normalizeGenres(
-      (item.genres || []).map((genre) => genre.name),
-    );
+    const genres = normalizeGenres((item.genres || []).map((genre) => genre.name));
     const normalizedPlatforms = (item.platforms || [])
       .map((platform) => normalizeGamePlatform(platform.name))
-      .filter((platform): platform is NonNullable<typeof platform> =>
-        Boolean(platform),
-      );
+      .filter((platform): platform is NonNullable<typeof platform> => Boolean(platform));
     const platforms = Array.from(new Set(normalizedPlatforms));
 
     return {
@@ -833,44 +763,29 @@ const itemMatchesFilters = (item: SearchResult, filters: SearchFilters) => {
 
   if (filters.genres.size > 0) {
     const itemGenres = new Set(item.genres || []);
-    const hasAny = Array.from(filters.genres).some((genre) =>
-      itemGenres.has(genre),
-    );
+    const hasAny = Array.from(filters.genres).some((genre) => itemGenres.has(genre));
     if (!hasAny) return false;
   }
 
   const year = parseYearNumber(item.year);
-  if (
-    typeof filters.yearMin === "number" &&
-    (!year || year < filters.yearMin)
-  ) {
+  if (typeof filters.yearMin === "number" && (!year || year < filters.yearMin)) {
     return false;
   }
-  if (
-    typeof filters.yearMax === "number" &&
-    (!year || year > filters.yearMax)
-  ) {
+  if (typeof filters.yearMax === "number" && (!year || year > filters.yearMax)) {
     return false;
   }
 
   if (typeof filters.ratingMin === "number") {
-    if (typeof item.rating !== "number" || item.rating < filters.ratingMin)
-      return false;
+    if (typeof item.rating !== "number" || item.rating < filters.ratingMin) return false;
   }
 
   if (typeof filters.episodeMin === "number") {
-    if (
-      typeof item.episodeCount !== "number" ||
-      item.episodeCount < filters.episodeMin
-    )
+    if (typeof item.episodeCount !== "number" || item.episodeCount < filters.episodeMin)
       return false;
   }
 
   if (typeof filters.chapterMin === "number") {
-    if (
-      typeof item.chapterCount !== "number" ||
-      item.chapterCount < filters.chapterMin
-    )
+    if (typeof item.chapterCount !== "number" || item.chapterCount < filters.chapterMin)
       return false;
   }
 
@@ -879,8 +794,7 @@ const itemMatchesFilters = (item: SearchResult, filters: SearchFilters) => {
   }
 
   if (filters.studio) {
-    if (!item.studio || normalizeStudioName(item.studio) !== filters.studio)
-      return false;
+    if (!item.studio || normalizeStudioName(item.studio) !== filters.studio) return false;
   }
 
   if (filters.platform) {
@@ -930,15 +844,9 @@ const sanitizeResult = (item: SearchResult): SearchResult => {
     platforms,
     studio: normalizedStudio || item.studio || null,
     serialization:
-      normalizeSerializationName(item.serialization || null) ||
-      item.serialization ||
-      null,
+      normalizeSerializationName(item.serialization || null) || item.serialization || null,
     status: item.status || null,
-    subtype: resolveSubtype(
-      item.type,
-      item.subtype || null,
-      item.lengthMinutes ?? null,
-    ),
+    subtype: resolveSubtype(item.type, item.subtype || null, item.lengthMinutes ?? null),
   };
 };
 
@@ -979,20 +887,13 @@ export async function GET(request: Request) {
     if (filters.baseType === "movie" || filters.baseType === "series") {
       const [tmdb, omdb] = await Promise.all([
         searchTMDB(queryValue),
-        searchOMDB(
-          queryValue,
-          filters.baseType === "movie" ? "movie" : "series",
-        ),
+        searchOMDB(queryValue, filters.baseType === "movie" ? "movie" : "series"),
       ]);
       if (tmdb.error) errors.push(tmdb.error);
       if (omdb.error) errors.push(omdb.error);
 
-      const tmdbMatches = tmdb.results.filter(
-        (item) => item.type === filters.baseType,
-      );
-      const omdbMatches = omdb.results.filter(
-        (item) => item.type === filters.baseType,
-      );
+      const tmdbMatches = tmdb.results.filter((item) => item.type === filters.baseType);
+      const omdbMatches = omdb.results.filter((item) => item.type === filters.baseType);
       results = mergeMovieSeriesResults(tmdbMatches, omdbMatches);
     } else if (filters.baseType === "anime") {
       const anime = await searchMALAnime(queryValue);
@@ -1022,16 +923,8 @@ export async function GET(request: Request) {
     if (manga.error) errors.push(manga.error);
     if (games.error) errors.push(games.error);
 
-    const mergedMovieSeries = mergeMovieSeriesResults(
-      tmdb.results,
-      omdb.results,
-    );
-    results = [
-      ...mergedMovieSeries,
-      ...anime.results,
-      ...manga.results,
-      ...games.results,
-    ];
+    const mergedMovieSeries = mergeMovieSeriesResults(tmdb.results, omdb.results);
+    results = [...mergedMovieSeries, ...anime.results, ...manga.results, ...games.results];
   }
 
   const sanitized = results.map((item) => sanitizeResult(item));

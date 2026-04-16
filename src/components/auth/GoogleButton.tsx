@@ -7,11 +7,7 @@ interface GoogleButtonProps {
   className?: string;
 }
 
-export function GoogleButton({
-  onClick,
-  isLoading,
-  className,
-}: GoogleButtonProps) {
+export function GoogleButton({ onClick, isLoading, className }: GoogleButtonProps) {
   return (
     <button
       type="button"

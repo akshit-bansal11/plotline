@@ -32,8 +32,7 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-white">Check your email</h3>
           <p className="text-sm text-white/60 px-4">
-            We&apos;ve sent a password reset link to{" "}
-            <span className="text-white">{email}</span>.
+            We&apos;ve sent a password reset link to <span className="text-white">{email}</span>.
           </p>
         </div>
         <button
@@ -61,16 +60,12 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
       </div>
 
       <p className="text-sm text-white/50 px-1">
-        Enter your email address and we&apos;ll send you a link to reset your
-        password.
+        Enter your email address and we&apos;ll send you a link to reset your password.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label
-            className="text-sm font-medium text-white/70 ml-1"
-            htmlFor="reset-email"
-          >
+          <label className="text-sm font-medium text-white/70 ml-1" htmlFor="reset-email">
             Email
           </label>
           <div className="relative">
@@ -98,11 +93,7 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
           disabled={loading}
           className="w-full flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-all hover:bg-neutral-200 active:scale-[0.98] disabled:opacity-50"
         >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Send Reset Link"
-          )}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
         </button>
       </form>
     </div>

@@ -7,12 +7,7 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverEffect?: boolean;
 }
 
-export function GlassCard({
-  children,
-  className,
-  hoverEffect = false,
-  ...props
-}: GlassCardProps) {
+export function GlassCard({ children, className, hoverEffect = false, ...props }: GlassCardProps) {
   const CardContent = (
     <div
       className={cn(

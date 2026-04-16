@@ -14,10 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { AuthView } from "@/types/auth";
 
 const AuthMethodBadge = dynamic(
-  () =>
-    import("@/components/auth/AuthMethodBadge").then(
-      (module) => module.AuthMethodBadge,
-    ),
+  () => import("@/components/auth/AuthMethodBadge").then((module) => module.AuthMethodBadge),
   { ssr: false },
 );
 
@@ -69,9 +66,7 @@ function AuthContent() {
             height={48}
             className="mx-auto"
           />
-          <h1 className="text-4xl font-light font-sans text-white tracking-tight">
-            {heading}
-          </h1>
+          <h1 className="text-4xl font-light font-sans text-white tracking-tight">{heading}</h1>
           <p className="text-white/50 text-sm mt-1">
             {view === "login"
               ? "Sign in to continue to Plotline"
@@ -102,9 +97,7 @@ function AuthContent() {
                     <div className="w-full border-t border-white/5"></div>
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-neutral-950 px-2 text-white/30">
-                      Or continue with
-                    </span>
+                    <span className="bg-neutral-950 px-2 text-white/30">Or continue with</span>
                   </div>
                 </div>
 
@@ -127,9 +120,7 @@ function AuthContent() {
                     <div className="w-full border-t border-white/5"></div>
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-neutral-950 px-2 text-white/30">
-                      Or sign up with
-                    </span>
+                    <span className="bg-neutral-950 px-2 text-white/30">Or sign up with</span>
                   </div>
                 </div>
 

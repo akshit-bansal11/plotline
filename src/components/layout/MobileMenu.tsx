@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  LogIn,
-  Menu,
-  Search,
-  Settings,
-  Upload,
-  UserCircle,
-  X,
-} from "lucide-react";
+import { LogIn, Menu, Search, Settings, Upload, UserCircle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";

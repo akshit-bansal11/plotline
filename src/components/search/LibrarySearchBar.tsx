@@ -37,9 +37,7 @@ export function LibrarySearchBar({ className }: LibrarySearchBarProps) {
     return entries
       .filter((entry) => {
         if (entry.title.toLowerCase().includes(q)) return true;
-        return entry.genresThemes.some((genre) =>
-          genre.toLowerCase().includes(q),
-        );
+        return entry.genresThemes.some((genre) => genre.toLowerCase().includes(q));
       })
       .slice(0, 12);
   }, [entries, query]);
@@ -70,9 +68,7 @@ export function LibrarySearchBar({ className }: LibrarySearchBarProps) {
         <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-40 overflow-hidden rounded-2xl border border-white/10 bg-neutral-950/95 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <div className="max-h-[52vh] overflow-y-auto custom-scrollbar">
             {filtered.length === 0 ? (
-              <div className="p-4 text-sm text-neutral-500">
-                No local results.
-              </div>
+              <div className="p-4 text-sm text-neutral-500">No local results.</div>
             ) : (
               <div className="py-2">
                 {filtered.map((entry) => (
@@ -102,13 +98,10 @@ export function LibrarySearchBar({ className }: LibrarySearchBarProps) {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-white">
-                        {entry.title}
-                      </div>
+                      <div className="truncate text-sm font-semibold text-white">{entry.title}</div>
                       <div className="truncate text-xs text-neutral-500">
                         {entry.releaseYear ? `${entry.releaseYear} - ` : ""}
-                        {entryMediaTypeLabels[entry.mediaType] ||
-                          entry.mediaType}
+                        {entryMediaTypeLabels[entry.mediaType] || entry.mediaType}
                       </div>
                     </div>
                   </button>
