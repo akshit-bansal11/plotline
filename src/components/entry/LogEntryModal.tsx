@@ -321,7 +321,27 @@ export function LogEntryModal({
 
   const uid = user?.uid || null;
 
-  /* Tabs removed */
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [currentEpisodes, setCurrentEpisodes] = useState("");
+  const [currentSeasons, setCurrentSeasons] = useState("");
+  const [totalSeasons, setTotalSeasons] = useState("");
+  const [currentChapters, setCurrentChapters] = useState("");
+  const [totalChapters, setTotalChapters] = useState("");
+  const [currentPlaytime, setCurrentPlaytime] = useState("");
+  const [rewatchCount, setRewatchCount] = useState(0);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isOpen]);
+
 
   const initializedRef = useRef<string | number | null>(null);
   const fetchedListIdsForEntryRef = useRef<string | number | null>(null);
@@ -343,18 +363,18 @@ export function LogEntryModal({
           };
           const singleType = (
             data.type === "movie" ||
-            data.type === "series" ||
-            data.type === "anime" ||
-            data.type === "manga" ||
-            data.type === "game"
+              data.type === "series" ||
+              data.type === "anime" ||
+              data.type === "manga" ||
+              data.type === "game"
               ? data.type
               : "movie"
           ) as ListMediaType;
           const types = (
             Array.isArray(data.types)
               ? data.types.filter((t): t is ListMediaType =>
-                  ["movie", "series", "anime", "manga", "game"].includes(t),
-                )
+                ["movie", "series", "anime", "manga", "game"].includes(t),
+              )
               : [singleType]
           ) as ListMediaType[];
           return {
@@ -1169,811 +1189,501 @@ export function LogEntryModal({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", handleEsc);
+      return () => {
+        document.body.style.overflow = "unset";
+        window.removeEventListener("keydown", handleEsc);
+      };
+    }
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (activeTab === "search") {
+      inputRef.current?.focus();
+    }
+  }, [activeTab]);
+
+  const SectionHeader = ({ title }: { title: string }) => (
+    <div className="mt-8 mb-4 first:mt-0">
+      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">{title}</div>
+      <div className="h-[1px] w-full bg-white/5" />
+    </div>
+  );
+
+  const StatColumn = ({ label, value }: { label: string; value: string }) => (
+    <div className="flex flex-col gap-1">
+      <div className="text-[9px] font-mono uppercase tracking-[0.1em] text-[#555]">{label}</div>
+      <div className="text-[22px] font-extrabold text-white leading-none tracking-tight">{value}</div>
+    </div>
+  );
+
+  const EditableField = ({ 
+    label, 
+    value, 
+    children, 
+    fieldId 
+  }: { 
+    label: string; 
+    value: string | React.ReactNode; 
+    children: React.ReactNode; 
+    fieldId: string;
+  }) => {
+    const isActive = activeField === fieldId;
+    return (
+      <div className="group relative mb-6">
+        <div className="flex justify-between items-center mb-1.5">
+          <label className="text-[10px] font-mono uppercase tracking-[0.12em] text-[#555]">{label}</label>
+          <button 
+            type="button" 
+            onClick={() => setActiveField(isActive ? null : fieldId)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 -m-1"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </button>
+        </div>
+        <div onClick={() => !isActive && setActiveField(fieldId)} className={!isActive ? "cursor-pointer" : ""}>
+          {isActive ? children : (
+            <div className="text-[14px] text-white/90 font-medium">{value || <span className="text-[#333]">NOT SET</span>}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const ProgressField = ({ 
+    label, 
+    current, 
+    total, 
+    onCurrentChange, 
+    onTotalChange,
+    fieldId
+  }: { 
+    label: string; 
+    current: string; 
+    total: string; 
+    onCurrentChange: (v: string) => void; 
+    onTotalChange: (v: string) => void;
+    fieldId: string;
+  }) => (
+    <EditableField 
+      label={label} 
+      fieldId={fieldId}
+      value={`${current || '0'} / ${total || '—'}`}
+    >
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={current}
+          onChange={(e) => onCurrentChange(e.target.value)}
+          placeholder="0"
+          className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-2.5 px-3.5 text-sm text-white focus:outline-none focus:border-white/20 transition-all"
+        />
+        <span className="text-[#333] font-mono">/</span>
+        <input
+          type="text"
+          value={total}
+          onChange={(e) => onTotalChange(e.target.value)}
+          placeholder="—"
+          className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-2.5 px-3.5 text-sm text-white focus:outline-none focus:border-white/20 transition-all"
+        />
+      </div>
+    </EditableField>
+  );
+
+  const DateField = ({ 
+    label, 
+    value, 
+    onChange, 
+    onToday, 
+    onUnknown, 
+    unknownChecked,
+    fieldId
+  }: { 
+    label: string; 
+    value: string; 
+    onChange: (v: string) => void; 
+    onToday: () => void; 
+    onUnknown: () => void;
+    unknownChecked?: boolean;
+    fieldId: string;
+  }) => (
+    <EditableField 
+      label={label} 
+      fieldId={fieldId}
+      value={unknownChecked ? "UNKNOWN" : value || "NOT SET"}
+    >
+      <div className="flex flex-col gap-2">
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={unknownChecked}
+          className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-sm text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-50"
+        />
+        <div className="flex gap-4">
+          <button type="button" onClick={onToday} className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors">SET TODAY</button>
+          <button type="button" onClick={onUnknown} className={cn("text-[10px] font-mono uppercase tracking-[0.1em] transition-colors", unknownChecked ? "text-white" : "text-[#555] hover:text-white")}>UNKNOWN</button>
+        </div>
+      </div>
+    </EditableField>
+  );
+
+  if (!isOpen) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={isEditing ? "Edit entry" : "Log entry"}
-      className="max-w-5xl bg-neutral-900/60"
-    >
-      <div className="w-full">
-        {activeTab === "search" ? (
-          <div className="flex flex-col h-150">
-            <div className="flex gap-2 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                <input
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    runSearch(e.target.value, searchType);
-                  }}
-                  placeholder="Search for movies, series, anime..."
-                  className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-2 pl-9 pr-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                  ref={inputRef}
-                />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm">
+      <div className="relative w-full max-w-[1000px] h-[720px] max-h-[90vh] bg-[#111] rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/5">
+        <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
+          {/* Main Panels */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Panel: Media info */}
+            <div className="w-[420px] shrink-0 border-r border-white/5 overflow-y-auto custom-scrollbar p-7 flex flex-col bg-[#111]">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[10px] font-mono text-[#555] uppercase tracking-[0.14em]">CULTURAL LEGACY</span>
+                <span className="px-3 py-1 rounded-full border border-white/10 text-[11px] font-mono text-white/50 uppercase tracking-wider">{mediaType}</span>
               </div>
-              <select
-                value={searchType}
-                onChange={(e) => {
-                  const next = e.target.value as EntryMediaType;
-                  setSearchType(next);
-                  runSearch(searchQuery, next);
-                }}
-                className="rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-2 px-3 text-sm text-neutral-100 focus:outline-none focus:border-neutral-100/20 transition-all"
-              >
-                {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map((t) => (
-                  <option key={t} value={t}>
-                    {mediaTypeLabels[t]}
-                  </option>
+
+              <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden mb-6 bg-[#1f1f1f]">
+                {image ? (
+                  <ImageWithSkeleton src={image} alt={title} fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[#333]">
+                    <Search className="w-8 h-8 opacity-20" />
+                  </div>
+                )}
+              </div>
+
+              <h1 className="text-[clamp(28px,4vw,40px)] font-black leading-[1.1] uppercase tracking-[-0.02em] text-white mb-2">{title || "Untitled Project"}</h1>
+              <div className="text-sm text-[#666] mb-8">Directed by — · {releaseYear || "—"}</div>
+
+              <div className="grid grid-cols-3 gap-6 mb-8">
+                <StatColumn label="EPISODES" value={episodeCount || "—"} />
+                <StatColumn label="SEASONS" value="01" />
+                <StatColumn label="RATING" value={imdbRating ? `★${imdbRating}` : "—"} />
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 mb-6">
+                {tags.map((tag) => (
+                  <span key={tag} className="px-3 py-1 rounded-full border border-white/[0.08] bg-[#1a1a1a] text-[10px] text-[#aaa] font-mono uppercase tracking-[0.08em]">
+                    {tag}
+                  </span>
                 ))}
-              </select>
-            </div>
-
-            <div className="flex-1 overflow-y-auto pr-1 space-y-2 scroll-smooth">
-              {isSearching ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
-                </div>
-              ) : searchResults.length > 0 ? (
-                searchResults.map((result) => {
-                  const isDuplicate = entries.some((e) => {
-                    if (String(e.externalId) === String(result.id)) return true;
-                    if (e.mediaType !== result.type) return false;
-                    const eName = e.title.trim().toLowerCase();
-                    const rName = result.title.trim().toLowerCase();
-                    if (eName !== rName) return false;
-                    const eYear = e.releaseYear || e.year || "";
-                    const rYear = result.year || "";
-                    if (eYear && rYear && eYear !== rYear) return false;
-                    return true;
-                  });
-
-                  return (
-                    <button
-                      key={result.id}
-                      type="button"
-                      disabled={isDuplicate}
-                      onClick={() => handleSelectResult(result)}
-                      className={cn(
-                        "flex w-full gap-3 rounded-xl border p-2 text-left transition-all relative overflow-hidden",
-                        isDuplicate
-                          ? "opacity-50 cursor-not-allowed bg-neutral-900 border-white/5"
-                          : "border-transparent hover:bg-white/5 hover:border-white/5 group cursor-pointer",
-                      )}
-                    >
-                      {isDuplicate && (
-                        <div className="absolute inset-0 bg-neutral-950/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                          <CheckCircle className="text-emerald-500 h-8 w-8 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        </div>
-                      )}
-
-                      <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
-                        {result.image ? (
-                          <ImageWithSkeleton
-                            src={result.image}
-                            alt={result.title}
-                            width={56}
-                            height={80}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-neutral-700">
-                            <Search size={16} />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-1 flex-col justify-center min-w-0">
-                        <div className="truncate font-medium text-neutral-200 group-hover:text-white">
-                          {result.title}
-                        </div>
-                        <div className="text-xs text-neutral-500">
-                          {result.year ? `${result.year} • ` : ""}
-                          {mediaTypeLabels[result.type]}
-                        </div>
-                        {result.overview && <ExpandableText text={result.overview} />}
-                      </div>
-                    </button>
-                  );
-                })
-              ) : searchQuery ? (
-                <div className="text-center text-sm text-neutral-500 py-10">
-                  {searchError || "No results found."}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-neutral-500 gap-2">
-                  <Search className="h-8 w-8 opacity-20" />
-                  <div className="text-sm">Type to search online databases</div>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-4 mt-auto border-t border-white/5">
-              <button
-                type="button"
-                onClick={() => setActiveTab("manual")}
-                className="w-full rounded-xl border border-white/10 bg-neutral-800/40 py-3 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-              >
-                Enter manually
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={onSubmit} className="flex max-h-150 flex-col">
-            <div className="flex-1 space-y-4 overflow-y-auto pr-1 scroll-smooth">
-              {isFetchingMetadata && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs animate-pulse">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Fetching detailed metadata...
-                </div>
-              )}
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-neutral-400">Title</div>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Dune: Part Two"
-                  className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                />
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-neutral-400">Type</div>
-                  <select
-                    value={mediaType}
-                    onChange={(e) => setMediaType(e.target.value as EntryMediaType)}
-                    className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                  >
-                    {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map(
-                      (value) => (
-                        <option key={value} value={value}>
-                          {mediaTypeLabels[value]}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                  {mediaType === "anime" && (
-                    <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer pt-1">
+              <p className="text-[13px] text-[#555] leading-[1.6] italic line-clamp-3">
+                {description || "No description available for this protocol."}
+              </p>
+            </div>
+
+            {/* Right Panel: Inputs */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-7 bg-[#111]">
+              {activeTab === "search" ? (
+                /* Search View */
+                <div className="flex flex-col h-full">
+                  <div className="flex gap-2 mb-6">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
                       <input
-                        type="checkbox"
-                        checked={isMovie}
-                        onChange={(e) => setIsMovie(e.target.checked)}
-                        className="h-3 w-3 rounded border border-neutral-100/10 bg-neutral-800/50"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          runSearch(e.target.value, searchType);
+                        }}
+                        placeholder="Search archives..."
+                        className="w-full bg-[#1a1a1a] border border-white/5 rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder-[#444] focus:outline-none focus:border-white/10"
+                        ref={inputRef}
                       />
-                      Is a Movie?
-                    </label>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-neutral-400">Status</div>
-                  <div className="relative">
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
-                      <ChevronDown size={14} />
                     </div>
                     <select
-                      value={status}
+                      value={searchType}
                       onChange={(e) => {
-                        const next = e.target.value as EntryStatus;
-                        setStatus(next);
-                        if (
-                          (next === "completed" ||
-                            next === "main_story_completed" ||
-                            next === "fully_completed") &&
-                          !completionDate &&
-                          !completionUnknown
-                        ) {
-                          setCompletionDate(todayISODate());
-                        }
+                        const next = e.target.value as EntryMediaType;
+                        setSearchType(next);
+                        runSearch(searchQuery, next);
                       }}
-                      className="w-full appearance-none rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 pl-4 pr-10 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
+                      className="bg-[#1a1a1a] border border-white/5 rounded-xl px-4 text-xs font-mono text-[#888] focus:outline-none"
                     >
-                      <option value="unspecified">Select status...</option>
-                      {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
-                        (s) => (
-                          <option key={s} value={s}>
-                            {statusLabels[s]}
-                          </option>
-                        ),
-                      )}
+                      {(["movie", "series", "anime", "manga", "game"] as EntryMediaType[]).map((t) => (
+                        <option key={t} value={t}>{t.toUpperCase()}</option>
+                      ))}
                     </select>
                   </div>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-neutral-400">Add to Lists</div>
+                  <div className="flex-1 space-y-2">
+                    {isSearching ? (
+                      <div className="py-20 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-[#333]" /></div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          type="button"
+                          onClick={() => handleSelectResult(result)}
+                          className="w-full flex gap-4 p-3 rounded-xl hover:bg-white/[0.02] border border-transparent hover:border-white/[0.05] transition-all text-left group"
+                        >
+                          <div className="w-14 h-20 bg-[#1a1a1a] rounded overflow-hidden shrink-0">
+                            {result.image && <ImageWithSkeleton src={result.image} alt="" fill className="object-cover" />}
+                          </div>
+                          <div className="flex-1 pt-1">
+                            <div className="text-white text-[13px] font-medium group-hover:text-white transition-colors">{result.title}</div>
+                            <div className="text-[11px] text-[#555] font-mono mt-0.5">{result.year} · {result.type.toUpperCase()}</div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="py-20 text-center text-[#333] font-mono text-[11px] tracking-widest">INITIALIZING SEARCH FIELD</div>
+                    )}
+                  </div>
+                  
                   <button
                     type="button"
-                    onClick={() => setIsNewListOpen(true)}
-                    className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                    onClick={() => setActiveTab("manual")}
+                    className="mt-6 w-full py-3 rounded-xl border border-dashed border-white/10 text-[10px] font-mono text-[#555] hover:text-[#888] hover:border-white/20 transition-all uppercase tracking-[0.12em]"
                   >
-                    <Plus size={12} />
-                    New List
+                    Enter manual data
                   </button>
                 </div>
-                <div className="max-h-32 overflow-y-auto rounded-xl bg-neutral-800/30 border border-neutral-100/5 p-2 space-y-1">
-                  {availableLists.length > 0 ? (
-                    availableLists.map((list) => (
-                      <label
-                        key={list.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
+              ) : (
+                /* Manual Data Entry View */
+                <div className="pb-8">
+                  <SectionHeader title="Status & Progress" />
+                  
+                  <EditableField 
+                    label="Current Status" 
+                    fieldId="status" 
+                    value={statusLabels[status]}
+                  >
+                    <div className="relative">
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value as EntryStatus)}
+                        className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-4 pr-10 appearance-none text-sm text-white focus:outline-none"
                       >
-                        <input
-                          type="checkbox"
-                          checked={selectedListIds.has(list.id)}
-                          onChange={(e) => {
-                            const next = new Set(selectedListIds);
-                            if (e.target.checked) next.add(list.id);
-                            else next.delete(list.id);
-                            setSelectedListIds(next);
-                          }}
-                          className="h-4 w-4 rounded border border-neutral-100/10 bg-neutral-800/50"
-                        />
-                        <span className="text-sm text-neutral-200">{list.name}</span>
-                      </label>
-                    ))
-                  ) : (
-                    <div className="text-xs text-neutral-500 p-2 text-center">
-                      No compatible lists found.
+                        <option value="unspecified">Unspecified</option>
+                        {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(s => (
+                          <option key={s} value={s}>{statusLabels[s]}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555] pointer-events-none" />
                     </div>
-                  )}
-                </div>
-              </div>
+                  </EditableField>
 
-              {numericField ? (
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-neutral-400">{numericField.label}</div>
-                  <input
-                    type="number"
-                    value={numericField.value}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (numericField.key === "lengthMinutes") setLengthMinutes(next);
-                      if (numericField.key === "episodeCount") setEpisodeCount(next);
-                      if (numericField.key === "chapterCount") setChapterCount(next);
-                    }}
-                    placeholder="Optional"
-                    inputMode="numeric"
-                    min={1}
-                    step={1}
-                    className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                  />
-                  {numericFieldError ? (
-                    <div className="text-xs text-red-400">{numericFieldError}</div>
+                  <EditableField
+                    label="Score"
+                    fieldId="score"
+                    value={userRating || "—"}
+                  >
+                    <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/5">
+                      <div className="flex justify-between items-baseline mb-4">
+                        <span className="text-[10px] font-mono text-[#555] tracking-widest">SCORE</span>
+                        <span className="text-xl font-black text-white">{userRating || "0.0"}</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" max="10" step="0.1" 
+                        value={userRating || 0}
+                        onChange={(e) => setUserRating(e.target.value)}
+                        className="w-full h-1 bg-[#2a2a2a] rounded-lg appearance-none cursor-pointer accent-white"
+                      />
+                    </div>
+                  </EditableField>
+
+                  {mediaType === "series" || mediaType === "anime" ? (
+                    <ProgressField 
+                      label="Episode" 
+                      fieldId="episodes"
+                      current={currentEpisodes} 
+                      total={episodeCount} 
+                      onCurrentChange={setCurrentEpisodes}
+                      onTotalChange={setEpisodeCount}
+                    />
+                  ) : mediaType === "manga" ? (
+                    <ProgressField 
+                      label="Chapter" 
+                      fieldId="chapters"
+                      current={currentChapters} 
+                      total={chapterCount} 
+                      onCurrentChange={setCurrentChapters}
+                      onTotalChange={setChapterCount}
+                    />
                   ) : null}
-                </div>
-              ) : null}
 
-              {/* Game Fields */}
-              {mediaType === "game" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-neutral-400">Play Time (hours)</div>
-                    <input
-                      type="number"
-                      value={playTime}
-                      onChange={(e) => setPlayTime(e.target.value)}
-                      placeholder="Optional"
-                      className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
+                  <ProgressField 
+                    label="Season" 
+                    fieldId="seasons"
+                    current={currentSeasons} 
+                    total={totalSeasons} 
+                    onCurrentChange={setCurrentSeasons}
+                    onTotalChange={setTotalSeasons}
+                  />
+
+                  <EditableField label="Rewatch Count" fieldId="rewatch" value={rewatchCount.toString()}>
+                    <div className="flex items-center gap-4 bg-[#1a1a1a] p-3 rounded-xl border border-white/5 w-fit">
+                      <button type="button" onClick={() => setRewatchCount(Math.max(0, rewatchCount - 1))} className="p-1 hover:text-white text-[#555] transition-colors"><X className="w-4 h-4 rotate-45"/></button>
+                      <span className="text-sm font-bold text-white min-w-[20px] text-center">{rewatchCount}</span>
+                      <button type="button" onClick={() => setRewatchCount(rewatchCount + 1)} className="p-1 hover:text-white text-[#555] transition-colors"><Plus className="w-4 h-4"/></button>
+                    </div>
+                  </EditableField>
+
+                  <SectionHeader title="Archival Lists" />
+                  <div className="flex flex-wrap gap-2 mb-8">
+                    {availableLists.map((list) => (
+                      <button
+                        key={list.id}
+                        type="button"
+                        onClick={() => {
+                          const next = new Set(selectedListIds);
+                          if (next.has(list.id)) next.delete(list.id);
+                          else next.add(list.id);
+                          setSelectedListIds(next);
+                        }}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-[11px] font-mono tracking-wider transition-all border",
+                          selectedListIds.has(list.id) 
+                            ? "bg-white text-black border-white font-bold" 
+                            : "bg-transparent text-[#aaa] border-white/10 hover:border-white/20"
+                        )}
+                      >
+                        {list.name.toUpperCase()}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setIsNewListOpen(true)}
+                      className="px-4 py-1.5 rounded-full text-[11px] font-mono tracking-wider border border-dashed border-white/10 text-[#555] hover:text-[#888] hover:border-white/20 transition-all"
+                    >
+                      + NEW LIST
+                    </button>
+                  </div>
+
+                  <SectionHeader title="Archival Dates" />
+                  <div className="grid grid-cols-2 gap-6 mb-8">
+                    <DateField 
+                      label="Date Started" 
+                      fieldId="dateStarted"
+                      value={startDate} 
+                      onChange={setStartDate}
+                      onToday={() => setStartDate(todayISODate())}
+                      onUnknown={() => setStartDate("")}
+                    />
+                    <DateField 
+                      label="Date Completed" 
+                      fieldId="dateCompleted"
+                      value={completionDate} 
+                      onChange={setCompletionDate}
+                      onToday={() => setCompletionDate(todayISODate())}
+                      onUnknown={() => setCompletionUnknown(!completionUnknown)}
+                      unknownChecked={completionUnknown}
                     />
                   </div>
-                  <div className="space-y-2 col-span-1 sm:col-span-2">
-                    <div className="text-xs font-medium text-neutral-400">Platform</div>
-                    {!isCustomPlatform ? (
-                      <div className="space-y-3">
-                        <div className="max-h-48 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-2 custom-scrollbar">
-                          {PLATFORM_OPTIONS.map((opt) => (
+
+                  <SectionHeader title="Relations" />
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
+                    <input
+                      value={relationSearchQuery}
+                      onChange={(e) => {
+                        setRelationSearchQuery(e.target.value);
+                        setSelectedRelationDoc(null);
+                      }}
+                      placeholder="Search for related media..."
+                      className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white focus:outline-none focus:border-white/10"
+                    />
+                    {relationSearchQuery && !selectedRelationDoc && (
+                      <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-20">
+                        {entries
+                          .filter(e => e.title.toLowerCase().includes(relationSearchQuery.toLowerCase()) && String(e.id) !== String(normalizedInitial?.id))
+                          .map(e => (
                             <button
-                              key={opt.id}
+                              key={e.id}
                               type="button"
-                              onClick={() => setPlatform(opt.id)}
-                              className={cn(
-                                "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
-                                platform === opt.id
-                                  ? "bg-neutral-100 border-neutral-100 text-neutral-950"
-                                  : "bg-neutral-800/50 border-white/5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200",
-                              )}
+                              onClick={() => { setSelectedRelationDoc(e); setRelationSearchQuery(e.title); }}
+                              className="w-full text-left px-4 py-2 text-[12px] text-[#888] hover:bg-white/[0.03] hover:text-white"
                             >
-                              <opt.icon size={14} />
-                              <span className="truncate">{opt.label}</span>
+                              {e.title}
                             </button>
                           ))}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsCustomPlatform(true);
-                            setPlatform("");
-                          }}
-                          className="flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
-                        >
-                          <Plus size={12} />
-                          <span>Other platform...</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <input
-                            value={platform}
-                            onChange={(e) => setPlatform(e.target.value)}
-                            placeholder="e.g. Ouya"
-                            className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsCustomPlatform(false);
-                              setPlatform("");
-                            }}
-                            className="px-4 rounded-xl border border-white/10 bg-neutral-800/50 text-xs font-semibold text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
                       </div>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-neutral-400">Achievements</div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        value={achievements}
-                        onChange={(e) => setAchievements(e.target.value)}
-                        placeholder="Unlocked"
-                        className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                      />
-                      <span className="text-neutral-500">/</span>
-                      <input
-                        type="number"
-                        value={totalAchievements}
-                        onChange={(e) => setTotalAchievements(e.target.value)}
-                        placeholder="Total"
-                        className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-neutral-400">Release year</div>
-                <input
-                  value={releaseYear}
-                  onChange={(e) => setReleaseYear(e.target.value)}
-                  placeholder="e.g. 2024"
-                  inputMode="numeric"
-                  maxLength={4}
-                  className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                />
-                {releaseYearError ? (
-                  <div className="text-xs text-red-400">{releaseYearError}</div>
-                ) : null}
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-medium text-neutral-400">Your rating</div>
-                    <div className="text-xs text-neutral-500">1â€“10</div>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {relations.map((rel, idx) => (
+                      <div key={idx} className="flex items-center gap-3 bg-[#1a1a1a] border border-white/5 p-2 rounded-lg pr-3">
+                        <div className="w-8 h-12 relative rounded overflow-hidden bg-[#222]">
+                          {rel.image && <ImageWithSkeleton src={rel.image} alt="" fill className="object-cover" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-[12px] text-white font-medium truncate max-w-[120px]">{rel.title}</div>
+                          <div className="text-[10px] text-[#555] font-mono uppercase tracking-tight">{rel.type}</div>
+                        </div>
+                        <button type="button" onClick={() => setRelations(prev => prev.filter((_, i) => i !== idx))} className="text-[#333] hover:text-white transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <input
-                    type="number"
-                    value={userRating}
-                    onChange={(e) => setUserRating(e.target.value)}
-                    placeholder="Optional"
-                    inputMode="numeric"
-                    min={1}
-                    max={10}
-                    step={1}
-                    className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                  />
-                  {userRatingError ? (
-                    <div className="text-xs text-red-400">{userRatingError}</div>
-                  ) : null}
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-medium text-neutral-400">
-                      {mediaType === "game"
-                        ? "IGDB Rating"
-                        : mediaType === "anime" || mediaType === "manga"
-                          ? "MAL Rating"
-                          : "IMDb Rating"}
-                    </div>
-                    <div className="text-xs text-neutral-500">0â€“10</div>
-                  </div>
-                  <input
-                    type="number"
-                    value={imdbRating}
-                    onChange={(e) => setImdbRating(e.target.value)}
-                    placeholder="Optional"
-                    inputMode="decimal"
-                    min={0}
-                    max={10}
-                    step={0.1}
-                    className="w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all"
-                  />
-                  {imdbRatingError ? (
-                    <div className="text-xs text-red-400">{imdbRatingError}</div>
-                  ) : null}
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs font-medium text-neutral-400">Date of completion</div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCompletionDate(todayISODate())}
-                      disabled={
-                        (status !== "completed" &&
-                          status !== "main_story_completed" &&
-                          status !== "fully_completed") ||
-                        completionUnknown ||
-                        isSaving
-                      }
-                      className={cn(
-                        "rounded-full border border-neutral-100/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 transition-colors hover:bg-neutral-800 hover:text-neutral-100",
-                        (status !== "completed" &&
-                          status !== "main_story_completed" &&
-                          status !== "fully_completed") ||
-                          completionUnknown ||
-                          isSaving
-                          ? "cursor-not-allowed opacity-70"
-                          : "",
-                      )}
-                    >
-                      Today
-                    </button>
-                    <label className="flex items-center gap-2 text-xs text-neutral-300">
-                      <input
-                        type="checkbox"
-                        checked={completionUnknown}
-                        onChange={(e) => {
-                          const next = e.target.checked;
-                          setCompletionUnknown(next);
-                          if (next) setCompletionDate("");
-                          if (
-                            !next &&
-                            (status === "completed" ||
-                              status === "main_story_completed" ||
-                              status === "fully_completed") &&
-                            !completionDate
-                          )
-                            setCompletionDate(todayISODate());
-                        }}
-                        disabled={
-                          (status !== "completed" &&
-                            status !== "main_story_completed" &&
-                            status !== "fully_completed") ||
-                          isSaving
-                        }
-                        className="h-4 w-4 rounded border border-neutral-100/10 bg-neutral-800/50"
-                      />
-                      Unknown
-                    </label>
-                  </div>
-                </div>
-                <input
-                  type="date"
-                  value={completionDate}
-                  onChange={(e) => setCompletionDate(e.target.value)}
-                  disabled={
-                    (status !== "completed" &&
-                      status !== "main_story_completed" &&
-                      status !== "fully_completed") ||
-                    completionUnknown ||
-                    isSaving
-                  }
-                  className={cn(
-                    "w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all",
-                    (status !== "completed" &&
-                      status !== "main_story_completed" &&
-                      status !== "fully_completed") ||
-                      completionUnknown ||
-                      isSaving
-                      ? "cursor-not-allowed opacity-70"
-                      : "",
-                  )}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-neutral-400">Genres / themes</div>
-                  <div className="text-xs text-neutral-500">{tags.length}/10 tags</div>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {tags.map((tag, index) => (
-                    <div
-                      key={tag}
-                      className="flex items-center gap-1 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-200 border border-neutral-100/10"
-                    >
-                      <span>{tag}</span>
+                  {selectedRelationDoc && (
+                    <div className="flex gap-2 p-3 bg-[#1a1a1a] rounded-lg border border-white/10 shadow-xl">
+                      <select
+                        value={selectedRelationType}
+                        onChange={(e) => setSelectedRelationType(e.target.value as RelationType)}
+                        className="flex-1 bg-black/20 border border-white/5 rounded px-3 text-[11px] text-white font-mono"
+                      >
+                        {RELATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
                       <button
                         type="button"
                         onClick={() => {
-                          const newTags = [...tags];
-                          newTags.splice(index, 1);
-                          setTags(newTags);
-                        }}
-                        className="ml-1 text-neutral-500 hover:text-neutral-100 transition-colors"
-                        aria-label={`Remove ${tag}`}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          className="h-3 w-3"
-                        >
-                          <title>Remove</title>
-                          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <input
-                  value={tagInput}
-                  onChange={(e) => {
-                    setError(null);
-                    const val = e.target.value;
-                    const cleanVal = val.replace(/[^A-Za-z_,\s]/g, "");
-
-                    if (cleanVal.includes(",")) {
-                      if (tags.length >= 10) {
-                        setError("Maximum of 10 tags allowed.");
-                        return;
-                      }
-                      const parts = cleanVal.split(",");
-                      const newTags = [...tags];
-                      let errorMsg = null;
-
-                      for (const part of parts) {
-                        const trimmed = part.trim();
-                        if (!trimmed) continue;
-
-                        if (newTags.includes(trimmed)) {
-                          errorMsg = `Duplicate tag: "${trimmed}"`;
-                          continue;
-                        }
-
-                        if (newTags.length >= 10) {
-                          errorMsg = "Maximum of 10 tags allowed.";
-                          break;
-                        }
-
-                        newTags.push(trimmed);
-                      }
-
-                      if (errorMsg) setError(errorMsg);
-                      setTags(newTags);
-                      const lastCommaIndex = cleanVal.lastIndexOf(",");
-                      const remainder = cleanVal.substring(lastCommaIndex + 1);
-                      setTagInput(remainder);
-                    } else {
-                      setTagInput(cleanVal);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Backspace" && !tagInput && tags.length > 0) {
-                      const newTags = [...tags];
-                      newTags.pop();
-                      setTags(newTags);
-                    }
-                  }}
-                  disabled={tags.length >= 10}
-                  placeholder={
-                    tags.length >= 10 ? "Limit reached" : "e.g. dark_fantasy, coming_of_age"
-                  }
-                  className={cn(
-                    "w-full rounded-xl bg-neutral-800/50 border border-neutral-100/5 py-3 px-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-100/20 focus:ring-1 focus:ring-neutral-100/20 transition-all",
-                    tags.length >= 10 ? "opacity-50 cursor-not-allowed" : "",
-                  )}
-                />
-                <div className="space-y-1 text-xs text-neutral-500">
-                  <div>
-                    Type a comma to add a tag. Allowed: letters (Aâ€“Z), underscores, spaces.
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-neutral-300" htmlFor="description">
-                  Description
-                </label>
-                <DescriptionTextarea
-                  id="description"
-                  value={description}
-                  onValueChange={setDescription}
-                  rows={4}
-                  placeholder="What did you think?"
-                />
-              </div>
-
-              <div className="space-y-2 pt-2 border-t border-white/5 mt-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-neutral-300" htmlFor="related-entries">
-                    Related Entries
-                  </label>
-                </div>
-                <div className="space-y-3">
-                  {relations.map((rel, idx) => (
-                    <div
-                      key={`${rel.targetId}-${rel.type}`}
-                      className="flex items-center gap-3 bg-neutral-800/50 p-3 rounded-xl border border-white/5"
-                    >
-                      {rel.image ? (
-                        <div className="w-8 h-12 relative rounded overflow-hidden shrink-0 bg-neutral-800 hidden sm:block">
-                          <ImageWithSkeleton src={rel.image} alt="" fill className="object-cover" />
-                        </div>
-                      ) : (
-                        <div className="w-8 h-12 rounded bg-neutral-800 shrink-0 hidden sm:block" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-neutral-200 truncate">
-                          {rel.title}
-                        </div>
-                        <div className="text-[10px] text-neutral-500">{rel.type}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setRelations((prev) => prev.filter((_, i) => i !== idx))}
-                        className="text-neutral-500 hover:text-red-400 p-2"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-
-                  {!isRelationSearchOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setError(null);
-                        setIsRelationSearchOpen(true);
-                      }}
-                      className="flex items-center gap-2 text-xs font-medium text-neutral-400 hover:text-neutral-200 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" /> Add Related Entry
-                    </button>
-                  ) : (
-                    <div className="bg-neutral-800/80 p-3 rounded-xl border border-white/10 space-y-3">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                        <input
-                          value={relationSearchQuery}
-                          onChange={(e) => {
-                            setError(null);
-                            setRelationSearchQuery(e.target.value);
-                            setSelectedRelationDoc(null);
-                          }}
-                          placeholder="Search your library..."
-                          className="w-full bg-neutral-900/50 border border-white/5 rounded-lg py-2 pl-9 pr-3 text-sm text-neutral-200 focus:outline-none focus:border-white/20"
-                        />
-                        {relationSearchQuery && !selectedRelationDoc && (
-                          <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-neutral-900 border border-white/10 rounded-lg shadow-xl z-50">
-                            {entries
-                              .filter((entry) => {
-                                const entryId = String(entry.id);
-                                return (
-                                  entry.title
-                                    .toLowerCase()
-                                    .includes(relationSearchQuery.toLowerCase()) &&
-                                  entryId !== String(normalizedInitial?.id || "new") &&
-                                  !relatedTargetIdSet.has(entryId)
-                                );
-                              })
-                              .map((e) => (
-                                <button
-                                  type="button"
-                                  key={e.id}
-                                  onClick={() => {
-                                    setSelectedRelationDoc(e);
-                                    setRelationSearchQuery(e.title);
-                                  }}
-                                  className="w-full text-left px-3 py-2 text-xs text-neutral-300 hover:bg-white/10 truncate"
-                                >
-                                  {e.title}
-                                </button>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                      {selectedRelationDoc && (
-                        <div className="flex gap-2">
-                          <select
-                            value={selectedRelationType}
-                            onChange={(e) =>
-                              setSelectedRelationType(e.target.value as RelationType)
-                            }
-                            className="flex-1 bg-neutral-900/50 border border-white/5 rounded-lg py-2 px-3 text-sm text-neutral-200 focus:outline-none focus:border-white/20"
-                          >
-                            {RELATION_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const targetId = String(selectedRelationDoc.id);
-                              if (targetId === String(normalizedInitial?.id || "new")) {
-                                setError("You cannot relate an entry to itself.");
-                                return;
-                              }
-                              if (relations.some((relation) => relation.targetId === targetId)) {
-                                setError(
-                                  "This entry is already related. Remove it first to change the relation type.",
-                                );
-                                return;
-                              }
-                              setError(null);
-                              setRelations((prev) => [
-                                ...prev,
-                                {
-                                  targetId,
-                                  type: selectedRelationType,
-                                  title: selectedRelationDoc.title,
-                                  image: selectedRelationDoc.image,
-                                  mediaType: selectedRelationDoc.mediaType,
-                                },
-                              ]);
-                              setIsRelationSearchOpen(false);
-                              setRelationSearchQuery("");
-                              setSelectedRelationDoc(null);
-                            }}
-                            className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-4 rounded-lg transition-colors"
-                          >
-                            Add
-                          </button>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsRelationSearchOpen(false);
+                          setRelations(prev => [...prev, {
+                            targetId: String(selectedRelationDoc.id),
+                            type: selectedRelationType,
+                            title: selectedRelationDoc.title,
+                            image: selectedRelationDoc.image,
+                            mediaType: selectedRelationDoc.mediaType
+                          }]);
                           setRelationSearchQuery("");
                           setSelectedRelationDoc(null);
                         }}
-                        className="w-full text-xs text-neutral-500 hover:text-neutral-300 py-1 text-center"
+                        className="px-4 py-1.5 rounded-full bg-white text-black text-[9px] font-bold uppercase tracking-widest"
                       >
-                        Cancel
+                        + ADD
                       </button>
                     </div>
                   )}
                 </div>
-              </div>
+              )}
             </div>
+          </div>
 
-            <div className="space-y-3 pt-4">
-              {error && <div className="text-sm text-red-400">{error}</div>}
-              {info && <div className="text-sm text-emerald-300">{info}</div>}
-
-              <button
-                type="submit"
-                disabled={isSaving}
-                className={cn(
-                  "w-full rounded-xl bg-neutral-100/90 backdrop-blur-sm py-3 font-semibold text-neutral-950 transition-all hover:bg-neutral-100 hover:shadow-[0_0_20px_rgba(245,245,245,0.1)] active:scale-[0.98]",
-                  isSaving ? "cursor-not-allowed opacity-70" : "",
-                )}
-              >
-                {isSaving ? "Saving..." : "Save entry"}
-              </button>
+          {/* Footer Bar */}
+          <div className="h-16 shrink-0 bg-[#111] border-top border-white/[0.06] px-6 flex items-center justify-between z-30">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#555] hover:text-[#888] transition-colors"
+            >
+              DISCARD DRAFT
+            </button>
+            <div className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#333]">
+              PRESS ESC TO EXIT
             </div>
-          </form>
-        )}
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="bg-white text-[#111] px-7 py-2.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-[0.14em] hover:bg-neutral-200 transition-colors disabled:opacity-50"
+            >
+              {isSaving ? "SAVING..." : "SAVE ENTRY"}
+            </button>
+          </div>
+        </form>
       </div>
+
       <NewListModal
         isOpen={isNewListOpen}
         onClose={() => setIsNewListOpen(false)}
@@ -1982,15 +1692,15 @@ export function LogEntryModal({
           const next = new Set(selectedListIds);
           next.add(list.id);
           setSelectedListIds(next);
-          setInfo("List created and selected.");
         }}
       />
+      
       <InfographicToast
         isOpen={Boolean(duplicateToast)}
         title="Duplicate Detected"
         message={duplicateToast?.message || ""}
         onClose={() => setDuplicateToast(null)}
       />
-    </Modal>
+    </div>
   );
 }
