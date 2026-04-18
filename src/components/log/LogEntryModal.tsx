@@ -342,9 +342,7 @@ function InlineEditable({
       onClick={() => setActiveField(fieldId)}
     >
       {children ?? (
-        <div className={className}>
-          {value || <span className="text-[#333]">—</span>}
-        </div>
+        <div className={className}>{value || <span className="text-[#333]">—</span>}</div>
       )}
       <span className="absolute -top-1 -right-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 pointer-events-none">
         <svg
@@ -557,8 +555,8 @@ function useLists(uid: string | null, isOpen: boolean) {
           const types = (
             Array.isArray(data.types)
               ? data.types.filter((t): t is ListMediaType =>
-                ["movie", "series", "anime", "manga", "game"].includes(t),
-              )
+                  ["movie", "series", "anime", "manga", "game"].includes(t),
+                )
               : [singleType]
           ) as ListMediaType[];
           return { id: d.id, name: data.name || "Untitled List", type: singleType, types };
