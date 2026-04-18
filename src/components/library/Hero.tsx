@@ -20,7 +20,7 @@ export function Hero({
   const totalTracked = stats.movies + stats.series + stats.anime + stats.manga + stats.games;
 
   return (
-    <div className="relative w-full overflow-hidden pt-22">
+    <div className="relative w-full overflow-hidden">
       <div className="relative z-10 w-full px-4 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

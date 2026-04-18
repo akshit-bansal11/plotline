@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, LogIn, LogOut, Settings, Upload, UserCircle } from "lucide-react";
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -18,18 +18,13 @@ import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { useSection } from "@/context/SectionContext";
-import { cn } from "@/utils";
 
 export function Navbar() {
-  const { scrollY } = useScroll();
   const { setActiveSection } = useSection();
   const { user, signOut } = useAuth();
   const userLabel = user?.displayName || user?.email;
   const avatarUrl = user?.photoURL || null;
 
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isHidden, setIsHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -188,158 +183,128 @@ export function Navbar() {
     }
   };
 
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    const previous = lastScrollY;
-    setLastScrollY(latest);
-
-    if (latest > 50) {
-      setIsScrolled(true);
-    } else {
-      setIsScrolled(false);
-    }
-
-    if (latest > previous && latest > 150) {
-      setIsHidden(true);
-    } else {
-      setIsHidden(false);
-    }
-  });
-
   return (
     <>
-      <motion.header
-        variants={{
-          visible: { y: 0 },
-          hidden: { y: "-100%" },
-        }}
-        animate={isHidden ? "hidden" : "visible"}
-        transition={{ duration: 0.35, ease: "easeInOut" }}
-        className={cn(
-          "fixed left-0 right-0 top-0 z-40 transition-all duration-300",
-          isScrolled ? "bg-neutral-950/55 py-3 backdrop-blur-xl" : "bg-transparent py-5",
-        )}
-      >
-        <div className="flex w-full items-center justify-between px-4 md:px-8">
-          <Link
-            href="/"
-            scroll={false}
-            onClick={() => setActiveSection("home")}
-            className="flex items-center gap-3 relative z-50 shrink-0 text-5xl font-extralight font-geoma text-white"
-          >
-            <p>Plotline</p>
-          </Link>
+      <header className="bg-neutral-950/55 py-3 flex w-full items-center justify-between px-4 md:px-8">
+        <Link
+          href="/"
+          scroll={false}
+          onClick={() => setActiveSection("home")}
+          className="flex items-center gap-3 relative shrink-0 text-5xl font-extralight font-geoma text-white"
+        >
+          <p>Plotline</p>
+        </Link>
 
-          <div className="hidden min-w-0 items-center justify-end gap-3 md:flex">
-            <NavLinks className="shrink-0" />
-            <GlobalSearch
-              className="hidden w-[200px] max-w-none focus-within:w-[480px] md:block"
-              onSelectMedia={handleGlobalSearchSelect}
-              onRequireAuth={() => setIsAuthOpen(true)}
-              disabled={!user}
-            />
-
-            {userLabel ? (
-              <div className="relative hidden items-center md:flex">
-                <button
-                  ref={triggerRef}
-                  type="button"
-                  onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                  onKeyDown={handleTriggerKeyDown}
-                  aria-haspopup="menu"
-                  aria-expanded={isProfileMenuOpen}
-                  aria-label={userLabel || "Profile"}
-                  className="flex items-center rounded-full border border-white/10 bg-neutral-900/40 p-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-900/60"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-neutral-900/50 text-xs font-semibold text-neutral-300">
-                    {avatarUrl ? (
-                      <ImageWithSkeleton
-                        src={avatarUrl}
-                        alt={userLabel || "User"}
-                        width={32}
-                        height={32}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      (userLabel || "U").slice(0, 1).toUpperCase()
-                    )}
-                  </div>
-                </button>
-                <AnimatePresence>
-                  {isProfileMenuOpen && (
-                    <motion.div
-                      ref={menuRef}
-                      role="menu"
-                      onKeyDown={handleMenuKeyDown}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 6 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute right-0 top-[calc(100%+8px)] w-72 rounded-2xl border border-white/10 bg-neutral-950/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-                    >
-                      <div className="mb-2 rounded-xl border border-white/5 bg-neutral-900/60 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-white">
-                              {userLabel}
-                            </div>
-                            <div className="text-[11px] text-neutral-500">{user?.email || ""}</div>
-                          </div>
-                          <CountrySelector />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        {menuItems.map((item, index) => (
-                          <MenuItem
-                            key={item.label}
-                            label={item.label}
-                            icon={item.icon}
-                            onClick={item.onClick}
-                            buttonRef={(node) => {
-                              menuItemRefs.current[index] = node;
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div className="my-1 h-px bg-white/10" />
-                      <MenuItem
-                        label="Log out"
-                        icon={LogOut}
-                        onClick={handleSignOut}
-                        className="text-neutral-400 hover:!bg-red-500/10 hover:!text-red-400"
-                        buttonRef={(node) => {
-                          menuItemRefs.current[menuItems.length] = node;
-                        }}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsAuthOpen(true)}
-                className="hidden items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white md:flex"
-              >
-                <LogIn size={16} suppressHydrationWarning />
-                <span>Sign In</span>
-              </button>
-            )}
-          </div>
-
-          <MobileMenu
-            onAuthOpen={() => setIsAuthOpen(true)}
-            onSearchOpen={() => {
-              setPendingItem(null);
-              setIsLogOpen(true);
-            }}
-            onProfileOpen={() => setIsProfileOpen(true)}
-            onImportExportOpen={() => setIsImportExportOpen(true)}
-            onSettingsOpen={() => setIsSettingsOpen(true)}
-            userLabel={userLabel}
+        <div className="hidden min-w-0 items-center justify-end gap-3 md:flex">
+          <NavLinks className="shrink-0" />
+          <GlobalSearch
+            className="hidden w-[200px] max-w-none focus-within:w-[480px] md:block"
+            onSelectMedia={handleGlobalSearchSelect}
+            onRequireAuth={() => setIsAuthOpen(true)}
+            disabled={!user}
           />
+
+          {userLabel ? (
+            <div className="relative hidden items-center md:flex">
+              <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                onKeyDown={handleTriggerKeyDown}
+                aria-haspopup="menu"
+                aria-expanded={isProfileMenuOpen}
+                aria-label={userLabel || "Profile"}
+                className="flex items-center rounded-full border border-white/10 bg-neutral-900/40 p-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-900/60"
+              >
+                <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-neutral-900/50 text-xs font-semibold text-neutral-300">
+                  {avatarUrl ? (
+                    <ImageWithSkeleton
+                      src={avatarUrl}
+                      alt={userLabel || "User"}
+                      width={32}
+                      height={32}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    (userLabel || "U").slice(0, 1).toUpperCase()
+                  )}
+                </div>
+              </button>
+              <AnimatePresence>
+                {isProfileMenuOpen && (
+                  <motion.div
+                    ref={menuRef}
+                    role="menu"
+                    onKeyDown={handleMenuKeyDown}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 top-[calc(100%+8px)] w-72 rounded-2xl border border-white/10 bg-neutral-950/95 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                  >
+                    <div className="mb-2 rounded-xl border border-white/5 bg-neutral-900/60 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-white">
+                            {userLabel}
+                          </div>
+                          <div className="text-[11px] text-neutral-500">{user?.email || ""}</div>
+                        </div>
+                        <CountrySelector />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      {menuItems.map((item, index) => (
+                        <MenuItem
+                          key={item.label}
+                          label={item.label}
+                          icon={item.icon}
+                          onClick={item.onClick}
+                          buttonRef={(node) => {
+                            menuItemRefs.current[index] = node;
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="my-1 h-px bg-white/10" />
+                    <MenuItem
+                      label="Log out"
+                      icon={LogOut}
+                      onClick={handleSignOut}
+                      className="text-neutral-400 hover:!bg-red-500/10 hover:!text-red-400"
+                      buttonRef={(node) => {
+                        menuItemRefs.current[menuItems.length] = node;
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsAuthOpen(true)}
+              className="hidden items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white md:flex"
+            >
+              <LogIn size={16} suppressHydrationWarning />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
-      </motion.header>
+
+        <MobileMenu
+          onAuthOpen={() => setIsAuthOpen(true)}
+          onSearchOpen={() => {
+            setPendingItem(null);
+            setIsLogOpen(true);
+          }}
+          onProfileOpen={() => setIsProfileOpen(true)}
+          onImportExportOpen={() => setIsImportExportOpen(true)}
+          onSettingsOpen={() => setIsSettingsOpen(true)}
+          userLabel={userLabel}
+        />
+      </header>
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <LogEntryModal
