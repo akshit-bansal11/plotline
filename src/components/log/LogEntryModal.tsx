@@ -291,13 +291,23 @@ function InlineEditable({
     setActiveField(null);
   };
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    if (multiline) textareaRef.current?.focus();
+    else inputRef.current?.focus();
+  }, [isActive, multiline]);
+
   const inputCls =
     "w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/20 transition-all";
 
   if (isActive) {
     return multiline ? (
       <textarea
-        autoFocus
+        ref={textareaRef}
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         onBlur={commit}
@@ -312,7 +322,7 @@ function InlineEditable({
       />
     ) : (
       <input
-        autoFocus
+        ref={inputRef}
         type={type}
         value={local}
         onChange={(e) => setLocal(e.target.value)}
@@ -699,6 +709,13 @@ export function LogEntryModal({
   const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(
     null,
   );
+  const tagRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (activeField === "left-tags") {
+      tagRef.current?.focus();
+    }
+  }, [activeField]);
 
   // ── External data ────────────────────────────────────────────────────────────
   const lists = useLists(uid, isOpen);
@@ -1302,7 +1319,7 @@ export function LogEntryModal({
                 {activeField === "left-tags" && (
                   <div className="w-full mt-2">
                     <input
-                      autoFocus
+                      ref={tagRef}
                       placeholder="Comma-separated tags…"
                       defaultValue={tags.join(", ")}
                       onBlur={(e) => {
