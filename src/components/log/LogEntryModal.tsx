@@ -375,7 +375,7 @@ function StarRating({ value, onChange }: { value: string; onChange: (v: string) 
           const filled = (hover || numeric) >= n;
           return (
             <button
-              key={i}
+              key={n}
               type="button"
               onClick={() => onChange(String(n))}
               onMouseEnter={() => setHover(n)}
@@ -1570,7 +1570,7 @@ export function LogEntryModal({
                 <div className="flex flex-wrap gap-2 mb-4">
                   {relations.map((rel, idx) => (
                     <div
-                      key={`${rel.targetId}-${idx}`}
+                      key={rel.targetId}
                       className="flex items-center gap-3 bg-[#1a1a1a] border border-white/5 p-2 pr-3 rounded-lg"
                     >
                       <div className="w-8 h-12 relative rounded overflow-hidden bg-[#222] shrink-0">
