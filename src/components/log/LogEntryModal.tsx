@@ -552,8 +552,8 @@ function useLists(uid: string | null, isOpen: boolean) {
           const types = (
             Array.isArray(data.types)
               ? data.types.filter((t): t is ListMediaType =>
-                  ["movie", "series", "anime", "manga", "game"].includes(t),
-                )
+                ["movie", "series", "anime", "manga", "game"].includes(t),
+              )
               : [singleType]
           ) as ListMediaType[];
           return { id: d.id, name: data.name || "Untitled List", type: singleType, types };
@@ -836,7 +836,7 @@ export function LogEntryModal({
       setPlatform(normalizedInitial.platform ?? "");
       setIsCustomPlatform(
         !!normalizedInitial.platform &&
-          !PLATFORM_OPTIONS.some((p) => p.id === normalizedInitial.platform),
+        !PLATFORM_OPTIONS.some((p) => p.id === normalizedInitial.platform),
       );
       setPlayTime(normalizedInitial.playTime ? String(normalizedInitial.playTime) : "");
       setAchievements(normalizedInitial.achievements ? String(normalizedInitial.achievements) : "");
