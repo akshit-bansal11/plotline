@@ -18,13 +18,13 @@ import {
 import { LayoutGrid, List, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EntryDetailModal } from "@/components/entry/EntryDetailModal";
-import { LogEntryModal } from "@/components/entry/LogEntryModal";
 import { Hero } from "@/components/library/Hero";
 import { MediaGrid } from "@/components/library/MediaGrid";
 import { MediaSection } from "@/components/library/MediaSection";
 import { MyListsModal } from "@/components/lists/MyListsModal";
 import { NewListModal } from "@/components/lists/NewListModal";
+import { EntryDetailModal } from "@/components/log/EntryDetailModal";
+import { LogEntryModal } from "@/components/log/LogEntryModal";
 import { Modal } from "@/components/overlay/Modal";
 import { LibrarySearchBar } from "@/components/search/LibrarySearchBar";
 import { GlassCard } from "@/components/ui/GlassCard";
