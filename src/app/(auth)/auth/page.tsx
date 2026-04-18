@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
+// import Image from "next/image";
 import { useState } from "react";
 import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 import { ForgotPassword } from "@/components/auth/ForgotPassword";
@@ -59,13 +59,13 @@ function AuthContent() {
       <div className="relative w-full max-w-105 z-10">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
-          <Image
+          {/* <Image
             src="draft-2-vector.svg"
             alt="Plotline"
             width={48}
             height={48}
             className="mx-auto"
-          />
+          /> */}
           <h1 className="text-4xl font-light font-sans text-white tracking-tight">{heading}</h1>
           <p className="text-white/50 text-sm mt-1">
             {view === "login"

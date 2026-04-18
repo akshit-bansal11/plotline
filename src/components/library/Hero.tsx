@@ -21,7 +21,7 @@ export function Hero({
 
   return (
     <div className="relative w-full overflow-hidden pt-22">
-      <div className="relative z-10 w-full px-4">
+      <div className="relative z-10 w-full px-4 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

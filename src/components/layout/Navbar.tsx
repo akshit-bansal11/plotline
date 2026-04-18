@@ -224,9 +224,8 @@ export function Navbar() {
             href="/"
             scroll={false}
             onClick={() => setActiveSection("home")}
-            className="flex items-center gap-3 relative z-50 shrink-0 text-5xl font-extralight font-neofolia text-white"
+            className="flex items-center gap-3 relative z-50 shrink-0 text-5xl font-extralight font-geoma text-white"
           >
-            {/* <Image src="/draft-2-vector.svg" alt="Plotline" height={25} width={25} /> */}
             <p>Plotline</p>
           </Link>
 
