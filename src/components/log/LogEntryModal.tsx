@@ -555,8 +555,8 @@ function useLists(uid: string | null, isOpen: boolean) {
           const types = (
             Array.isArray(data.types)
               ? data.types.filter((t): t is ListMediaType =>
-                  ["movie", "series", "anime", "manga", "game"].includes(t),
-                )
+                ["movie", "series", "anime", "manga", "game"].includes(t),
+              )
               : [singleType]
           ) as ListMediaType[];
           return { id: d.id, name: data.name || "Untitled List", type: singleType, types };
@@ -1208,9 +1208,6 @@ export function LogEntryModal({
             <div className="w-[420px] shrink-0 border-r border-white/5 overflow-y-auto p-7 flex flex-col bg-[#111]">
               {/* Top row: category label + type badge */}
               <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-mono text-[#555] uppercase tracking-[0.14em]">
-                  CULTURAL LEGACY
-                </span>
                 <span className="px-3 py-1 rounded-full border border-white/10 text-[11px] font-mono text-white/50 uppercase tracking-wider">
                   {mediaTypeLabels[mediaType] ?? mediaType}
                 </span>
