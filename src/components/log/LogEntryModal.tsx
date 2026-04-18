@@ -342,7 +342,9 @@ function InlineEditable({
       onClick={() => setActiveField(fieldId)}
     >
       {children ?? (
-        <div className={className}>{value || <span className="text-[#333]">—</span>}</div>
+        <div className={className}>
+          {value || <span className="text-[#333]">—</span>}
+        </div>
       )}
       <span className="absolute -top-1 -right-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 pointer-events-none">
         <svg
