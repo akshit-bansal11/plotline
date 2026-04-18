@@ -16,13 +16,13 @@ import {
 import { Filter, Pencil, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LoggableMedia } from "@/components/log-entry/LogEntryModal";
 import { Modal } from "@/components/overlay/Modal";
 import { DescriptionErrorWrapper } from "@/components/ui/DescriptionErrorWrapper";
 import { DescriptionTextarea } from "@/components/ui/DescriptionTextarea";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
+import type { LoggableMedia } from "@/types/log-entry";
 import { cn } from "@/utils";
 import { MAX_DESCRIPTION_LENGTH } from "@/utils/validation";
 
@@ -261,10 +261,10 @@ export function MyListsModal({
           };
           const typeValue =
             data.mediaType === "movie" ||
-            data.mediaType === "series" ||
-            data.mediaType === "anime" ||
-            data.mediaType === "manga" ||
-            data.mediaType === "game"
+              data.mediaType === "series" ||
+              data.mediaType === "anime" ||
+              data.mediaType === "manga" ||
+              data.mediaType === "game"
               ? data.mediaType
               : "movie";
           return {
