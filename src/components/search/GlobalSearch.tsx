@@ -3,8 +3,8 @@
 import { Filter, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LoggableMedia } from "@/components/log-entry/LogEntryModal";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
+import type { LoggableMedia } from "@/types/log-entry";
 import { cn } from "@/utils";
 import {
   ANIME_STUDIO_OPTIONS,
@@ -159,7 +159,7 @@ export function GlobalSearch({
       }
 
       const targetEl = target as HTMLElement;
-      const interactiveField = targetEl.closest("input, textarea, select, option");
+      const interactiveField = targetEl.closest("button, input, textarea, select, option");
       if (interactiveField) return;
 
       requestAnimationFrame(() => {
@@ -528,10 +528,10 @@ export function GlobalSearch({
             setIsOpen(true);
           }}
           onFocus={() => {
-            setIsOpen(true);
-            if (query.trim().length === 0) {
+            if (query.trim().length === 0 && !isOpen) {
               setDiscoveryNonce((current) => current + 1);
             }
+            setIsOpen(true);
           }}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
@@ -613,7 +613,7 @@ export function GlobalSearch({
                   </div>
                 ) : null}
 
-                {!isLoading && results.length > 0 ? (
+                {results.length > 0 ? (
                   <div className="py-2">
                     <div className="px-4 pb-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
                       {results.length} suggestion

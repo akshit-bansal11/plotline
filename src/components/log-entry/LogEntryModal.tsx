@@ -1,38 +1,10 @@
 "use client";
 
 // ─── Firebase ────────────────────────────────────────────────────────────────
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  Timestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
+import { serverTimestamp, Timestamp } from "firebase/firestore";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-import {
-  ChevronDown,
-  Disc,
-  Gamepad2,
-  HardDrive,
-  Hexagon,
-  Laptop,
-  Monitor,
-  Plus,
-  Search,
-  Smartphone,
-  Tablet,
-  Terminal,
-  X,
-} from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 
 // ─── React ────────────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -43,324 +15,45 @@ import { InfographicToast } from "@/components/overlay/InfographicToast";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { type EntryDoc, useData } from "@/context/DataContext";
-import { db } from "@/lib/firebase";
-import {
-  RELATION_OPTIONS,
-  type RelationType,
-  updateBidirectionalRelations,
-} from "@/services/relations";
+import { RELATION_OPTIONS, type RelationType } from "@/services/relations";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/utils";
+import { GAME_STATUS_OPTIONS, STANDARD_STATUS_OPTIONS } from "../../data/log-entry";
+import {
+  useBodyScrollLock,
+  useEscapeKey,
+  useInitialListIds,
+  useLists,
+} from "../../hooks/use-log-entry";
+import { saveLogEntry } from "../../services/log-entry";
+// ─── Refactored modules ───────────────────────────────────────────────────────
+import type {
+  EditableRelation,
+  EntryMediaType,
+  EntryStatus,
+  LoggableMedia,
+} from "../../types/log-entry";
+import {
+  buildEditableRelations,
+  formatISODate,
+  parseISODate,
+  todayISODate,
+} from "../../utils/log-entry";
+import { InlineEditable } from "./InlineEditable";
+// ─── Extracted Components ─────────────────────────────────────────────────────
+import { SectionHeader } from "./SectionHeader";
+import { StatColumn } from "./StatColumn";
+import { Stepper } from "./Stepper";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────────────────────────────────────
-
-export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
-
-export type EntryStatus =
-  | "watching"
-  | "completed"
-  | "plan_to_watch"
-  | "on_hold"
-  | "dropped"
-  | "unspecified"
-  | "main_story_completed"
-  | "fully_completed"
-  | "backlogged"
-  | "bored"
-  | "own"
-  | "wishlist"
-  | "not_committed"
-  | "committed";
-
-type ListMediaType = "movie" | "series" | "anime" | "manga" | "game";
-
-type EditableRelation = {
-  targetId: string;
-  type: string;
-  title: string;
-  image: string | null;
-  mediaType: string;
-};
-
-export type LoggableMedia = {
-  id: string | number;
-  title: string;
-  image: string | null;
-  year?: string;
-  releaseYear?: string;
-  type: EntryMediaType | "anime_movie";
-  description?: string;
-  userRating?: number | null;
-  imdbRating?: number | null;
-  rating?: number | null;
-  lengthMinutes?: number | null;
-  episodeCount?: number | null;
-  chapterCount?: number | null;
-  playTime?: number | null;
-  achievements?: number | null;
-  totalAchievements?: number | null;
-  platform?: string | null;
-  isMovie?: boolean;
-  listIds?: string[];
-  genresThemes?: string[];
-  status?: EntryStatus;
-  completedAt?: number | null;
-  completionDateUnknown?: boolean;
-  relations?: {
-    targetId: string;
-    type: string;
-    createdAtMs: number;
-    inferred?: boolean;
-  }[];
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS / DATA
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const PLATFORM_OPTIONS = [
-  { id: "Steam", label: "Steam", icon: Monitor },
-  { id: "Epic Games", label: "Epic Games", icon: Hexagon },
-  { id: "PC Local", label: "PC Local", icon: HardDrive },
-  { id: "Physical Disc", label: "Physical Disc", icon: Disc },
-  { id: "PS5", label: "PS5", icon: Gamepad2 },
-  { id: "PS4", label: "PS4", icon: Gamepad2 },
-  { id: "PS3", label: "PS3", icon: Gamepad2 },
-  { id: "PS2", label: "PS2", icon: Gamepad2 },
-  { id: "PS", label: "PS", icon: Gamepad2 },
-  { id: "PSP", label: "PSP", icon: Gamepad2 },
-  { id: "PS5 Pro", label: "PS5 Pro", icon: Gamepad2 },
-  { id: "Xbox Series X", label: "Xbox Series X", icon: Gamepad2 },
-  { id: "Xbox Series S", label: "Xbox Series S", icon: Gamepad2 },
-  { id: "Xbox One X", label: "Xbox One X", icon: Gamepad2 },
-  { id: "Xbox One S", label: "Xbox One S", icon: Gamepad2 },
-  { id: "Xbox One", label: "Xbox One", icon: Gamepad2 },
-  { id: "Xbox 360", label: "Xbox 360", icon: Gamepad2 },
-  { id: "Xbox", label: "Xbox", icon: Gamepad2 },
-  { id: "Switch", label: "Switch", icon: Tablet },
-  { id: "Steam Deck", label: "Steam Deck", icon: Tablet },
-  { id: "GOG", label: "GOG", icon: Monitor },
-  { id: "Android", label: "Android", icon: Smartphone },
-  { id: "iOS", label: "iOS", icon: Smartphone },
-  { id: "MacOS", label: "MacOS", icon: Laptop },
-  { id: "Linux", label: "Linux", icon: Terminal },
-];
-
-const STANDARD_STATUS_OPTIONS: EntryStatus[] = [
-  "watching",
-  "completed",
-  "plan_to_watch",
-  "on_hold",
-  "dropped",
-];
-
-const GAME_STATUS_OPTIONS: EntryStatus[] = [
-  "main_story_completed",
-  "fully_completed",
-  "backlogged",
-  "bored",
-  "own",
-  "wishlist",
-  "not_committed",
-  "committed",
-  "dropped",
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const todayISODate = (): string => {
-  const now = new Date();
-  return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-");
-};
-
-const formatISODate = (millis: number): string => {
-  const d = new Date(millis);
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, "0"),
-    String(d.getDate()).padStart(2, "0"),
-  ].join("-");
-};
-
-const parseISODate = (value: string): { date: Date; millis: number } | null => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  const [, y, m, d] = match.map(Number);
-  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
-  const date = new Date(y, m - 1, d, 12, 0, 0, 0);
-  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
-  return { date, millis: date.getTime() };
-};
-
-const buildEditableRelations = (
-  raw: Array<{ targetId: string; type: string }>,
-  entries: EntryDoc[],
-): EditableRelation[] => {
-  const seen = new Set<string>();
-  return raw.reduce<EditableRelation[]>((acc, r) => {
-    const targetId = String(r.targetId || "").trim();
-    const type = String(r.type || "").trim();
-    if (!targetId || !type || seen.has(targetId)) return acc;
-    seen.add(targetId);
-    const match = entries.find((e) => String(e.id) === targetId);
-    acc.push({
-      targetId,
-      type,
-      title: match?.title ?? "Unknown Entry",
-      image: match?.image ?? null,
-      mediaType: match?.mediaType ?? "movie",
-    });
-    return acc;
-  }, []);
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LABEL MAPS
+// COMPONENT-SPECIFIC LABEL MAPS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
 const mediaTypeLabels: Record<EntryMediaType, string> = entryMediaTypeLabels;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REUSABLE SUB-COMPONENTS
+// COMPONENT-SPECIFIC UI ELEMENTS
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Uppercase monospaced section divider used in right panel
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <div className="mt-8 mb-4 first:mt-0">
-      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">
-        {title}
-      </div>
-      <div className="h-px w-full bg-white/5" />
-    </div>
-  );
-}
-
-// Labeled stat column used in left panel metadata row
-function StatColumn({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="text-[9px] font-mono uppercase tracking-[0.1em] text-[#555]">{label}</div>
-      <div className="text-[22px] font-extrabold text-white leading-none tracking-tight">
-        {value}
-      </div>
-    </div>
-  );
-}
-
-// Inline-editable wrapper: shows display text by default, pencil on hover, input on click
-function InlineEditable({
-  value,
-  onCommit,
-  type = "text",
-  className = "",
-  fieldId,
-  activeField,
-  setActiveField,
-  multiline = false,
-  children,
-}: {
-  value: string;
-  onCommit: (v: string) => void;
-  type?: string;
-  className?: string;
-  fieldId: string;
-  activeField: string | null;
-  setActiveField: (f: string | null) => void;
-  multiline?: boolean;
-  children?: React.ReactNode;
-}) {
-  const isActive = activeField === fieldId;
-  const [local, setLocal] = useState(value);
-
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-
-  const commit = () => {
-    onCommit(local);
-    setActiveField(null);
-  };
-
-  const inputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!isActive) return;
-
-    if (multiline) textareaRef.current?.focus();
-    else inputRef.current?.focus();
-  }, [isActive, multiline]);
-
-  const inputCls =
-    "w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/20 transition-all";
-
-  if (isActive) {
-    return multiline ? (
-      <textarea
-        ref={textareaRef}
-        value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            commit();
-          }
-          if (e.key === "Escape") setActiveField(null);
-        }}
-        className={cn(inputCls, className, "min-h-[80px] resize-none")}
-      />
-    ) : (
-      <input
-        ref={inputRef}
-        type={type}
-        value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") setActiveField(null);
-        }}
-        className={cn(inputCls, className)}
-      />
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className="group relative cursor-pointer text-left w-full"
-      onClick={() => setActiveField(fieldId)}
-    >
-      {children ?? (
-        <div className={className}>{value || <span className="text-[#333]">—</span>}</div>
-      )}
-      <span className="absolute -top-1 -right-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 pointer-events-none">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#666"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-        </svg>
-      </span>
-    </button>
-  );
-}
 
 // 10-star interactive rating — fills stars on hover, sets userRating on click
 function StarRating({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -405,44 +98,7 @@ function StarRating({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
-// +/− stepper for episode, season, rewatch
-function Stepper({
-  label,
-  value,
-  onValueChange,
-}: {
-  label: string;
-  value: number;
-  onValueChange: (v: number) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555]">{label}</div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onValueChange(Math.max(0, value - 1))}
-          className="w-7 h-7 rounded-full flex items-center justify-center bg-[#1a1a1a] border border-white/10 text-white hover:border-white/20 transition-all"
-        >
-          <svg width="10" height="2" viewBox="0 0 10 2" fill="none">
-            <rect width="10" height="2" rx="1" fill="currentColor" />
-          </svg>
-        </button>
-        <span className="text-[14px] font-medium text-white min-w-[24px] text-center">{value}</span>
-        <button
-          type="button"
-          onClick={() => onValueChange(value + 1)}
-          className="w-7 h-7 rounded-full flex items-center justify-center bg-[#1a1a1a] border border-white/10 text-white hover:border-white/20 transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // Custom dark dropdown — replaces native <select> for relation type
-// Native select option lists ignore background-color on most OS/browsers
 function CustomDropdown({
   value,
   onChange,
@@ -481,147 +137,28 @@ function CustomDropdown({
       {open && (
         <ul className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-[100] max-h-48 overflow-y-auto">
           {options.map((opt) => (
-            <li
-              key={opt}
-              onClick={() => {
-                onChange(opt);
-                setOpen(false);
-              }}
-              className={cn(
-                "px-4 py-2.5 text-[13px] cursor-pointer transition-colors",
-                opt === value
-                  ? "text-white bg-white/[0.06]"
-                  : "text-[#aaa] hover:bg-white/[0.03] hover:text-white",
-              )}
-            >
-              {opt}
+            <li key={opt}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full text-left px-4 py-2.5 text-[13px] cursor-pointer transition-colors outline-none",
+                  opt === value
+                    ? "text-white bg-white/[0.06]"
+                    : "text-[#aaa] hover:bg-white/[0.03] hover:text-white focus:bg-white/[0.03] focus:text-white",
+                )}
+              >
+                {opt}
+              </button>
             </li>
           ))}
         </ul>
       )}
     </div>
   );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HOOKS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Locks body scroll while modal is open; restores on close / unmount
-function useBodyScrollLock(active: boolean) {
-  useEffect(() => {
-    if (!active) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev || "";
-    };
-  }, [active]);
-}
-
-// Calls onClose when Escape is pressed while modal is open
-function useEscapeKey(active: boolean, onClose: () => void) {
-  useEffect(() => {
-    if (!active) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [active, onClose]);
-}
-
-// Loads + live-syncs the user's lists from Firestore
-function useLists(uid: string | null, isOpen: boolean) {
-  const [lists, setLists] = useState<
-    { id: string; name: string; type: ListMediaType; types: ListMediaType[] }[]
-  >([]);
-
-  useEffect(() => {
-    if (!uid || !isOpen) {
-      setLists([]);
-      return;
-    }
-    const q = query(collection(db, "users", uid, "lists"), orderBy("createdAt", "desc"), limit(50));
-    return onSnapshot(q, (snap) => {
-      setLists(
-        snap.docs.map((d) => {
-          const data = d.data() as { name?: string; type?: string; types?: string[] };
-          const singleType = (
-            ["movie", "series", "anime", "manga", "game"].includes(data.type ?? "")
-              ? data.type
-              : "movie"
-          ) as ListMediaType;
-          const types = (
-            Array.isArray(data.types)
-              ? data.types.filter((t): t is ListMediaType =>
-                ["movie", "series", "anime", "manga", "game"].includes(t),
-              )
-              : [singleType]
-          ) as ListMediaType[];
-          return { id: d.id, name: data.name || "Untitled List", type: singleType, types };
-        }),
-      );
-    });
-  }, [uid, isOpen]);
-
-  return lists;
-}
-
-// Finds which lists a given entry already belongs to (for edit mode)
-function useInitialListIds(
-  uid: string | null,
-  isOpen: boolean,
-  isEditing: boolean,
-  entryId: string | number | null | undefined,
-  listIds: string[] | undefined,
-  lists: { id: string }[],
-  setSelectedListIds: (ids: Set<string>) => void,
-  setInitialListIds: (ids: Set<string>) => void,
-) {
-  const fetchedRef = useRef<string | number | null>(null);
-
-  useEffect(() => {
-    if (!uid || !isOpen || !isEditing || !entryId || lists.length === 0) return;
-    if (fetchedRef.current === entryId) return;
-
-    let cancelled = false;
-
-    (async () => {
-      if (listIds && listIds.length > 0) {
-        if (cancelled) return;
-        const ids = new Set(listIds);
-        setSelectedListIds(ids);
-        setInitialListIds(ids);
-        fetchedRef.current = entryId;
-        return;
-      }
-
-      const strId = String(entryId);
-      const found = new Set<string>();
-      const checks = lists.map(async (list) => {
-        const snap = await getDocs(
-          query(
-            collection(db, "users", uid, "lists", list.id, "items"),
-            where("externalId", "==", strId),
-            limit(1),
-          ),
-        );
-        return snap.empty ? null : list.id;
-      });
-      (await Promise.all(checks)).forEach((id) => {
-        if (id) found.add(id);
-      });
-      if (cancelled) return;
-      setSelectedListIds(found);
-      setInitialListIds(found);
-      fetchedRef.current = entryId;
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [uid, isOpen, isEditing, entryId, listIds, lists, setSelectedListIds, setInitialListIds]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -644,14 +181,14 @@ export function LogEntryModal({
   const { entries } = useData();
   const uid = user?.uid ?? null;
 
-  // ── Modal behaviour ─────────────────────────────────────────────────────────
+  // ── HOOKS ──────────────────────────────────────────────────────────────────
   useBodyScrollLock(isOpen);
   useEscapeKey(isOpen, onClose);
 
-  // ── Left-panel editable field tracking ─────────────────────────────────────
+  // ── STATE ──────────────────────────────────────────────────────────────────
   const [activeField, setActiveField] = useState<string | null>(null);
 
-  // ── Core media fields ────────────────────────────────────────────────────────
+  // Core media fields
   const [title, setTitle] = useState("");
   const [mediaType, setMediaType] = useState<EntryMediaType>("movie");
   const [isMovie, setIsMovie] = useState(false);
@@ -663,12 +200,12 @@ export function LogEntryModal({
   const [tags, setTags] = useState<string[]>([]);
   const [imdbRating, setImdbRating] = useState("");
 
-  // Numeric counts (sourced from API / user edit)
+  // Numeric counts
   const [episodeCount, setEpisodeCount] = useState("");
   const [chapterCount, setChapterCount] = useState("");
   const [lengthMinutes, setLengthMinutes] = useState("");
 
-  // ── User-progress fields (right panel) ──────────────────────────────────────
+  // User-progress fields
   const [status, setStatus] = useState<EntryStatus>("unspecified");
   const [userRating, setUserRating] = useState("");
   const [currentEpisodes, setCurrentEpisodes] = useState(0);
@@ -677,23 +214,23 @@ export function LogEntryModal({
   const [currentChapters, setCurrentChapters] = useState(0);
   const [rewatchCount, setRewatchCount] = useState(0);
 
-  // ── Game fields ──────────────────────────────────────────────────────────────
+  // Game fields
   const [playTime, setPlayTime] = useState("");
   const [achievements, setAchievements] = useState("");
   const [totalAchievements, setTotalAchievements] = useState("");
   const [platform, setPlatform] = useState("");
 
-  // ── Dates ────────────────────────────────────────────────────────────────────
+  // Dates
   const [startDate, setStartDate] = useState("");
   const [completionDate, setCompletionDate] = useState("");
   const [completionUnknown, setCompletionUnknown] = useState(false);
 
-  // ── Lists ────────────────────────────────────────────────────────────────────
+  // Lists
   const [selectedListIds, setSelectedListIds] = useState<Set<string>>(new Set());
   const [initialListIds, setInitialListIds] = useState<Set<string>>(new Set());
   const [isNewListOpen, setIsNewListOpen] = useState(false);
 
-  // ── Relations ────────────────────────────────────────────────────────────────
+  // Relations
   const [originalRelations, setOriginalRelations] = useState<
     { targetId: string; type: string; createdAtMs: number }[]
   >([]);
@@ -702,7 +239,7 @@ export function LogEntryModal({
   const [selectedRelationDoc, setSelectedRelationDoc] = useState<EntryDoc | null>(null);
   const [selectedRelationType, setSelectedRelationType] = useState<RelationType>("Sequel");
 
-  // ── UI state ─────────────────────────────────────────────────────────────────
+  // UI state
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -711,13 +248,14 @@ export function LogEntryModal({
   );
   const tagRef = useRef<HTMLInputElement>(null);
 
+  // ── EFFECTS ────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (activeField === "left-tags") {
       tagRef.current?.focus();
     }
   }, [activeField]);
 
-  // ── External data ────────────────────────────────────────────────────────────
   const lists = useLists(uid, isOpen);
   const listMediaType = mediaType;
 
@@ -732,7 +270,6 @@ export function LogEntryModal({
     setInitialListIds,
   );
 
-  // ── Derived ──────────────────────────────────────────────────────────────────
   const availableLists = useMemo(
     () => lists.filter((l) => l.types.includes(listMediaType)),
     [lists, listMediaType],
@@ -753,7 +290,8 @@ export function LogEntryModal({
     };
   }, [initialMedia]);
 
-  // ── Validation ───────────────────────────────────────────────────────────────
+  // ── VALIDATION ─────────────────────────────────────────────────────────────
+
   const userRatingError = useMemo(() => {
     const raw = userRating.trim();
     if (!raw) return null;
@@ -779,7 +317,6 @@ export function LogEntryModal({
     return null;
   }, [releaseYear]);
 
-  // ── Initialise form when modal opens ─────────────────────────────────────────
   const initializedRef = useRef<string | number | null>(null);
 
   useEffect(() => {
@@ -914,7 +451,6 @@ export function LogEntryModal({
     }
   }, [isOpen, normalizedInitial, entries, isEditing]);
 
-  // Keep relation display data fresh when entries update
   useEffect(() => {
     if (!isOpen || relations.length === 0) return;
     setRelations((prev) => {
@@ -930,7 +466,6 @@ export function LogEntryModal({
     });
   }, [entries, isOpen, relations.length]);
 
-  // Auto-set completion date when status switches to completed
   useEffect(() => {
     if (!isOpen) return;
     if (status !== "completed") {
@@ -941,7 +476,8 @@ export function LogEntryModal({
     if (!completionUnknown && !completionDate) setCompletionDate(todayISODate());
   }, [status, isOpen, completionDate, completionUnknown]);
 
-  // ── Submit ────────────────────────────────────────────────────────────────────
+  // ── SUBMIT HANDLER ──────────────────────────────────────────────────────────
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -1076,79 +612,25 @@ export function LogEntryModal({
         relations: relationPayload,
       };
 
-      let finalEntryId = entryId;
-
-      if (isEditing && entryId) {
-        await updateDoc(doc(db, "users", uid, "entries", entryId), entryData);
-        setInfo("Updated.");
-      } else {
-        const ref = await addDoc(collection(db, "users", uid, "entries"), {
-          ...entryData,
-          externalId,
-          createdAt: serverTimestamp(),
-        });
-        finalEntryId = ref.id;
-        setInfo("Saved.");
-      }
-
-      if (!finalEntryId) throw new Error("No entry ID");
-
-      const addedIds = Array.from(selectedListIds).filter((id) => !initialListIds.has(id));
-      const removedIds = Array.from(initialListIds).filter((id) => !selectedListIds.has(id));
-      const commonIds = Array.from(selectedListIds).filter((id) => initialListIds.has(id));
-
-      await Promise.all([
-        ...addedIds.map((listId) =>
-          addDoc(collection(db, "users", uid, "lists", listId, "items"), {
-            title: trimmedTitle,
-            mediaType: listMediaType,
-            externalId: finalEntryId,
-            image,
-            year: releaseYearValue,
-            addedAt: serverTimestamp(),
-          }).then(() =>
-            updateDoc(doc(db, "users", uid, "lists", listId), { updatedAt: serverTimestamp() }),
-          ),
-        ),
-        ...removedIds.map(async (listId) => {
-          const snap = await getDocs(
-            query(
-              collection(db, "users", uid, "lists", listId, "items"),
-              where("externalId", "==", finalEntryId),
-              limit(1),
-            ),
-          );
-          if (!snap.empty) {
-            await deleteDoc(doc(db, "users", uid, "lists", listId, "items", snap.docs[0].id));
-            await updateDoc(doc(db, "users", uid, "lists", listId), {
-              updatedAt: serverTimestamp(),
-            });
-          }
-        }),
-        ...commonIds.map(async (listId) => {
-          const snap = await getDocs(
-            query(
-              collection(db, "users", uid, "lists", listId, "items"),
-              where("externalId", "==", finalEntryId),
-              limit(1),
-            ),
-          );
-          if (!snap.empty)
-            await updateDoc(doc(db, "users", uid, "lists", listId, "items", snap.docs[0].id), {
-              title: trimmedTitle,
-              mediaType: listMediaType,
-              image,
-              year: releaseYearValue,
-            });
-        }),
-      ]);
-
-      await updateBidirectionalRelations(
+      await saveLogEntry({
         uid,
-        finalEntryId,
+        isEditing,
+        entryId,
+        entryData: {
+          ...entryData,
+          externalId: isEditing ? undefined : externalId,
+        },
+        trimmedTitle,
+        listMediaType,
+        image,
+        releaseYearValue,
+        selectedListIds,
+        initialListIds,
         originalRelations,
-        relationPayload.map(({ targetId, type }) => ({ targetId, type })),
-      );
+        relationPayload,
+      });
+
+      setInfo(isEditing ? "Updated." : "Saved.");
 
       if (isEditing) {
         setTimeout(onClose, 1000);
@@ -1189,11 +671,11 @@ export function LogEntryModal({
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────────
   if (!isOpen) return null;
 
-  // Shared props passed to every InlineEditable in the left panel
   const editableProps = { activeField, setActiveField };
+
+  // ── RENDER ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm">
@@ -1202,18 +684,15 @@ export function LogEntryModal({
         style={{ height: "min(720px, 90vh)" }}
       >
         <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
-          {/* ── PANELS ─────────────────────────────────────────────────────────── */}
           <div className="flex-1 flex overflow-hidden min-h-0">
-            {/* ── LEFT PANEL — Media card, read-display + inline-editable ───────── */}
+            {/* LEFT PANEL */}
             <div className="w-[420px] shrink-0 border-r border-white/5 overflow-y-auto p-7 flex flex-col bg-[#111]">
-              {/* Top row: category label + type badge */}
               <div className="flex justify-between items-center mb-4">
                 <span className="px-3 py-1 rounded-full border border-white/10 text-[11px] font-mono text-white/50 uppercase tracking-wider">
                   {mediaTypeLabels[mediaType] ?? mediaType}
                 </span>
               </div>
 
-              {/* Poster */}
               <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden mb-6 bg-[#1f1f1f]">
                 {image ? (
                   <ImageWithSkeleton src={image} alt={title} fill className="object-cover" />
@@ -1224,7 +703,6 @@ export function LogEntryModal({
                 )}
               </div>
 
-              {/* Title */}
               <InlineEditable
                 value={title}
                 onCommit={setTitle}
@@ -1233,11 +711,10 @@ export function LogEntryModal({
                 className="text-[clamp(26px,3.5vw,38px)] font-black leading-[1.1] uppercase tracking-[-0.02em] text-white mb-2 pr-5"
               />
 
-              {/* Director + Year subtitle */}
               <div className="text-sm text-[#666] mb-6 flex items-center gap-1.5 flex-wrap">
                 <span>Directed by</span>
                 <InlineEditable
-                  value={director || "—"}
+                  value={director || "\u2014"}
                   onCommit={setDirector}
                   fieldId="left-director"
                   {...editableProps}
@@ -1254,7 +731,6 @@ export function LogEntryModal({
                 />
               </div>
 
-              {/* Stats row: Episodes / Seasons / Rating */}
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <InlineEditable
                   value={episodeCount}
@@ -1263,7 +739,7 @@ export function LogEntryModal({
                   fieldId="left-episodes"
                   {...editableProps}
                 >
-                  <StatColumn label="EPISODES" value={episodeCount || "—"} />
+                  <StatColumn label="EPISODES" value={episodeCount || "\u2014"} />
                 </InlineEditable>
 
                 <InlineEditable
@@ -1286,11 +762,13 @@ export function LogEntryModal({
                   fieldId="left-rating"
                   {...editableProps}
                 >
-                  <StatColumn label="RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
+                  <StatColumn
+                    label="RATING"
+                    value={imdbRating ? `\u2605 ${imdbRating}` : "\u2014"}
+                  />
                 </InlineEditable>
               </div>
 
-              {/* Genre pills + edit button */}
               <div className="flex flex-wrap gap-1.5 mb-5">
                 {tags.map((tag) => (
                   <span
@@ -1311,7 +789,7 @@ export function LogEntryModal({
                   <div className="w-full mt-2">
                     <input
                       ref={tagRef}
-                      placeholder="Comma-separated tags…"
+                      placeholder="Comma-separated tags\u2026"
                       defaultValue={tags.join(", ")}
                       onBlur={(e) => {
                         setTags(
@@ -1333,7 +811,6 @@ export function LogEntryModal({
                 )}
               </div>
 
-              {/* Description */}
               <InlineEditable
                 value={description}
                 onCommit={setDescription}
@@ -1344,7 +821,7 @@ export function LogEntryModal({
               />
             </div>
 
-            {/* ── RIGHT PANEL — All user-editable progress fields ────────────────── */}
+            {/* RIGHT PANEL */}
             <div className="flex-1 overflow-y-auto p-7 bg-[#111]">
               {/* STATUS */}
               <div className="mb-6">
@@ -1363,7 +840,7 @@ export function LogEntryModal({
                     style={{ colorScheme: "dark" }}
                     className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-5 pr-10 appearance-none text-[13px] text-white focus:outline-none focus:border-white/20 transition-all"
                   >
-                    <option value="unspecified">Select status…</option>
+                    <option value="unspecified">Select status\u2026</option>
                     {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
                       (s) => (
                         <option key={s} value={s}>
@@ -1451,7 +928,6 @@ export function LogEntryModal({
               {/* ARCHIVAL DATES */}
               <SectionHeader title="Archival Dates" />
               <div className="grid grid-cols-2 gap-5 mb-2">
-                {/* Date Started */}
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">
                     STARTED
@@ -1481,7 +957,6 @@ export function LogEntryModal({
                   </div>
                 </div>
 
-                {/* Date Completed */}
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">
                     COMPLETED
@@ -1524,7 +999,6 @@ export function LogEntryModal({
               {/* RELATIONS */}
               <SectionHeader title="Relations" />
 
-              {/* Search input */}
               <div className="relative mb-3">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
                 <input
@@ -1533,7 +1007,7 @@ export function LogEntryModal({
                     setRelationQuery(e.target.value);
                     setSelectedRelationDoc(null);
                   }}
-                  placeholder="Search for related media…"
+                  placeholder="Search for related media\u2026"
                   className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white placeholder-[#444] focus:outline-none focus:border-white/10"
                 />
                 {relationQuery && !selectedRelationDoc && (
@@ -1562,7 +1036,6 @@ export function LogEntryModal({
                 )}
               </div>
 
-              {/* Existing relation chips */}
               {relations.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {relations.map((rel, idx) => (
@@ -1595,7 +1068,6 @@ export function LogEntryModal({
                 </div>
               )}
 
-              {/* Confirm panel for selected relation */}
               {selectedRelationDoc && (
                 <div className="p-4 bg-[#1a1a1a] rounded-xl border border-white/10 space-y-4 mb-4">
                   <div className="flex items-center gap-3">
@@ -1651,13 +1123,11 @@ export function LogEntryModal({
                 </div>
               )}
 
-              {/* Error / info feedback */}
               {error && <div className="mt-4 text-[12px] font-mono text-red-400">{error}</div>}
               {info && <div className="mt-4 text-[12px] font-mono text-emerald-400">{info}</div>}
             </div>
           </div>
 
-          {/* ── FOOTER BAR ─────────────────────────────────────────────────────── */}
           <div className="h-16 shrink-0 bg-[#111] border-t border-white/[0.06] px-6 flex items-center justify-between z-30">
             <button
               type="button"
@@ -1674,13 +1144,12 @@ export function LogEntryModal({
               disabled={isSaving}
               className="bg-white text-[#111] px-7 py-2.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-[0.14em] hover:bg-neutral-200 transition-colors disabled:opacity-50"
             >
-              {isSaving ? "SAVING…" : "SAVE ENTRY"}
+              {isSaving ? "SAVING\u2026" : "SAVE ENTRY"}
             </button>
           </div>
         </form>
       </div>
 
-      {/* ── PORTALS ──────────────────────────────────────────────────────────── */}
       <NewListModal
         isOpen={isNewListOpen}
         onClose={() => setIsNewListOpen(false)}

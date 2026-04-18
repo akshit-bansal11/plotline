@@ -13,11 +13,12 @@ import { MobileMenu } from "@/components/layout/MobileMenu";
 import { NavLinks } from "@/components/layout/NavLinks";
 import { ImportExportModal } from "@/components/library/ImportExportModal";
 import { LinkDropZone } from "@/components/log-entry/LinkDropZone";
-import { LogEntryModal, type LoggableMedia } from "@/components/log-entry/LogEntryModal";
+import { LogEntryModal } from "@/components/log-entry/LogEntryModal";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { useSection } from "@/context/SectionContext";
+import type { LoggableMedia } from "@/types/log-entry";
 
 export function Navbar() {
   const { setActiveSection } = useSection();

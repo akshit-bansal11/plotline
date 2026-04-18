@@ -299,41 +299,41 @@ function DashboardSection({
                                 "shrink-0 rounded-full border px-2 py-0.5 text-[10px]",
                                 entry.mediaType === "game"
                                   ? {
-                                    "border-emerald-700/20 bg-emerald-700/10 text-emerald-600":
-                                      entry.status === "main_story_completed",
-                                    "border-emerald-400/20 bg-emerald-400/10 text-emerald-300":
-                                      entry.status === "fully_completed",
-                                    "border-amber-500/20 bg-amber-500/10 text-amber-400":
-                                      entry.status === "backlogged",
-                                    "border-orange-500/20 bg-orange-500/10 text-orange-400":
-                                      entry.status === "bored",
-                                    "border-pink-500/20 bg-pink-500/10 text-pink-400":
-                                      entry.status === "own",
-                                    "border-white/20 bg-white/10 text-white":
-                                      entry.status === "wishlist",
-                                    "border-sky-500/20 bg-sky-500/10 text-sky-400":
-                                      entry.status === "committed",
-                                    "border-blue-700/20 bg-blue-700/10 text-blue-500":
-                                      entry.status === "not_committed",
-                                    "border-red-500/20 bg-red-500/10 text-red-400":
-                                      entry.status === "dropped",
-                                    "border-neutral-500/20 bg-neutral-800/40 text-neutral-400":
-                                      entry.status === "unspecified",
-                                  }
+                                      "border-emerald-700/20 bg-emerald-700/10 text-emerald-600":
+                                        entry.status === "main_story_completed",
+                                      "border-emerald-400/20 bg-emerald-400/10 text-emerald-300":
+                                        entry.status === "fully_completed",
+                                      "border-amber-500/20 bg-amber-500/10 text-amber-400":
+                                        entry.status === "backlogged",
+                                      "border-orange-500/20 bg-orange-500/10 text-orange-400":
+                                        entry.status === "bored",
+                                      "border-pink-500/20 bg-pink-500/10 text-pink-400":
+                                        entry.status === "own",
+                                      "border-white/20 bg-white/10 text-white":
+                                        entry.status === "wishlist",
+                                      "border-sky-500/20 bg-sky-500/10 text-sky-400":
+                                        entry.status === "committed",
+                                      "border-blue-700/20 bg-blue-700/10 text-blue-500":
+                                        entry.status === "not_committed",
+                                      "border-red-500/20 bg-red-500/10 text-red-400":
+                                        entry.status === "dropped",
+                                      "border-neutral-500/20 bg-neutral-800/40 text-neutral-400":
+                                        entry.status === "unspecified",
+                                    }
                                   : {
-                                    "border-violet-500/20 bg-violet-500/10 text-violet-400":
-                                      entry.status === "plan_to_watch",
-                                    "border-blue-500/20 bg-blue-500/10 text-blue-400":
-                                      entry.status === "watching",
-                                    "border-emerald-500/20 bg-emerald-500/10 text-emerald-400":
-                                      entry.status === "completed",
-                                    "border-amber-500/20 bg-amber-500/10 text-amber-400":
-                                      entry.status === "on_hold",
-                                    "border-red-500/20 bg-red-500/10 text-red-400":
-                                      entry.status === "dropped",
-                                    "border-neutral-500/20 bg-neutral-800/40 text-neutral-400":
-                                      entry.status === "unspecified",
-                                  },
+                                      "border-violet-500/20 bg-violet-500/10 text-violet-400":
+                                        entry.status === "plan_to_watch",
+                                      "border-blue-500/20 bg-blue-500/10 text-blue-400":
+                                        entry.status === "watching",
+                                      "border-emerald-500/20 bg-emerald-500/10 text-emerald-400":
+                                        entry.status === "completed",
+                                      "border-amber-500/20 bg-amber-500/10 text-amber-400":
+                                        entry.status === "on_hold",
+                                      "border-red-500/20 bg-red-500/10 text-red-400":
+                                        entry.status === "dropped",
+                                      "border-neutral-500/20 bg-neutral-800/40 text-neutral-400":
+                                        entry.status === "unspecified",
+                                    },
                               )}
                             >
                               {entryStatusLabels[entry.status] ?? "Unspecified"}
@@ -653,7 +653,7 @@ function LibrarySection({
     };
   }, [activeDrag]);
 
-  const clearExpandTimeout = () => { };
+  const clearExpandTimeout = () => {};
 
   const handleItemDragStart = (details: {
     entryId: string | number;
@@ -1019,8 +1019,9 @@ function LibrarySection({
                                   </div>
 
                                   <div
-                                    className={`line-clamp-2 min-h-10 text-sm text-neutral-500 group-hover:text-neutral-300 transition-colors leading-relaxed font-medium ${list.description ? "" : "hidden"
-                                      }`}
+                                    className={`line-clamp-2 min-h-10 text-sm text-neutral-500 group-hover:text-neutral-300 transition-colors leading-relaxed font-medium ${
+                                      list.description ? "" : "hidden"
+                                    }`}
                                   >
                                     {list.description}
                                   </div>
@@ -1310,8 +1311,8 @@ function LibrarySection({
                   const sourceDoc = entries.find((e) => String(e.id) === relationModal.sourceId);
                   const oldRelations = Array.isArray(sourceDoc?.relations)
                     ? sourceDoc.relations.filter(
-                      (r) => Boolean(r.targetId) && Boolean(r.type) && !r.inferred,
-                    )
+                        (r) => Boolean(r.targetId) && Boolean(r.type) && !r.inferred,
+                      )
                     : [];
                   const sourceRelationType =
                     inverseRelationMap[relationModal.type] || relationModal.type;
@@ -1622,30 +1623,30 @@ export default function Home() {
         initialMedia={
           isEditingEntry
             ? {
-              id: isEditingEntry.id,
-              title: isEditingEntry.title,
-              image: isEditingEntry.image,
-              year: isEditingEntry.releaseYear || undefined,
-              releaseYear: isEditingEntry.releaseYear || undefined,
-              type: isEditingEntry.mediaType,
-              description: isEditingEntry.description,
-              userRating: isEditingEntry.userRating,
-              imdbRating: isEditingEntry.imdbRating,
-              lengthMinutes: isEditingEntry.lengthMinutes,
-              episodeCount: isEditingEntry.episodeCount,
-              chapterCount: isEditingEntry.chapterCount,
-              playTime: isEditingEntry.playTime,
-              achievements: isEditingEntry.achievements,
-              totalAchievements: isEditingEntry.totalAchievements,
-              platform: isEditingEntry.platform,
-              isMovie: isEditingEntry.isMovie,
-              listIds: isEditingEntry.listIds,
-              genresThemes: isEditingEntry.genresThemes,
-              relations: isEditingEntry.relations,
-              status: isEditingEntry.status,
-              completedAt: isEditingEntry.completedAtMs,
-              completionDateUnknown: isEditingEntry.completionDateUnknown,
-            }
+                id: isEditingEntry.id,
+                title: isEditingEntry.title,
+                image: isEditingEntry.image,
+                year: isEditingEntry.releaseYear || undefined,
+                releaseYear: isEditingEntry.releaseYear || undefined,
+                type: isEditingEntry.mediaType,
+                description: isEditingEntry.description,
+                userRating: isEditingEntry.userRating,
+                imdbRating: isEditingEntry.imdbRating,
+                lengthMinutes: isEditingEntry.lengthMinutes,
+                episodeCount: isEditingEntry.episodeCount,
+                chapterCount: isEditingEntry.chapterCount,
+                playTime: isEditingEntry.playTime,
+                achievements: isEditingEntry.achievements,
+                totalAchievements: isEditingEntry.totalAchievements,
+                platform: isEditingEntry.platform,
+                isMovie: isEditingEntry.isMovie,
+                listIds: isEditingEntry.listIds,
+                genresThemes: isEditingEntry.genresThemes,
+                relations: isEditingEntry.relations,
+                status: isEditingEntry.status,
+                completedAt: isEditingEntry.completedAtMs,
+                completionDateUnknown: isEditingEntry.completionDateUnknown,
+              }
             : null
         }
       />
