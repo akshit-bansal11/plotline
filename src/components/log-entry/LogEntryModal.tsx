@@ -137,20 +137,22 @@ function CustomDropdown({
       {open && (
         <ul className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-[100] max-h-48 overflow-y-auto">
           {options.map((opt) => (
-            <li
-              key={opt}
-              onClick={() => {
-                onChange(opt);
-                setOpen(false);
-              }}
-              className={cn(
-                "px-4 py-2.5 text-[13px] cursor-pointer transition-colors",
-                opt === value
-                  ? "text-white bg-white/[0.06]"
-                  : "text-[#aaa] hover:bg-white/[0.03] hover:text-white",
-              )}
-            >
-              {opt}
+            <li key={opt}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full text-left px-4 py-2.5 text-[13px] cursor-pointer transition-colors outline-none",
+                  opt === value
+                    ? "text-white bg-white/[0.06]"
+                    : "text-[#aaa] hover:bg-white/[0.03] hover:text-white focus:bg-white/[0.03] focus:text-white",
+                )}
+              >
+                {opt}
+              </button>
             </li>
           ))}
         </ul>
