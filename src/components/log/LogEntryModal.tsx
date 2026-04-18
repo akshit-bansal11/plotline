@@ -25,7 +25,6 @@ import {
   HardDrive,
   Hexagon,
   Laptop,
-  Loader2,
   Monitor,
   Plus,
   Search,
@@ -345,7 +344,6 @@ function InlineEditable({
       {children ?? (
         <div className={className}>{value || <span className="text-[#333]">—</span>}</div>
       )}
-      {/* Pencil icon */}
       <span className="absolute -top-1 -right-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 pointer-events-none">
         <svg
           width="12"
@@ -663,7 +661,6 @@ export function LogEntryModal({
   const [releaseYear, setReleaseYear] = useState("");
   const [director, setDirector] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [imdbRating, setImdbRating] = useState("");
 
   // Numeric counts (sourced from API / user edit)
@@ -685,7 +682,6 @@ export function LogEntryModal({
   const [achievements, setAchievements] = useState("");
   const [totalAchievements, setTotalAchievements] = useState("");
   const [platform, setPlatform] = useState("");
-  const [isCustomPlatform, setIsCustomPlatform] = useState(false);
 
   // ── Dates ────────────────────────────────────────────────────────────────────
   const [startDate, setStartDate] = useState("");
@@ -710,7 +706,6 @@ export function LogEntryModal({
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(
     null,
   );
@@ -811,7 +806,6 @@ export function LogEntryModal({
           ? normalizedInitial.genresThemes.slice(0, 10)
           : [],
       );
-      setTagInput("");
       setEpisodeCount(normalizedInitial.episodeCount ? String(normalizedInitial.episodeCount) : "");
       setChapterCount(normalizedInitial.chapterCount ? String(normalizedInitial.chapterCount) : "");
       setLengthMinutes(
@@ -839,10 +833,6 @@ export function LogEntryModal({
       setStatus(normalizedInitial.status ?? "unspecified");
 
       setPlatform(normalizedInitial.platform ?? "");
-      setIsCustomPlatform(
-        !!normalizedInitial.platform &&
-        !PLATFORM_OPTIONS.some((p) => p.id === normalizedInitial.platform),
-      );
       setPlayTime(normalizedInitial.playTime ? String(normalizedInitial.playTime) : "");
       setAchievements(normalizedInitial.achievements ? String(normalizedInitial.achievements) : "");
       setTotalAchievements(
@@ -902,7 +892,6 @@ export function LogEntryModal({
       setTotalAchievements("");
       setPlatform("");
       setTags([]);
-      setTagInput("");
       setDescription("");
       setCompletionDate("");
       setCompletionUnknown(false);
@@ -1356,13 +1345,6 @@ export function LogEntryModal({
                 {...editableProps}
                 className="text-[13px] text-[#555] leading-[1.6] italic line-clamp-3 pr-5"
               />
-
-              {isFetchingMetadata && (
-                <div className="mt-4 flex items-center gap-2 text-[11px] font-mono text-[#555]">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Fetching metadata…
-                </div>
-              )}
             </div>
 
             {/* ── RIGHT PANEL — All user-editable progress fields ────────────────── */}
