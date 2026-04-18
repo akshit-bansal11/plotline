@@ -3,7 +3,7 @@
 import { Filter, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LoggableMedia } from "@/components/entry/LogEntryModal";
+import type { LoggableMedia } from "@/components/log/LogEntryModal";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { cn } from "@/utils";
 import {

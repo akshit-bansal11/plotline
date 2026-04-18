@@ -4,9 +4,9 @@ import { registerBones } from "boneyard-js";
 import { configureBoneyard } from "boneyard-js/react";
 
 import _auth_shell from "./auth-shell.bones.json";
+import _dashboard_shell from "./dashboard-shell.bones.json";
 import _library_shell from "./library-shell.bones.json";
 import _navbar_shell from "./navbar-shell.bones.json";
-import _dashboard_shell from "./dashboard-shell.bones.json";
 
 configureBoneyard({ color: "#e5e5e5", darkColor: "rgba(255,255,255,0.08)", animate: "pulse" });
 

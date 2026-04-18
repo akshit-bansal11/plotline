@@ -16,7 +16,7 @@ import {
 import { Filter, Pencil, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LoggableMedia } from "@/components/entry/LogEntryModal";
+import type { LoggableMedia } from "@/components/log/LogEntryModal";
 import { Modal } from "@/components/overlay/Modal";
 import { DescriptionErrorWrapper } from "@/components/ui/DescriptionErrorWrapper";
 import { DescriptionTextarea } from "@/components/ui/DescriptionTextarea";
