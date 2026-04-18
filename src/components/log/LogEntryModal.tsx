@@ -337,7 +337,11 @@ function InlineEditable({
   }
 
   return (
-    <div className="group relative cursor-pointer" onClick={() => setActiveField(fieldId)}>
+    <button
+      type="button"
+      className="group relative cursor-pointer text-left w-full"
+      onClick={() => setActiveField(fieldId)}
+    >
       {children ?? (
         <div className={className}>{value || <span className="text-[#333]">—</span>}</div>
       )}
@@ -356,7 +360,7 @@ function InlineEditable({
           <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
         </svg>
       </span>
-    </div>
+    </button>
   );
 }
 
@@ -367,7 +371,7 @@ function StarRating({ value, onChange }: { value: string; onChange: (v: string) 
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
+      <div className="flex gap-1">
         {Array.from({ length: 10 }, (_, i) => {
           const n = i + 1;
           const filled = (hover || numeric) >= n;
@@ -377,6 +381,7 @@ function StarRating({ value, onChange }: { value: string; onChange: (v: string) 
               type="button"
               onClick={() => onChange(String(n))}
               onMouseEnter={() => setHover(n)}
+              onMouseLeave={() => setHover(0)}
               className="transition-transform hover:scale-110 focus:outline-none"
             >
               <svg
