@@ -1,0 +1,118 @@
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { updateBidirectionalRelations } from "@/services/relations";
+import type { LogEntryData } from "../types/log-entry";
+
+export type SaveEntryParams = {
+  uid: string;
+  isEditing: boolean;
+  entryId: string | null;
+  entryData: LogEntryData;
+  trimmedTitle: string;
+  listMediaType: string;
+  image: string | null;
+  releaseYearValue: string | null;
+  selectedListIds: Set<string>;
+  initialListIds: Set<string>;
+  originalRelations: { targetId: string; type: string; createdAtMs: number }[];
+  relationPayload: { targetId: string; type: string; createdAtMs: number }[];
+};
+
+export async function saveLogEntry({
+  uid,
+  isEditing,
+  entryId,
+  entryData,
+  trimmedTitle,
+  listMediaType,
+  image,
+  releaseYearValue,
+  selectedListIds,
+  initialListIds,
+  originalRelations,
+  relationPayload,
+}: SaveEntryParams) {
+  let finalEntryId = entryId;
+
+  if (isEditing && entryId) {
+    await updateDoc(doc(db, "users", uid, "entries", entryId), entryData);
+  } else {
+    const ref = await addDoc(collection(db, "users", uid, "entries"), {
+      ...entryData,
+      createdAt: serverTimestamp(),
+    });
+    finalEntryId = ref.id;
+  }
+
+  if (!finalEntryId) throw new Error("No entry ID");
+
+  const addedIds = Array.from(selectedListIds).filter((id) => !initialListIds.has(id));
+  const removedIds = Array.from(initialListIds).filter((id) => !selectedListIds.has(id));
+  const commonIds = Array.from(selectedListIds).filter((id) => initialListIds.has(id));
+
+  await Promise.all([
+    ...addedIds.map((listId) =>
+      addDoc(collection(db, "users", uid, "lists", listId, "items"), {
+        title: trimmedTitle,
+        mediaType: listMediaType,
+        externalId: finalEntryId,
+        image,
+        year: releaseYearValue,
+        addedAt: serverTimestamp(),
+      }).then(() =>
+        updateDoc(doc(db, "users", uid, "lists", listId), { updatedAt: serverTimestamp() }),
+      ),
+    ),
+    ...removedIds.map(async (listId) => {
+      const snap = await getDocs(
+        query(
+          collection(db, "users", uid, "lists", listId, "items"),
+          where("externalId", "==", finalEntryId),
+          limit(1),
+        ),
+      );
+      if (!snap.empty) {
+        await deleteDoc(doc(db, "users", uid, "lists", listId, "items", snap.docs[0].id));
+        await updateDoc(doc(db, "users", uid, "lists", listId), {
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }),
+    ...commonIds.map(async (listId) => {
+      const snap = await getDocs(
+        query(
+          collection(db, "users", uid, "lists", listId, "items"),
+          where("externalId", "==", finalEntryId),
+          limit(1),
+        ),
+      );
+      if (!snap.empty)
+        await updateDoc(doc(db, "users", uid, "lists", listId, "items", snap.docs[0].id), {
+          title: trimmedTitle,
+          mediaType: listMediaType,
+          image,
+          year: releaseYearValue,
+        });
+    }),
+  ]);
+
+  await updateBidirectionalRelations(
+    uid,
+    finalEntryId,
+    originalRelations,
+    relationPayload.map(({ targetId, type }) => ({ targetId, type })),
+  );
+
+  return finalEntryId;
+}
