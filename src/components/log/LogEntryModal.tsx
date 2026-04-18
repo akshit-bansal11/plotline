@@ -939,7 +939,7 @@ export function LogEntryModal({
       return;
     }
     if (!completionUnknown && !completionDate) setCompletionDate(todayISODate());
-  }, [status, isOpen]);
+  }, [status, isOpen, completionDate, completionUnknown]);
 
   // ── Submit ────────────────────────────────────────────────────────────────────
   const onSubmit = async (e: React.FormEvent) => {
