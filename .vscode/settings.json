@@ -6,5 +6,8 @@
     "source.fixAll.biome": "explicit"
   },
   "biome.enabled": true,
-  "css.validate": false
+  "css.validate": false,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
 }

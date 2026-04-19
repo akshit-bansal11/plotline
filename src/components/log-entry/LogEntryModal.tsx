@@ -686,52 +686,67 @@ export function LogEntryModal({
         <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
           <div className="flex-1 flex overflow-hidden min-h-0">
             {/* LEFT PANEL */}
-            <div className="w-[420px] shrink-0 border-r border-white/5 overflow-y-auto p-7 flex flex-col bg-[#111]">
-              <div className="flex justify-between items-center mb-4">
-                <span className="px-3 py-1 rounded-full border border-white/10 text-[11px] font-mono text-white/50 uppercase tracking-wider">
+            <div className="w-[440px] shrink-0 border-r border-white/5 overflow-y-auto p-8 flex flex-col bg-[#111]">
+              {/* 1. TYPE BADGE */}
+              <div className="mb-6">
+                <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
                   {mediaTypeLabels[mediaType] ?? mediaType}
                 </span>
               </div>
 
-              <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden mb-6 bg-[#1f1f1f]">
-                {image ? (
-                  <ImageWithSkeleton src={image} alt={title} fill className="object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Search className="w-8 h-8 text-[#333]" />
+              {/* 2. IMAGE + MAIN INFO (TITLE, DIRECTOR, YEAR) */}
+              <div className="flex gap-6 mb-8">
+                <div className="relative w-32 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
+                  {image ? (
+                    <ImageWithSkeleton src={image} alt={title} fill className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Search className="w-6 h-6 text-white/10" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col justify-end min-w-0 flex-1">
+                  <InlineEditable
+                    value={title}
+                    onCommit={setTitle}
+                    fieldId="left-title"
+                    {...editableProps}
+                    className="text-2xl font-black leading-tight uppercase tracking-tight text-white mb-3 pr-2"
+                  />
+
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                        Directed by
+                      </span>
+                      <InlineEditable
+                        value={director || "\u2014"}
+                        onCommit={setDirector}
+                        fieldId="left-director"
+                        {...editableProps}
+                        className="text-[13px] font-medium text-white/70"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                        Released
+                      </span>
+                      <InlineEditable
+                        value={releaseYear}
+                        onCommit={setReleaseYear}
+                        type="number"
+                        fieldId="left-year"
+                        {...editableProps}
+                        className="text-[13px] font-medium text-white/70"
+                      />
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
-              <InlineEditable
-                value={title}
-                onCommit={setTitle}
-                fieldId="left-title"
-                {...editableProps}
-                className="text-[clamp(26px,3.5vw,38px)] font-black leading-[1.1] uppercase tracking-[-0.02em] text-white mb-2 pr-5"
-              />
-
-              <div className="text-sm text-[#666] mb-6 flex items-center gap-1.5 flex-wrap">
-                <span>Directed by</span>
-                <InlineEditable
-                  value={director || "\u2014"}
-                  onCommit={setDirector}
-                  fieldId="left-director"
-                  {...editableProps}
-                  className="font-medium text-[#888] pr-5"
-                />
-                <span>·</span>
-                <InlineEditable
-                  value={releaseYear}
-                  onCommit={setReleaseYear}
-                  type="number"
-                  fieldId="left-year"
-                  {...editableProps}
-                  className="font-medium text-[#888] pr-5"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              {/* 3. STATS (EPISODES, SEASONS, RATING) */}
+              <div className="grid grid-cols-3 gap-4 mb-8">
                 <InlineEditable
                   value={episodeCount}
                   onCommit={setEpisodeCount}
@@ -751,7 +766,7 @@ export function LogEntryModal({
                 >
                   <StatColumn
                     label="SEASONS"
-                    value={totalSeasons ? String(totalSeasons).padStart(2, "0") : "01"}
+                    value={totalSeasons ? String(totalSeasons).padStart(2, "0") : "0"}
                   />
                 </InlineEditable>
 
@@ -769,24 +784,30 @@ export function LogEntryModal({
                 </InlineEditable>
               </div>
 
-              <div className="flex flex-wrap gap-1.5 mb-5">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 rounded-full border border-white/[0.08] bg-[#1a1a1a] text-[10px] text-[#aaa] font-mono uppercase tracking-[0.08em]"
+              {/* 4. GENRE / THEMES */}
+              <div className="mb-8">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+                  GENRE / THEMES
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2.5 py-1 rounded-md border border-white/[0.05] bg-white/[0.03] text-[10px] text-white/50 font-mono uppercase tracking-[0.05em]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setActiveField("left-tags")}
+                    className="px-2.5 py-1 rounded-md border border-dashed border-white/10 text-[10px] font-mono text-white/20 hover:text-white/40 hover:border-white/20 transition-all"
                   >
-                    {tag}
-                  </span>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setActiveField("left-tags")}
-                  className="px-3 py-1 rounded-full border border-dashed border-white/10 text-[10px] font-mono text-[#555] hover:text-[#888] hover:border-white/20 transition-all"
-                >
-                  + EDIT
-                </button>
+                    + EDIT
+                  </button>
+                </div>
                 {activeField === "left-tags" && (
-                  <div className="w-full mt-2">
+                  <div className="mt-3">
                     <input
                       ref={tagRef}
                       placeholder="Comma-separated tags\u2026"
@@ -811,14 +832,20 @@ export function LogEntryModal({
                 )}
               </div>
 
-              <InlineEditable
-                value={description}
-                onCommit={setDescription}
-                fieldId="left-desc"
-                multiline
-                {...editableProps}
-                className="text-[13px] text-[#555] leading-[1.6] italic line-clamp-3 pr-5"
-              />
+              {/* 5. DESCRIPTION */}
+              <div className="mt-auto">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+                  DESCRIPTION
+                </div>
+                <InlineEditable
+                  value={description}
+                  onCommit={setDescription}
+                  fieldId="left-desc"
+                  multiline
+                  {...editableProps}
+                  className="text-[13px] text-white/40 leading-relaxed italic pr-4"
+                />
+              </div>
             </div>
 
             {/* RIGHT PANEL */}
@@ -840,7 +867,7 @@ export function LogEntryModal({
                     style={{ colorScheme: "dark" }}
                     className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-5 pr-10 appearance-none text-[13px] text-white focus:outline-none focus:border-white/20 transition-all"
                   >
-                    <option value="unspecified">Select status\u2026</option>
+                    <option value="unspecified">Select status</option>
                     {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
                       (s) => (
                         <option key={s} value={s}>

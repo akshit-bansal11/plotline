@@ -1,5 +1,5 @@
-import { cn } from "@/utils";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/utils";
 
 export function InlineEditable({
   value,
@@ -61,7 +61,7 @@ export function InlineEditable({
           }
           if (e.key === "Escape") setActiveField(null);
         }}
-        className={cn(inputCls, className, "min-h-[80px] resize-none")}
+        className={cn(inputCls, className, "min-h-20 resize-none")}
       />
     ) : (
       <input

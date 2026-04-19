@@ -23,7 +23,6 @@ import { MediaGrid } from "@/components/library/MediaGrid";
 import { MediaSection } from "@/components/library/MediaSection";
 import { MyListsModal } from "@/components/lists/MyListsModal";
 import { NewListModal } from "@/components/lists/NewListModal";
-import { EntryDetailModal } from "@/components/log-entry/EntryDetailModal";
 import { LogEntryModal } from "@/components/log-entry/LogEntryModal";
 import { Modal } from "@/components/overlay/Modal";
 import { LibrarySearchBar } from "@/components/search/LibrarySearchBar";
@@ -1309,7 +1308,9 @@ function LibrarySection({
                 onClick={async () => {
                   if (!uid || !relationModal || isRelationSaving) return;
                   const sourceDoc = entries.find((e) => String(e.id) === relationModal.sourceId);
-                  const oldRelations = Array.isArray(sourceDoc?.relations)
+                  if (!sourceDoc) return;
+
+                  const oldRelations = Array.isArray(sourceDoc.relations)
                     ? sourceDoc.relations.filter(
                         (r) => Boolean(r.targetId) && Boolean(r.type) && !r.inferred,
                       )
@@ -1383,7 +1384,7 @@ export default function Home() {
   const { user } = useAuth();
   const uid = user?.uid || null;
   const { activeSection } = useSection();
-  const { entries, status, error, refresh, selectedEntry, setSelectedEntry } = useData();
+  const { entries, status, error, refresh, setSelectedEntry } = useData();
   const [libraryFilters, setLibraryFilters] = useState<Record<Exclude<SectionKey, "home">, string>>(
     {
       movies: "",
@@ -1610,12 +1611,6 @@ export default function Home() {
           {sectionNode}
         </motion.div>
       </AnimatePresence>
-      <EntryDetailModal
-        entry={selectedEntry}
-        onClose={() => setSelectedEntry(null)}
-        onEdit={handleEditEntry}
-        onDelete={deleteEntry}
-      />
       <LogEntryModal
         isOpen={!!isEditingEntry}
         onClose={() => setIsEditingEntry(null)}

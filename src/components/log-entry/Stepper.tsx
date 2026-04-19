@@ -22,7 +22,7 @@ export function Stepper({
             <rect width="10" height="2" rx="1" fill="currentColor" />
           </svg>
         </button>
-        <span className="text-[14px] font-medium text-white min-w-[24px] text-center">{value}</span>
+        <span className="text-[14px] font-medium text-white min-w-6 text-center">{value}</span>
         <button
           type="button"
           onClick={() => onValueChange(value + 1)}

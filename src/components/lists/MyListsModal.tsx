@@ -261,10 +261,10 @@ export function MyListsModal({
           };
           const typeValue =
             data.mediaType === "movie" ||
-              data.mediaType === "series" ||
-              data.mediaType === "anime" ||
-              data.mediaType === "manga" ||
-              data.mediaType === "game"
+            data.mediaType === "series" ||
+            data.mediaType === "anime" ||
+            data.mediaType === "manga" ||
+            data.mediaType === "game"
               ? data.mediaType
               : "movie";
           return {
