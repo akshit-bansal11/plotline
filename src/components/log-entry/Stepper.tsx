@@ -1,4 +1,6 @@
+import { cn } from "@/utils";
 import { Plus } from "lucide-react";
+import { useState } from "react";
 
 export function Stepper({
   label,
@@ -13,9 +15,18 @@ export function Stepper({
   readOnly?: boolean;
   max?: number;
 }) {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555]">{label}</div>
+      <div
+        className={cn(
+          "text-[10px] font-mono uppercase tracking-[0.14em] transition-colors",
+          isFocused ? "text-white" : "text-[#555]",
+        )}
+      >
+        {label}
+      </div>
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -27,7 +38,34 @@ export function Stepper({
             <rect width="10" height="2" rx="1" fill="currentColor" />
           </svg>
         </button>
-        <span className="text-[14px] font-medium text-white min-w-6 text-center">{value}</span>
+        {readOnly ? (
+          <span className="text-[14px] font-medium text-white min-w-6 text-center">{value}</span>
+        ) : (
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={value}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "") {
+                onValueChange(0);
+                return;
+              }
+              const num = parseInt(val, 10);
+              if (!isNaN(num)) {
+                if (max !== undefined && num > max) {
+                  onValueChange(max);
+                } else {
+                  onValueChange(num);
+                }
+              }
+            }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            className="w-10 bg-transparent text-[14px] font-medium text-white text-center focus:outline-none border-b border-transparent focus:border-white/20"
+          />
+        )}
         <button
           type="button"
           onClick={() => {
