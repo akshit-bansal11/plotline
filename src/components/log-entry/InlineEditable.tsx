@@ -15,6 +15,7 @@ interface InlineEditableProps {
   multiline?: boolean;
   type?: "text" | "number";
   readOnly?: boolean;
+  noTruncate?: boolean;
 }
 
 export function InlineEditable({
@@ -28,6 +29,7 @@ export function InlineEditable({
   multiline = false,
   type = "text",
   readOnly = false,
+  noTruncate = false,
 }: InlineEditableProps) {
   const isActive = activeField === fieldId;
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
@@ -87,6 +89,8 @@ export function InlineEditable({
     );
   }
 
+  const shouldTruncate = !multiline && !noTruncate;
+
   return (
     <button
       type="button"
@@ -98,11 +102,13 @@ export function InlineEditable({
     >
       <div className={cn("flex-1 min-w-0 pr-6", className)}>
         {children ?? (
-          <div className="truncate">{value || <span className="text-[#333]">\u2014</span>}</div>
+          <div className={cn(shouldTruncate ? "truncate" : "break-words")}>
+            {value || <span className="text-[#333]">\u2014</span>}
+          </div>
         )}
       </div>
       {!readOnly && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-1/2 -translate-y-1/2">
           <FieldEditButton active={isActive} />
         </div>
       )}

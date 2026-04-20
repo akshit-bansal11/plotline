@@ -1,6 +1,6 @@
-import { cn } from "@/utils";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/utils";
 
 export function Stepper({
   label,
@@ -53,7 +53,7 @@ export function Stepper({
                 return;
               }
               const num = parseInt(val, 10);
-              if (!isNaN(num)) {
+              if (!Number.isNaN(num)) {
                 if (max !== undefined && num > max) {
                   onValueChange(max);
                 } else {

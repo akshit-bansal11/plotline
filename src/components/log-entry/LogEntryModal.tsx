@@ -6,7 +6,8 @@ import { serverTimestamp, Timestamp } from "firebase/firestore";
 // ─── Icons ────────────────────────────────────────────────────────────────────
 import { ChevronDown, Search, X } from "lucide-react";
 
-// ─── React ────────────────────────────────────────────────────────────────────
+// ─── Next & React ────────────────────────────────────────────────────────────────────
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 // ─── Internal imports ─────────────────────────────────────────────────────────
@@ -157,13 +158,23 @@ export function LogEntryModal({
   const tagRef = useRef<HTMLInputElement>(null);
   const castRef = useRef<HTMLInputElement>(null);
 
+  // ── DYNAMIC FONT SIZES ─────────────────────────────────────────────────────
+
+  const titleFontSize = useMemo(() => {
+    const len = title.length;
+    if (len <= 12) return "text-3xl";
+    if (len <= 24) return "text-2xl";
+    if (len <= 45) return "text-xl";
+    return "text-lg";
+  }, [title]);
+
   // ── UI ADAPTATION HELPERS ──────────────────────────────────────────────────
 
   const isAnimeMovie = mediaType === "anime" && isMovie;
 
   const creatorLabels = useMemo(() => {
-    if (mediaType === "anime") return { field1: "STUDIO", field2: null };
-    if (mediaType === "manga") return { field1: "WRITTEN BY", field2: "PUBLISHED BY" };
+    if (mediaType === "anime") return { field1: "DIRECTOR", field2: "STUDIO" };
+    if (mediaType === "manga") return { field1: "WRITER", field2: "PUBLISHED BY" };
     if (mediaType === "game") return { field1: "DEVELOPER", field2: "STUDIO" };
     return { field1: "DIRECTED BY", field2: "PRODUCED BY" };
   }, [mediaType]);
@@ -427,7 +438,7 @@ export function LogEntryModal({
 
       const nStatus = normalizedInitial.status ?? "unspecified";
       const nPlatform = normalizedInitial.platform ?? "";
-      const nProducer = entryDoc?.producer ?? "";
+      const nProducer = normalizedInitial.producer ?? entryDoc?.producer ?? "";
       const nCast = entryDoc?.cast ?? normalizedInitial.cast ?? [];
       const nPlayTime = normalizedInitial.playTime ? String(normalizedInitial.playTime) : "";
       const nAchievements = normalizedInitial.achievements
@@ -472,7 +483,7 @@ export function LogEntryModal({
       setExternalId(nExternalId);
       setDescription(nDescription);
       setReleaseYear(nReleaseYear);
-      setDirector(entryDoc?.director ?? "");
+      setDirector(normalizedInitial.director ?? entryDoc?.director ?? "");
       setProducer(nProducer);
       setCast(nCast);
       setTags(nTags);
@@ -865,7 +876,7 @@ export function LogEntryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm">
       <div
-        className="relative w-full max-w-[1000px] bg-[#111] rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/5"
+        className="relative w-full max-w-[1200px] bg-[#111] rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/5"
         style={{ height: "min(720px, 90vh)" }}
       >
         <button
@@ -879,7 +890,7 @@ export function LogEntryModal({
         <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
           <div className="flex-1 flex overflow-hidden min-h-0">
             {/* LEFT PANEL */}
-            <div className="w-[440px] shrink-0 border-r border-white/5 overflow-y-auto p-8 flex flex-col bg-[#111]">
+            <div className="w-[540px] shrink-0 border-r border-white/5 overflow-y-auto p-8 flex flex-col bg-[#111]">
               {/* 1. TYPE BADGE */}
               <div className="mb-6">
                 <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
@@ -889,9 +900,9 @@ export function LogEntryModal({
 
               {/* 2. IMAGE + MAIN INFO (TITLE, DIRECTOR, YEAR) */}
               <div className="flex gap-6 mb-8">
-                <div className="relative w-32 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
+                <div className="relative h-64 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
                   {image ? (
-                    <ImageWithSkeleton src={image} alt={title} fill className="object-cover" />
+                    <Image src={image} alt={title} fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Search className="w-6 h-6 text-white/10" />
@@ -905,7 +916,11 @@ export function LogEntryModal({
                     onCommit={setTitle}
                     fieldId="left-title"
                     {...editableProps}
-                    className="text-2xl font-black leading-tight uppercase tracking-tight text-white mb-3 pr-2"
+                    noTruncate
+                    className={cn(
+                      "font-black leading-tight uppercase tracking-tight text-white mb-3 pr-2",
+                      titleFontSize,
+                    )}
                   />
 
                   <div className="flex flex-col gap-1.5">
@@ -921,6 +936,7 @@ export function LogEntryModal({
                         className="text-[13px] font-medium text-white/70"
                       />
                     </div>
+
                     {creatorLabels.field2 && (
                       <div className="flex flex-col">
                         <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
@@ -1142,8 +1158,8 @@ export function LogEntryModal({
               </div>
 
               {/* 5. DESCRIPTION */}
-              <div className="mt-auto">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+              <div className="flex flex-col gap-2">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20">
                   DESCRIPTION
                 </div>
                 <InlineEditable
@@ -1257,8 +1273,8 @@ export function LogEntryModal({
                 />
               </div>
 
-              {/* ARCHIVAL LISTS */}
-              <SectionHeader title="Archival Lists" />
+              {/* LISTS */}
+              <SectionHeader title="Lists" />
               {isViewMode ? (
                 <div className="flex flex-wrap gap-2 mb-6">
                   {availableLists
@@ -1311,8 +1327,8 @@ export function LogEntryModal({
                 </div>
               )}
 
-              {/* ARCHIVAL DATES */}
-              <SectionHeader title="Archival Dates" />
+              {/* DATES */}
+              <SectionHeader title="Dates" />
               <div className="grid grid-cols-2 gap-5 mb-2">
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">

@@ -62,7 +62,7 @@ export type EntryDoc = {
   director: string | null;
   producer: string | null;
   cast: string[];
-  // Archival dates
+  // dates
   startDate: string | null;
 
   isMovie: boolean;

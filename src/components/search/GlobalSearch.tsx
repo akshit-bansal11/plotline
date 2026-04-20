@@ -452,6 +452,8 @@ export function GlobalSearch({
           genresThemes?: string[];
           type?: ApiBaseType;
           cast?: string[];
+          director?: string | null;
+          producer?: string | null;
         } | null;
       };
 
@@ -479,6 +481,8 @@ export function GlobalSearch({
         chapterCount: data.chapterCount ?? fallback.chapterCount ?? null,
         genresThemes: data.genresThemes ?? fallback.genresThemes,
         cast: data.cast ?? fallback.cast,
+        director: data.director ?? fallback.director ?? null,
+        producer: data.producer ?? fallback.producer ?? null,
       };
     } catch {
       return fallback;

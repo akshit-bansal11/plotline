@@ -17,6 +17,8 @@ type MetadataResult = {
   genresThemes?: string[];
   genreIds?: number[];
   cast?: string[];
+  director?: string | null;
+  producer?: string | null;
 };
 
 type FetchResult = { ok: true; data: unknown } | { ok: false; error: string };
@@ -169,6 +171,12 @@ const mergeMetadata = (
   secondary: MetadataResult | null,
 ): MetadataResult | null => {
   if (!primary && !secondary) return null;
+  console.log("[metadata] merging", {
+    primaryTitle: primary?.title,
+    secondaryTitle: secondary?.title,
+    primaryDirector: primary?.director,
+    secondaryDirector: secondary?.director,
+  });
   if (!primary) return secondary;
   if (!secondary) return primary;
   const primaryDesc = primary.description || "";
@@ -179,9 +187,10 @@ const mergeMetadata = (
   const genreIds = Array.from(
     new Set([...(primary.genreIds || []), ...(secondary.genreIds || [])]),
   );
-  const cast = Array.from(
-    new Set([...(primary.cast || []), ...(secondary.cast || [])]),
-  ).slice(0, 10);
+  const cast = Array.from(new Set([...(primary.cast || []), ...(secondary.cast || [])])).slice(
+    0,
+    10,
+  );
 
   return {
     title: primary.title || secondary.title,
@@ -203,6 +212,8 @@ const mergeMetadata = (
     genresThemes: genres,
     genreIds,
     cast,
+    director: primary.director || secondary.director || null,
+    producer: primary.producer || secondary.producer || null,
   };
 };
 
@@ -235,25 +246,43 @@ const searchTmdbIdByTitle = async (
 const fetchTmdbCredits = async (
   id: string,
   mediaType: MediaType,
-): Promise<string[]> => {
+): Promise<{ cast: string[]; director: string | null }> => {
   const apiKey = process.env.TMDB_API_KEY;
   const bearerToken = process.env.TMDB_BEARER_TOKEN;
-  if (!apiKey && !bearerToken) return [];
-  if (mediaType !== "movie" && mediaType !== "series") return [];
+  if (!apiKey && !bearerToken) return { cast: [], director: null };
+  if (mediaType !== "movie" && mediaType !== "series") return { cast: [], director: null };
 
   const tmdbType = mediaType === "series" ? "tv" : "movie";
   const url = `https://api.themoviedb.org/3/${tmdbType}/${encodeURIComponent(id)}/credits?language=en-US`;
   const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
   const response = await safeFetchJson(finalUrl, { headers });
-  if (!response.ok) return [];
-  
+  if (!response.ok) return { cast: [], director: null };
+
   const data = response.data as {
     cast?: Array<{ name?: string }>;
+    crew?: Array<{ name?: string; job?: string }>;
   };
-  return Array.isArray(data.cast)
-    ? data.cast.slice(0, 5).map((c) => c.name).filter((v): v is string => Boolean(v))
+
+  const cast = Array.isArray(data.cast)
+    ? data.cast
+        .slice(0, 5)
+        .map((c) => c.name)
+        .filter((v): v is string => Boolean(v))
     : [];
+
+  let director = null;
+  if (Array.isArray(data.crew)) {
+    const d = data.crew.find((c) => c.job === "Director");
+    if (d?.name) director = d.name;
+    else if (mediaType === "series") {
+      // For TV, often "Executive Producer" or "Creator" is used as a proxy, but let's stick to Director
+      const creator = data.crew.find((c) => c.job === "Executive Producer");
+      if (creator?.name) director = creator.name;
+    }
+  }
+
+  return { cast, director };
 };
 
 const fetchTmdbMetadataById = async (
@@ -269,11 +298,11 @@ const fetchTmdbMetadataById = async (
   const url = `https://api.themoviedb.org/3/${tmdbType}/${encodeURIComponent(id)}?language=en-US`;
   const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
-  const [detailsRes, cast] = await Promise.all([
+  const [detailsRes, credits] = await Promise.all([
     safeFetchJson(finalUrl, { headers }),
     fetchTmdbCredits(id, mediaType),
   ]);
-  
+
   if (!detailsRes.ok) return null;
   const data = detailsRes.data as {
     title?: string;
@@ -287,6 +316,7 @@ const fetchTmdbMetadataById = async (
     poster_path?: string | null;
     vote_average?: number;
     genres?: Array<{ id?: number; name?: string }>;
+    production_companies?: Array<{ name?: string }>;
   };
 
   const lengthMinutes =
@@ -319,7 +349,9 @@ const fetchTmdbMetadataById = async (
           .map((g) => g.id)
           .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
       : [],
-    cast,
+    cast: credits.cast,
+    director: credits.director,
+    producer: Array.isArray(data.production_companies) ? data.production_companies[0]?.name : null,
   };
 };
 
@@ -355,6 +387,9 @@ const fetchOmdbMetadataById = async (
     Actors?: string;
     Poster?: string;
     imdbRating?: string;
+    Director?: string;
+    Production?: string;
+    Writer?: string;
   };
   if (data.Response === "False") return null;
 
@@ -367,9 +402,12 @@ const fetchOmdbMetadataById = async (
           .map((g) => g.trim())
           .filter(Boolean)
       : [];
-  const cast = data.Actors && data.Actors !== "N/A"
-    ? data.Actors.split(",").map(a => a.trim()).filter(Boolean)
-    : [];
+  const cast =
+    data.Actors && data.Actors !== "N/A"
+      ? data.Actors.split(",")
+          .map((a) => a.trim())
+          .filter(Boolean)
+      : [];
 
   return {
     title: data.Title || "",
@@ -382,6 +420,10 @@ const fetchOmdbMetadataById = async (
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes,
     cast,
+    director: data.Director && data.Director !== "N/A" ? data.Director : null,
+    producer:
+      (data.Production && data.Production !== "N/A" ? data.Production : null) ||
+      (data.Writer && data.Writer !== "N/A" ? data.Writer : null),
   };
 };
 
@@ -407,6 +449,9 @@ const fetchOmdbMetadataByTitle = async (
     Actors?: string;
     Poster?: string;
     imdbRating?: string;
+    Director?: string;
+    Production?: string;
+    Writer?: string;
   };
   if (data.Response === "False") return null;
 
@@ -419,9 +464,12 @@ const fetchOmdbMetadataByTitle = async (
           .map((g) => g.trim())
           .filter(Boolean)
       : [];
-  const cast = data.Actors && data.Actors !== "N/A"
-    ? data.Actors.split(",").map(a => a.trim()).filter(Boolean)
-    : [];
+  const cast =
+    data.Actors && data.Actors !== "N/A"
+      ? data.Actors.split(",")
+          .map((a) => a.trim())
+          .filter(Boolean)
+      : [];
 
   return {
     title: data.Title || "",
@@ -434,6 +482,10 @@ const fetchOmdbMetadataByTitle = async (
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes,
     cast,
+    director: data.Director && data.Director !== "N/A" ? data.Director : null,
+    producer:
+      (data.Production && data.Production !== "N/A" ? data.Production : null) ||
+      (data.Writer && data.Writer !== "N/A" ? data.Writer : null),
   };
 };
 
@@ -463,8 +515,8 @@ const fetchMalMetadata = async (
 
   const fields =
     mediaType === "anime"
-      ? "title,main_picture,start_date,mean,synopsis,num_episodes,average_episode_duration,genres"
-      : "title,main_picture,start_date,mean,synopsis,num_chapters,genres";
+      ? "title,main_picture,start_date,mean,synopsis,num_episodes,average_episode_duration,genres,studios"
+      : "title,main_picture,start_date,mean,synopsis,num_chapters,genres,authors{first_name,last_name},serialization";
   const url = `https://api.myanimelist.net/v2/${mediaType}/${encodeURIComponent(id)}?fields=${fields}`;
   const response = await safeFetchJson(url, {
     headers: { "X-MAL-CLIENT-ID": clientId },
@@ -480,7 +532,61 @@ const fetchMalMetadata = async (
     average_episode_duration?: number;
     num_chapters?: number;
     genres?: Array<{ name?: string }>;
+    studios?: Array<{ name?: string }>;
+    authors?: Array<{ node: { first_name?: string; last_name?: string } }>;
+    staff?: Array<{ node: { first_name?: string; last_name?: string }; role?: string }>;
+    characters?: Array<{ node: { name?: string } }>;
+    serialization?: Array<{ node?: { name?: string }; name?: string }>;
   };
+
+  if (mediaType === "anime") {
+    try {
+      const charRes = await safeFetchJson(
+        `https://api.jikan.moe/v4/anime/${encodeURIComponent(id)}/characters`,
+      );
+      if (charRes.ok) {
+        const charData = charRes.data as { data?: Array<{ character: { name: string } }> };
+        if (charData.data) {
+          data.characters = charData.data
+            .slice(0, 10)
+            .map((c) => ({ node: { name: c.character.name } }));
+        }
+      }
+
+      const staffRes = await safeFetchJson(
+        `https://api.jikan.moe/v4/anime/${encodeURIComponent(id)}/staff`,
+      );
+      if (staffRes.ok) {
+        const staffData = staffRes.data as {
+          data?: Array<{ person: { name: string }; positions: string[] }>;
+        };
+        if (staffData.data) {
+          data.staff = staffData.data.map((s) => ({
+            node: { first_name: s.person.name, last_name: "" },
+            role: s.positions.join(", "),
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("[metadata] fetch jikan anime failed", e);
+    }
+  } else if (mediaType === "manga") {
+    try {
+      const charRes = await safeFetchJson(
+        `https://api.jikan.moe/v4/manga/${encodeURIComponent(id)}/characters`,
+      );
+      if (charRes.ok) {
+        const charData = charRes.data as { data?: Array<{ character: { name: string } }> };
+        if (charData.data) {
+          data.characters = charData.data
+            .slice(0, 10)
+            .map((c) => ({ node: { name: c.character.name } }));
+        }
+      }
+    } catch (e) {
+      console.warn("[metadata] fetch jikan manga failed", e);
+    }
+  }
 
   const lengthMinutes =
     mediaType === "anime" && typeof data.average_episode_duration === "number"
@@ -502,6 +608,40 @@ const fetchMalMetadata = async (
     genresThemes: Array.isArray(data.genres)
       ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v))
       : [],
+    cast: Array.isArray(data.characters)
+      ? data.characters
+          .slice(0, 5)
+          .map((c) => c.node.name)
+          .filter((v): v is string => Boolean(v))
+      : [],
+    director:
+      mediaType === "manga" && Array.isArray(data.authors)
+        ? data.authors
+            .map((a) => `${a.node.first_name || ""} ${a.node.last_name || ""}`.trim())
+            .join(", ")
+        : mediaType === "anime" && Array.isArray(data.staff)
+          ? data.staff
+              .filter((s) => s.role?.toLowerCase().includes("director"))
+              .map((s) => `${s.node.first_name || ""} ${s.node.last_name || ""}`.trim())
+              .slice(0, 2)
+              .join(", ") || null
+          : null,
+    producer: (() => {
+      if (mediaType === "anime" && Array.isArray(data.studios) && data.studios.length > 0) {
+        return data.studios[0]?.name || null;
+      }
+      if (
+        mediaType === "manga" &&
+        Array.isArray(data.serialization) &&
+        data.serialization.length > 0
+      ) {
+        const s = data.serialization[0];
+        if (!s) return null;
+        if ("name" in s && typeof s.name === "string") return s.name;
+        if ("node" in s && s.node && typeof s.node.name === "string") return s.node.name;
+      }
+      return null;
+    })(),
   };
 };
 
@@ -564,7 +704,7 @@ const fetchIgdbMetadata = async (
         : "";
   if (!resolvedQuery) return null;
 
-  const body = `${resolvedQuery} fields id,name,summary,first_release_date,cover.url,genres.name,aggregated_rating,rating; limit 1;`;
+  const body = `${resolvedQuery} fields id,name,summary,first_release_date,cover.url,genres.name,aggregated_rating,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher; limit 1;`;
   const response = await safeFetchJson("https://api.igdb.com/v4/games", {
     method: "POST",
     headers: {
@@ -585,6 +725,12 @@ const fetchIgdbMetadata = async (
     genres?: Array<{ name?: string }>;
     aggregated_rating?: number;
     rating?: number;
+    involved_companies?: Array<{
+      company: { name: string };
+      developer: boolean;
+      publisher: boolean;
+    }>;
+    characters?: Array<{ name?: string }>;
   }>;
   const data = payload?.[0];
   if (!data) return null;
@@ -602,6 +748,18 @@ const fetchIgdbMetadata = async (
     genresThemes: Array.isArray(data.genres)
       ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v))
       : [],
+    cast: Array.isArray(data.characters)
+      ? data.characters
+          .map((c) => c.name)
+          .filter((v): v is string => Boolean(v))
+          .slice(0, 10)
+      : [],
+    director: Array.isArray(data.involved_companies)
+      ? data.involved_companies.find((c) => c.developer)?.company.name || null
+      : null,
+    producer: Array.isArray(data.involved_companies)
+      ? data.involved_companies.find((c) => c.publisher)?.company.name || null
+      : null,
   };
 };
 

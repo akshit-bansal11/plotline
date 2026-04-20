@@ -59,6 +59,8 @@ export type LoggableMedia = {
     createdAtMs: number;
     inferred?: boolean;
   }[];
+  director?: string | null;
+  producer?: string | null;
 };
 export type LogEntryData = {
   title: string;
