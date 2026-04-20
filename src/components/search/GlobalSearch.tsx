@@ -2,8 +2,8 @@
 
 import { Filter, Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import type { LoggableMedia } from "@/types/log-entry";
 import { cn } from "@/utils";
 import {
@@ -640,7 +640,7 @@ export function GlobalSearch({
                         >
                           <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md bg-neutral-800">
                             {result.image ? (
-                              <ImageWithSkeleton
+                              <Image
                                 src={result.image}
                                 alt={result.title}
                                 fill

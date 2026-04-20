@@ -6,4 +6,3 @@ export { GlassCard } from "@/components/ui/GlassCard";
 export { DescriptionErrorWrapper } from "./DescriptionErrorWrapper";
 export { DescriptionTextarea } from "./DescriptionTextarea";
 export { ExpandableText } from "./ExpandableText";
-export { ImageWithSkeleton } from "./ImageWithSkeleton";

@@ -1,8 +1,8 @@
 "use client";
 
 import { Search } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useData } from "@/context/DataContext";
 import { cn, entryMediaTypeLabels } from "@/utils";
 
@@ -85,12 +85,7 @@ export function LibrarySearchBar({ className }: LibrarySearchBarProps) {
                   >
                     <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md bg-neutral-800">
                       {entry.image ? (
-                        <ImageWithSkeleton
-                          src={entry.image}
-                          alt={entry.title}
-                          fill
-                          className="object-cover"
-                        />
+                        <Image src={entry.image} alt={entry.title} fill className="object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-neutral-600">
                           <Search size={14} />

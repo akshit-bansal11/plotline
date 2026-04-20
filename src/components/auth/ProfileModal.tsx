@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/overlay/Modal";
-import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/utils";
 
@@ -127,7 +127,7 @@ export function ProfileModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           <div className="flex flex-col items-center gap-3">
             <div className="h-24 w-24 overflow-hidden rounded-full border border-white/10 bg-neutral-900/40">
               {displayPhoto ? (
-                <ImageWithSkeleton
+                <Image
                   src={displayPhoto}
                   alt="Profile"
                   width={96}

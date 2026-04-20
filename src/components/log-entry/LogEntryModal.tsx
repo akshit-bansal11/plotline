@@ -14,7 +14,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { NewListModal } from "@/components/lists/NewListModal";
 import { InfographicToast } from "@/components/overlay/InfographicToast";
 import { CustomDropdown } from "@/components/ui/CustomDropdown";
-import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { StarRating } from "@/components/ui/StarRating";
 import { useAuth } from "@/context/AuthContext";
 import { type EntryDoc, useData } from "@/context/DataContext";
@@ -1460,7 +1459,7 @@ export function LogEntryModal({
                     >
                       <div className="w-8 h-12 relative rounded overflow-hidden bg-[#222] shrink-0">
                         {rel.image && (
-                          <ImageWithSkeleton src={rel.image} alt="" fill className="object-cover" />
+                          <Image src={rel.image} alt="" fill className="object-cover" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1490,7 +1489,7 @@ export function LogEntryModal({
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-14 relative rounded overflow-hidden bg-[#222] shrink-0">
                       {selectedRelationDoc.image && (
-                        <ImageWithSkeleton
+                        <Image
                           src={selectedRelationDoc.image}
                           alt=""
                           fill

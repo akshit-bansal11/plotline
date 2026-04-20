@@ -2,6 +2,7 @@
 
 import { Download, LogIn, LogOut, Settings, Upload, UserCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -15,7 +16,6 @@ import { ImportExportModal } from "@/components/library/ImportExportModal";
 import { LinkDropZone } from "@/components/log-entry/LinkDropZone";
 import { LogEntryModal } from "@/components/log-entry/LogEntryModal";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
-import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { useSection } from "@/context/SectionContext";
 import type { LoggableMedia } from "@/types/log-entry";
@@ -219,7 +219,7 @@ export function Navbar() {
               >
                 <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-neutral-900/50 text-xs font-semibold text-neutral-300">
                   {avatarUrl ? (
-                    <ImageWithSkeleton
+                    <Image
                       src={avatarUrl}
                       alt={userLabel || "User"}
                       width={32}

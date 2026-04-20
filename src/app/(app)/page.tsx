@@ -15,6 +15,7 @@ import {
 
 import { LayoutGrid, List, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Hero } from "@/components/library/Hero";
 import { MediaGrid } from "@/components/library/MediaGrid";
@@ -25,7 +26,6 @@ import { LogEntryModal } from "@/components/log-entry/LogEntryModal";
 import { Modal } from "@/components/overlay/Modal";
 import { LibrarySearchBar } from "@/components/search/LibrarySearchBar";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { type EntryDoc, type EntryMediaType, useData } from "@/context/DataContext";
 import { type SectionKey, useSection } from "@/context/SectionContext";
@@ -276,7 +276,7 @@ function DashboardSection({
                       >
                         <div className="h-14 w-10 shrink-0 overflow-hidden rounded-lg bg-neutral-800/50">
                           {entry.image ? (
-                            <ImageWithSkeleton
+                            <Image
                               src={entry.image}
                               alt={entry.title}
                               width={40}
@@ -1032,7 +1032,7 @@ function LibrarySection({
                                             key={`${list.id}-image-${image}`}
                                             className="relative h-14 w-14 overflow-hidden rounded-full border-4 border-neutral-950 bg-neutral-800 shadow-2xl ring-1 ring-white/5"
                                           >
-                                            <ImageWithSkeleton
+                                            <Image
                                               src={image}
                                               alt=""
                                               fill
