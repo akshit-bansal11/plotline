@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { updateBidirectionalRelations } from "@/services/relations";
@@ -115,4 +116,51 @@ export async function saveLogEntry({
   );
 
   return finalEntryId;
+}
+
+export async function deleteLogEntry(
+  uid: string,
+  entryId: string,
+  entries: { id: string; relations: { targetId: string; type: string; createdAtMs?: number }[] }[],
+) {
+  const entryRef = doc(db, "users", uid, "entries", entryId);
+
+  const entryToDeleteRow = entries.find((e) => e.id === entryId);
+  await updateBidirectionalRelations(uid, entryId, entryToDeleteRow?.relations || [], []);
+
+  const danglingRelationSources = entries.filter(
+    (candidate) =>
+      candidate.id !== entryId &&
+      candidate.relations.some((relation) => relation.targetId === entryId),
+  );
+
+  await Promise.all(
+    danglingRelationSources.map((candidate) => {
+      const cleanedRelations = candidate.relations.filter(
+        (relation) => relation.targetId !== entryId,
+      );
+      return updateDoc(doc(db, "users", uid, "entries", candidate.id), {
+        relations: cleanedRelations,
+        updatedAt: serverTimestamp(),
+      });
+    }),
+  );
+
+  const listsSnap = await getDocs(collection(db, "users", uid, "lists"));
+  const batch = writeBatch(db);
+
+  for (const listDoc of listsSnap.docs) {
+    const itemsSnap = await getDocs(
+      query(
+        collection(db, "users", uid, "lists", listDoc.id, "items"),
+        where("externalId", "==", entryId),
+      ),
+    );
+    for (const itemDoc of itemsSnap.docs) {
+      batch.delete(itemDoc.ref);
+    }
+  }
+
+  batch.delete(entryRef);
+  await batch.commit();
 }

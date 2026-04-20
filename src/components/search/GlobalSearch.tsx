@@ -451,6 +451,7 @@ export function GlobalSearch({
           chapterCount?: number | null;
           genresThemes?: string[];
           type?: ApiBaseType;
+          cast?: string[];
         } | null;
       };
 
@@ -477,6 +478,7 @@ export function GlobalSearch({
         episodeCount: data.episodeCount ?? fallback.episodeCount ?? null,
         chapterCount: data.chapterCount ?? fallback.chapterCount ?? null,
         genresThemes: data.genresThemes ?? fallback.genresThemes,
+        cast: data.cast ?? fallback.cast,
       };
     } catch {
       return fallback;

@@ -12,9 +12,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 // ─── Internal imports ─────────────────────────────────────────────────────────
 import { NewListModal } from "@/components/lists/NewListModal";
 import { InfographicToast } from "@/components/overlay/InfographicToast";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { ImageWithSkeleton } from "@/components/ui/ImageWithSkeleton";
+import { StarRating } from "@/components/ui/StarRating";
 import { useAuth } from "@/context/AuthContext";
 import { type EntryDoc, useData } from "@/context/DataContext";
+import { deleteLogEntry, saveLogEntry } from "@/services/log-entry";
 import { RELATION_OPTIONS, type RelationType } from "@/services/relations";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/utils";
 import { GAME_STATUS_OPTIONS, STANDARD_STATUS_OPTIONS } from "../../data/log-entry";
@@ -24,7 +27,6 @@ import {
   useInitialListIds,
   useLists,
 } from "../../hooks/use-log-entry";
-import { saveLogEntry } from "../../services/log-entry";
 // ─── Refactored modules ───────────────────────────────────────────────────────
 import type {
   EditableRelation,
@@ -39,127 +41,9 @@ import {
   todayISODate,
 } from "../../utils/log-entry";
 import { InlineEditable } from "./InlineEditable";
-// ─── Extracted Components ─────────────────────────────────────────────────────
 import { SectionHeader } from "./SectionHeader";
 import { StatColumn } from "./StatColumn";
 import { Stepper } from "./Stepper";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT-SPECIFIC LABEL MAPS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const statusLabels: Record<EntryStatus, string> = entryStatusLabels;
-const mediaTypeLabels: Record<EntryMediaType, string> = entryMediaTypeLabels;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT-SPECIFIC UI ELEMENTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// 10-star interactive rating — fills stars on hover, sets userRating on click
-function StarRating({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [hover, setHover] = useState(0);
-  const numeric = parseFloat(value) || 0;
-
-  return (
-    <div className="flex items-center gap-4">
-      <div className="flex gap-1">
-        {Array.from({ length: 10 }, (_, i) => {
-          const n = i + 1;
-          const filled = (hover || numeric) >= n;
-          return (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onChange(String(n))}
-              onMouseEnter={() => setHover(n)}
-              onMouseLeave={() => setHover(0)}
-              className="transition-transform hover:scale-110 focus:outline-none"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill={filled ? "#fff" : "none"}
-                stroke={filled ? "#fff" : "#333"}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-            </button>
-          );
-        })}
-      </div>
-      <span className="text-[18px] font-extrabold text-white min-w-[3ch]">
-        {numeric > 0 ? numeric.toFixed(1) : "0.0"}
-      </span>
-    </div>
-  );
-}
-
-// Custom dark dropdown — replaces native <select> for relation type
-function CustomDropdown({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: readonly string[];
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-2.5 px-4 text-[13px] text-white flex items-center justify-between hover:border-white/20 focus:outline-none transition-all"
-      >
-        <span>{value}</span>
-        <ChevronDown
-          className={cn(
-            "w-4 h-4 text-[#555] transition-transform duration-200",
-            open && "rotate-180",
-          )}
-        />
-      </button>
-      {open && (
-        <ul className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-[100] max-h-48 overflow-y-auto">
-          {options.map((opt) => (
-            <li key={opt}>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(opt);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "w-full text-left px-4 py-2.5 text-[13px] cursor-pointer transition-colors outline-none",
-                  opt === value
-                    ? "text-white bg-white/[0.06]"
-                    : "text-[#aaa] hover:bg-white/[0.03] hover:text-white focus:bg-white/[0.03] focus:text-white",
-                )}
-              >
-                {opt}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -169,21 +53,39 @@ export function LogEntryModal({
   isOpen,
   onClose,
   initialMedia,
-  isEditing = false,
+  mode = "create",
 }: {
   isOpen: boolean;
   onClose: () => void;
   initialMedia?: LoggableMedia | null;
-  onCreateList?: () => void;
-  isEditing?: boolean;
+  mode?: "create" | "view" | "edit";
 }) {
   const { user } = useAuth();
   const { entries } = useData();
   const uid = user?.uid ?? null;
 
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentMode, setCurrentMode] = useState(mode);
+
   // ── HOOKS ──────────────────────────────────────────────────────────────────
   useBodyScrollLock(isOpen);
-  useEscapeKey(isOpen, onClose);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentMode(mode);
+    }
+  }, [isOpen, mode]);
+
+  const handleClose = () => {
+    if (showDeleteConfirm) {
+      setShowDeleteConfirm(false);
+      return;
+    }
+    onClose();
+  };
+
+  useEscapeKey(isOpen, handleClose);
 
   // ── STATE ──────────────────────────────────────────────────────────────────
   const [activeField, setActiveField] = useState<string | null>(null);
@@ -219,6 +121,12 @@ export function LogEntryModal({
   const [achievements, setAchievements] = useState("");
   const [totalAchievements, setTotalAchievements] = useState("");
   const [platform, setPlatform] = useState("");
+  const [producer, setProducer] = useState("");
+  const [cast, setCast] = useState<string[]>([]);
+
+  // Manga specific
+  const [currentVolumes, setCurrentVolumes] = useState(0);
+  const [volumeCount, setVolumeCount] = useState(0);
 
   // Dates
   const [startDate, setStartDate] = useState("");
@@ -247,6 +155,28 @@ export function LogEntryModal({
     null,
   );
   const tagRef = useRef<HTMLInputElement>(null);
+  const castRef = useRef<HTMLInputElement>(null);
+
+  // ── UI ADAPTATION HELPERS ──────────────────────────────────────────────────
+
+  const isAnimeMovie = mediaType === "anime" && isMovie;
+
+  const creatorLabels = useMemo(() => {
+    if (mediaType === "anime") return { field1: "STUDIO", field2: null };
+    if (mediaType === "manga") return { field1: "WRITTEN BY", field2: "PUBLISHED BY" };
+    if (mediaType === "game") return { field1: "DEVELOPER", field2: "STUDIO" };
+    return { field1: "DIRECTED BY", field2: "PRODUCED BY" };
+  }, [mediaType]);
+
+  const castLabel = useMemo(() => {
+    return mediaType === "movie" || mediaType === "series" ? "CAST" : "CHARACTERS";
+  }, [mediaType]);
+
+  const rewatchLabel = useMemo(() => {
+    if (mediaType === "manga") return "REREAD COUNT";
+    if (mediaType === "game") return "REPLAY COUNT";
+    return "REWATCH COUNT";
+  }, [mediaType]);
 
   // ── EFFECTS ────────────────────────────────────────────────────────────────
 
@@ -262,7 +192,7 @@ export function LogEntryModal({
   useInitialListIds(
     uid,
     isOpen,
-    isEditing,
+    currentMode !== "create",
     initialMedia?.id,
     initialMedia?.listIds,
     lists,
@@ -317,6 +247,121 @@ export function LogEntryModal({
     return null;
   }, [releaseYear]);
 
+  // ── DIRTY TRACKING ─────────────────────────────────────────────────────────
+
+  type FieldSnapshot = {
+    title: string;
+    mediaType: string;
+    status: string;
+    userRating: string;
+    imdbRating: string;
+    releaseYear: string;
+    lengthMinutes: string;
+    episodeCount: string;
+    chapterCount: string;
+    totalSeasons: number;
+    volumeCount: number;
+    playTime: string;
+    achievements: string;
+    totalAchievements: string;
+    platform: string;
+    producer: string;
+    description: string;
+    startDate: string;
+    completionDate: string;
+    completionUnknown: boolean;
+    currentEpisodes: number;
+    currentSeasons: number;
+    currentChapters: number;
+    currentVolumes: number;
+    rewatchCount: number;
+    tags: string; // JSON.stringify([...tags].sort())
+    cast: string; // JSON.stringify([...cast].sort())
+    relations: string; // JSON.stringify sorted by targetId
+  };
+
+  const snapshotRef = useRef<FieldSnapshot | null>(null);
+
+  const isDirty = useMemo(() => {
+    if (currentMode === "create") return false;
+    const snap = snapshotRef.current;
+    if (!snap) return false;
+    // Lists: compare current selection vs initial (tracked by useInitialListIds)
+    const listsDirty =
+      selectedListIds.size !== initialListIds.size ||
+      [...selectedListIds].some((id) => !initialListIds.has(id));
+    if (listsDirty) return true;
+    const currentRelations = JSON.stringify(
+      [...relations]
+        .sort((a, b) => a.targetId.localeCompare(b.targetId))
+        .map((r) => ({ targetId: r.targetId, type: r.type })),
+    );
+    const currentTags = JSON.stringify([...tags].sort());
+    const currentCast = JSON.stringify([...cast].sort());
+    return (
+      snap.title !== title ||
+      snap.mediaType !== mediaType ||
+      snap.status !== status ||
+      snap.userRating !== userRating ||
+      snap.imdbRating !== imdbRating ||
+      snap.releaseYear !== releaseYear ||
+      snap.lengthMinutes !== lengthMinutes ||
+      snap.episodeCount !== episodeCount ||
+      snap.chapterCount !== chapterCount ||
+      snap.totalSeasons !== totalSeasons ||
+      snap.volumeCount !== volumeCount ||
+      snap.playTime !== playTime ||
+      snap.achievements !== achievements ||
+      snap.totalAchievements !== totalAchievements ||
+      snap.platform !== platform ||
+      snap.producer !== producer ||
+      snap.description !== description ||
+      snap.startDate !== startDate ||
+      snap.completionDate !== completionDate ||
+      snap.completionUnknown !== completionUnknown ||
+      snap.currentEpisodes !== currentEpisodes ||
+      snap.currentSeasons !== currentSeasons ||
+      snap.currentChapters !== currentChapters ||
+      snap.currentVolumes !== currentVolumes ||
+      snap.rewatchCount !== rewatchCount ||
+      snap.tags !== currentTags ||
+      snap.cast !== currentCast ||
+      snap.relations !== currentRelations
+    );
+  }, [
+    currentMode,
+    title,
+    mediaType,
+    status,
+    userRating,
+    imdbRating,
+    releaseYear,
+    lengthMinutes,
+    episodeCount,
+    chapterCount,
+    totalSeasons,
+    volumeCount,
+    playTime,
+    achievements,
+    totalAchievements,
+    platform,
+    producer,
+    description,
+    startDate,
+    completionDate,
+    completionUnknown,
+    currentEpisodes,
+    currentSeasons,
+    currentChapters,
+    currentVolumes,
+    rewatchCount,
+    tags,
+    cast,
+    selectedListIds,
+    initialListIds,
+    relations,
+  ]);
+
   const initializedRef = useRef<string | number | null>(null);
 
   useEffect(() => {
@@ -330,69 +375,132 @@ export function LogEntryModal({
       if (normalizedInitial.id && initializedRef.current === normalizedInitial.id) return;
       initializedRef.current = normalizedInitial.id;
 
-      setTitle(normalizedInitial.title);
-      setMediaType(normalizedInitial.inferredType);
-      setIsMovie(!!normalizedInitial.inferredIsMovie);
-      setImage(normalizedInitial.image ?? null);
-      setExternalId(normalizedInitial.id ? String(normalizedInitial.id) : null);
-      setDescription(normalizedInitial.description ?? "");
-      setReleaseYear(normalizedInitial.releaseYear ?? normalizedInitial.year ?? "");
-      setDirector("");
-      setTags(
-        Array.isArray(normalizedInitial.genresThemes)
-          ? normalizedInitial.genresThemes.slice(0, 10)
-          : [],
-      );
-      setEpisodeCount(normalizedInitial.episodeCount ? String(normalizedInitial.episodeCount) : "");
-      setChapterCount(normalizedInitial.chapterCount ? String(normalizedInitial.chapterCount) : "");
-      setLengthMinutes(
-        normalizedInitial.lengthMinutes ? String(normalizedInitial.lengthMinutes) : "",
-      );
+      // Look up the full EntryDoc from cache for fields not present on LoggableMedia.
+      const entryDoc =
+        currentMode !== "create"
+          ? (entries.find((e) => String(e.id) === String(normalizedInitial.id)) ?? null)
+          : null;
+
+      // ── Collect new values into locals so state + snapshot are in sync ──────
+
+      const nTitle = normalizedInitial.title;
+      const nMediaType = normalizedInitial.inferredType;
+      const nIsMovie = !!normalizedInitial.inferredIsMovie;
+      const nImage = normalizedInitial.image ?? null;
+      const nExternalId = normalizedInitial.id ? String(normalizedInitial.id) : null;
+      const nDescription = normalizedInitial.description ?? "";
+      const nReleaseYear = normalizedInitial.releaseYear ?? normalizedInitial.year ?? "";
+      const nTags = Array.isArray(normalizedInitial.genresThemes)
+        ? normalizedInitial.genresThemes.slice(0, 10)
+        : [];
+      let nEpisodeCount = normalizedInitial.episodeCount
+        ? String(normalizedInitial.episodeCount)
+        : "";
+      const nChapterCount = normalizedInitial.chapterCount
+        ? String(normalizedInitial.chapterCount)
+        : "";
+      const nLengthMinutes = normalizedInitial.lengthMinutes
+        ? String(normalizedInitial.lengthMinutes)
+        : "";
+
+      // Default values for display
+      if ((nMediaType === "series" || (nMediaType === "anime" && !nIsMovie)) && !nEpisodeCount) {
+        nEpisodeCount = "1";
+      }
 
       const uRating =
         typeof normalizedInitial.userRating === "number"
           ? normalizedInitial.userRating
-          : isEditing && typeof normalizedInitial.rating === "number"
+          : currentMode !== "create" && typeof normalizedInitial.rating === "number"
             ? normalizedInitial.rating
             : null;
-      setUserRating(
-        uRating != null && uRating >= 1 && uRating <= 10 ? String(Math.round(uRating)) : "",
-      );
+      const nUserRating =
+        uRating != null && uRating >= 1 && uRating <= 10 ? String(Math.round(uRating)) : "";
 
       const iRating =
         typeof normalizedInitial.imdbRating === "number"
           ? normalizedInitial.imdbRating
-          : typeof normalizedInitial.rating === "number"
+          : currentMode !== "create" && typeof normalizedInitial.rating === "number"
             ? normalizedInitial.rating
             : null;
-      setImdbRating(iRating != null && iRating >= 0 && iRating <= 10 ? String(iRating) : "");
+      const nImdbRating = iRating != null && iRating >= 0 && iRating <= 10 ? String(iRating) : "";
 
-      setStatus(normalizedInitial.status ?? "unspecified");
+      const nStatus = normalizedInitial.status ?? "unspecified";
+      const nPlatform = normalizedInitial.platform ?? "";
+      const nProducer = entryDoc?.producer ?? "";
+      const nCast = entryDoc?.cast ?? normalizedInitial.cast ?? [];
+      const nPlayTime = normalizedInitial.playTime ? String(normalizedInitial.playTime) : "";
+      const nAchievements = normalizedInitial.achievements
+        ? String(normalizedInitial.achievements)
+        : "";
+      const nTotalAchievements = normalizedInitial.totalAchievements
+        ? String(normalizedInitial.totalAchievements)
+        : "";
 
-      setPlatform(normalizedInitial.platform ?? "");
-      setPlayTime(normalizedInitial.playTime ? String(normalizedInitial.playTime) : "");
-      setAchievements(normalizedInitial.achievements ? String(normalizedInitial.achievements) : "");
-      setTotalAchievements(
-        normalizedInitial.totalAchievements ? String(normalizedInitial.totalAchievements) : "",
-      );
-
+      let nCompletionDate = "";
+      let nCompletionUnknown = false;
       if (normalizedInitial.status === "completed") {
         if (normalizedInitial.completionDateUnknown) {
-          setCompletionUnknown(true);
-          setCompletionDate("");
+          nCompletionUnknown = true;
         } else if (normalizedInitial.completedAt) {
-          setCompletionUnknown(false);
-          setCompletionDate(formatISODate(normalizedInitial.completedAt));
-        } else {
-          setCompletionUnknown(false);
-          setCompletionDate("");
+          nCompletionDate = formatISODate(normalizedInitial.completedAt);
         }
-      } else {
-        setCompletionDate("");
-        setCompletionUnknown(false);
       }
-      setStartDate("");
 
+      const nStartDate = entryDoc?.startDate ?? "";
+      const nCurrentEpisodes = entryDoc?.currentEpisodes ?? 0;
+      const nCurrentSeasons = entryDoc?.currentSeasons ?? 0;
+      let nTotalSeasons = entryDoc?.totalSeasons ?? 0;
+      const nCurrentChapters = entryDoc?.currentChapters ?? 0;
+      const nCurrentVolumes = entryDoc?.currentVolumes ?? 0;
+      const nVolumeCount = entryDoc?.volumeCount ?? 0;
+      const nRewatchCount = entryDoc?.rewatchCount ?? 0;
+
+      if (
+        (nMediaType === "series" || (nMediaType === "anime" && !nIsMovie)) &&
+        nTotalSeasons === 0
+      ) {
+        nTotalSeasons = 1;
+      }
+
+      // ── Apply state ─────────────────────────────────────────────────────────
+
+      setTitle(nTitle);
+      setMediaType(nMediaType);
+      setIsMovie(nIsMovie);
+      setImage(nImage);
+      setExternalId(nExternalId);
+      setDescription(nDescription);
+      setReleaseYear(nReleaseYear);
+      setDirector(entryDoc?.director ?? "");
+      setProducer(nProducer);
+      setCast(nCast);
+      setTags(nTags);
+      setEpisodeCount(nEpisodeCount);
+      setChapterCount(nChapterCount);
+      setLengthMinutes(nLengthMinutes);
+      setUserRating(nUserRating);
+      setImdbRating(nImdbRating);
+      setStatus(nStatus);
+      setPlatform(nPlatform);
+      setPlayTime(nPlayTime);
+      setAchievements(nAchievements);
+      setTotalAchievements(nTotalAchievements);
+      setCompletionDate(nCompletionDate);
+      setCompletionUnknown(nCompletionUnknown);
+      setStartDate(nStartDate);
+      setCurrentEpisodes(nCurrentEpisodes);
+      setCurrentSeasons(nCurrentSeasons);
+      setTotalSeasons(nTotalSeasons);
+      setCurrentChapters(nCurrentChapters);
+      setCurrentVolumes(nCurrentVolumes);
+      setVolumeCount(nVolumeCount);
+      setRewatchCount(nRewatchCount);
+
+      // ── Relations ───────────────────────────────────────────────────────────
+
+      let nOriginalRelations: { targetId: string; type: string; createdAtMs: number }[] = [];
+      let nRelations: EditableRelation[] = [];
       if (normalizedInitial.relations) {
         const cleaned = normalizedInitial.relations
           .filter((r) => !r.inferred)
@@ -402,17 +510,58 @@ export function LogEntryModal({
             createdAtMs: Number.isFinite(r.createdAtMs) ? r.createdAtMs : Date.now(),
           }))
           .filter((r) => r.targetId && r.type);
-        setOriginalRelations(cleaned);
-        setRelations(buildEditableRelations(cleaned, entries));
-      } else {
-        setOriginalRelations([]);
-        setRelations([]);
+        nOriginalRelations = cleaned;
+        nRelations = buildEditableRelations(cleaned, entries);
+      }
+      setOriginalRelations(nOriginalRelations);
+      setRelations(nRelations);
+      setRelationQuery("");
+      setSelectedRelationDoc(null);
+
+      // ── Snapshot for isDirty tracking ────────────────────────────────────────
+
+      if (currentMode !== "create") {
+        snapshotRef.current = {
+          title: nTitle,
+          mediaType: nMediaType,
+          status: nStatus,
+          userRating: nUserRating,
+          imdbRating: nImdbRating,
+          releaseYear: nReleaseYear,
+          lengthMinutes: nLengthMinutes,
+          episodeCount: nEpisodeCount,
+          chapterCount: nChapterCount,
+          totalSeasons: nTotalSeasons,
+          volumeCount: nVolumeCount,
+          playTime: nPlayTime,
+          achievements: nAchievements,
+          totalAchievements: nTotalAchievements,
+          platform: nPlatform,
+          producer: nProducer,
+          description: nDescription,
+          startDate: nStartDate,
+          completionDate: nCompletionDate,
+          completionUnknown: nCompletionUnknown,
+          currentEpisodes: nCurrentEpisodes,
+          currentSeasons: nCurrentSeasons,
+          currentChapters: nCurrentChapters,
+          currentVolumes: nCurrentVolumes,
+          rewatchCount: nRewatchCount,
+          tags: JSON.stringify([...nTags].sort()),
+          cast: JSON.stringify([...nCast].sort()),
+          relations: JSON.stringify(
+            [...nRelations]
+              .sort((a, b) => a.targetId.localeCompare(b.targetId))
+              .map((r) => ({ targetId: r.targetId, type: r.type })),
+          ),
+        };
       }
 
       setError(null);
       setInfo(null);
     } else if (initializedRef.current !== "new") {
       initializedRef.current = "new";
+      snapshotRef.current = null;
       setTitle("");
       setMediaType("movie");
       setIsMovie(false);
@@ -449,7 +598,7 @@ export function LogEntryModal({
       setError(null);
       setInfo(null);
     }
-  }, [isOpen, normalizedInitial, entries, isEditing]);
+  }, [isOpen, normalizedInitial, entries, currentMode]);
 
   useEffect(() => {
     if (!isOpen || relations.length === 0) return;
@@ -554,7 +703,7 @@ export function LogEntryModal({
       }
     }
 
-    if (!isEditing) {
+    if (currentMode === "create") {
       const lower = trimmedTitle.toLowerCase();
       const dupe = entries.some((ent) => {
         if (externalId && String(ent.externalId) === String(externalId)) return true;
@@ -576,7 +725,8 @@ export function LogEntryModal({
 
     setIsSaving(true);
     try {
-      const entryId = isEditing && normalizedInitial?.id ? String(normalizedInitial.id) : null;
+      const entryId =
+        currentMode !== "create" && normalizedInitial?.id ? String(normalizedInitial.id) : null;
 
       const relationPayload = relations.reduce<
         { targetId: string; type: string; createdAtMs: number }[]
@@ -597,10 +747,16 @@ export function LogEntryModal({
         lengthMinutes: lengthMinutesValue,
         episodeCount: episodeCountValue,
         chapterCount: chapterCountValue,
+        totalSeasons,
+        currentVolumes,
+        volumeCount,
         playTime: playTimeValue,
         achievements: achievementsValue,
         totalAchievements: totalAchievementsValue,
         platform: platformValue,
+        director: director.trim() || null,
+        producer: producer.trim() || null,
+        cast,
         isMovie,
         genresThemes: tags,
         description: description.trim(),
@@ -609,16 +765,21 @@ export function LogEntryModal({
         completionDateUnknown: completionDateUnknownValue,
         updatedAt: serverTimestamp(),
         listIds: Array.from(selectedListIds),
+        currentEpisodes,
+        currentSeasons,
+        currentChapters,
+        rewatchCount,
+        startDate: startDate.trim() || null,
         relations: relationPayload,
       };
 
       await saveLogEntry({
         uid,
-        isEditing,
+        isEditing: currentMode !== "create",
         entryId,
         entryData: {
           ...entryData,
-          externalId: isEditing ? undefined : externalId,
+          ...(currentMode === "create" && externalId ? { externalId } : {}),
         },
         trimmedTitle,
         listMediaType,
@@ -630,9 +791,9 @@ export function LogEntryModal({
         relationPayload,
       });
 
-      setInfo(isEditing ? "Updated." : "Saved.");
+      setInfo(currentMode !== "create" ? "Updated." : "Saved.");
 
-      if (isEditing) {
+      if (currentMode !== "create") {
         setTimeout(onClose, 1000);
       } else {
         // Reset for next entry
@@ -642,6 +803,8 @@ export function LogEntryModal({
         setDescription("");
         setReleaseYear("");
         setDirector("");
+        setProducer("");
+        setCast([]);
         setTags([]);
         setUserRating("");
         setImdbRating("");
@@ -652,6 +815,8 @@ export function LogEntryModal({
         setCurrentSeasons(0);
         setTotalSeasons(0);
         setCurrentChapters(0);
+        setCurrentVolumes(0);
+        setVolumeCount(0);
         setRewatchCount(0);
         setCompletionDate("");
         setCompletionUnknown(false);
@@ -671,9 +836,29 @@ export function LogEntryModal({
     }
   };
 
+  const handleDelete = async () => {
+    if (!uid || !normalizedInitial?.id) return;
+    setIsDeleting(true);
+    try {
+      await deleteLogEntry(uid, String(normalizedInitial.id), entries);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete.");
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   if (!isOpen) return null;
 
-  const editableProps = { activeField, setActiveField };
+  const handleDiscardChanges = () => {
+    initializedRef.current = null;
+    setCurrentMode("view");
+  };
+
+  const isViewMode = currentMode === "view";
+  const editableProps = { activeField, setActiveField, readOnly: isViewMode };
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
@@ -683,6 +868,14 @@ export function LogEntryModal({
         className="relative w-full max-w-[1000px] bg-[#111] rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/5"
         style={{ height: "min(720px, 90vh)" }}
       >
+        <button
+          type="button"
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-white/20 hover:text-white/60 transition-colors z-40"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
           <div className="flex-1 flex overflow-hidden min-h-0">
             {/* LEFT PANEL */}
@@ -690,7 +883,7 @@ export function LogEntryModal({
               {/* 1. TYPE BADGE */}
               <div className="mb-6">
                 <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
-                  {mediaTypeLabels[mediaType] ?? mediaType}
+                  {entryMediaTypeLabels[mediaType] ?? mediaType}
                 </span>
               </div>
 
@@ -718,15 +911,75 @@ export function LogEntryModal({
                   <div className="flex flex-col gap-1.5">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                        Directed by
+                        {creatorLabels.field1}
                       </span>
                       <InlineEditable
-                        value={director || "\u2014"}
+                        value={director || "—"}
                         onCommit={setDirector}
                         fieldId="left-director"
                         {...editableProps}
                         className="text-[13px] font-medium text-white/70"
                       />
+                    </div>
+                    {creatorLabels.field2 && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                          {creatorLabels.field2}
+                        </span>
+                        <InlineEditable
+                          value={producer || "—"}
+                          onCommit={setProducer}
+                          fieldId="left-producer"
+                          {...editableProps}
+                          className="text-[13px] font-medium text-white/70"
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                        {castLabel}
+                      </span>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {cast.map((p) => (
+                          <span
+                            key={p}
+                            className="text-[11px] text-white/50 bg-white/5 px-2 py-0.5 rounded cursor-default"
+                          >
+                            {p}
+                          </span>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setActiveField("left-cast")}
+                          className="text-[10px] text-white/20 hover:text-white/40 font-mono transition-colors"
+                        >
+                          {cast.length > 0 ? "+ EDIT" : "+ ADD"}
+                        </button>
+                      </div>
+                      {activeField === "left-cast" && (
+                        <div className="mt-2">
+                          <input
+                            ref={castRef}
+                            placeholder="Comma-separated names..."
+                            defaultValue={cast.join(", ")}
+                            onBlur={(e) => {
+                              setCast(
+                                e.target.value
+                                  .split(",")
+                                  .map((v) => v.trim())
+                                  .filter(Boolean)
+                                  .slice(0, 20),
+                              );
+                              setActiveField(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              if (e.key === "Escape") setActiveField(null);
+                            }}
+                            className="w-full bg-[#1a1a1a] border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-white/20"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
@@ -747,41 +1000,97 @@ export function LogEntryModal({
 
               {/* 3. STATS (EPISODES, SEASONS, RATING) */}
               <div className="grid grid-cols-3 gap-4 mb-8">
-                <InlineEditable
-                  value={episodeCount}
-                  onCommit={setEpisodeCount}
-                  type="number"
-                  fieldId="left-episodes"
-                  {...editableProps}
-                >
-                  <StatColumn label="EPISODES" value={episodeCount || "\u2014"} />
-                </InlineEditable>
+                {(mediaType === "movie" || isAnimeMovie) && (
+                  <InlineEditable
+                    value={lengthMinutes}
+                    onCommit={setLengthMinutes}
+                    type="number"
+                    fieldId="left-length"
+                    {...editableProps}
+                  >
+                    <StatColumn label="LENGTH (min)" value={lengthMinutes || "—"} />
+                  </InlineEditable>
+                )}
 
-                <InlineEditable
-                  value={String(totalSeasons)}
-                  onCommit={(v) => setTotalSeasons(Number(v) || 0)}
-                  type="number"
-                  fieldId="left-seasons"
-                  {...editableProps}
-                >
-                  <StatColumn
-                    label="SEASONS"
-                    value={totalSeasons ? String(totalSeasons).padStart(2, "0") : "0"}
-                  />
-                </InlineEditable>
+                {(mediaType === "series" || (mediaType === "anime" && !isAnimeMovie)) && (
+                  <>
+                    <InlineEditable
+                      value={episodeCount}
+                      onCommit={setEpisodeCount}
+                      type="number"
+                      fieldId="left-episodes"
+                      {...editableProps}
+                    >
+                      <StatColumn label="EPISODES" value={episodeCount || "—"} />
+                    </InlineEditable>
 
-                <InlineEditable
-                  value={imdbRating}
-                  onCommit={setImdbRating}
-                  type="number"
-                  fieldId="left-rating"
-                  {...editableProps}
-                >
-                  <StatColumn
-                    label="RATING"
-                    value={imdbRating ? `\u2605 ${imdbRating}` : "\u2014"}
-                  />
-                </InlineEditable>
+                    <InlineEditable
+                      value={String(totalSeasons)}
+                      onCommit={(v) => setTotalSeasons(Number(v) || 0)}
+                      type="number"
+                      fieldId="left-seasons"
+                      {...editableProps}
+                    >
+                      <StatColumn
+                        label="SEASONS"
+                        value={totalSeasons ? String(totalSeasons).padStart(2, "0") : "0"}
+                      />
+                    </InlineEditable>
+                  </>
+                )}
+
+                {mediaType === "manga" && (
+                  <>
+                    <InlineEditable
+                      value={chapterCount}
+                      onCommit={setChapterCount}
+                      type="number"
+                      fieldId="left-chapters"
+                      {...editableProps}
+                    >
+                      <StatColumn label="CHAPTERS" value={chapterCount || "—"} />
+                    </InlineEditable>
+
+                    <InlineEditable
+                      value={String(volumeCount)}
+                      onCommit={(v) => setVolumeCount(Number(v) || 0)}
+                      type="number"
+                      fieldId="left-volumes"
+                      {...editableProps}
+                    >
+                      <StatColumn
+                        label="VOLUMES"
+                        value={volumeCount ? String(volumeCount).padStart(2, "0") : "0"}
+                      />
+                    </InlineEditable>
+                  </>
+                )}
+
+                {mediaType !== "game" && (
+                  <InlineEditable
+                    value={imdbRating}
+                    onCommit={setImdbRating}
+                    type="number"
+                    fieldId="left-rating"
+                    {...editableProps}
+                  >
+                    <StatColumn label="RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
+                  </InlineEditable>
+                )}
+
+                {mediaType === "game" && (
+                  <div className="col-start-3">
+                    <InlineEditable
+                      value={imdbRating}
+                      onCommit={setImdbRating}
+                      type="number"
+                      fieldId="left-rating"
+                      {...editableProps}
+                    >
+                      <StatColumn label="RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
+                    </InlineEditable>
+                  </div>
+                )}
               </div>
 
               {/* 4. GENRE / THEMES */}
@@ -810,7 +1119,7 @@ export function LogEntryModal({
                   <div className="mt-3">
                     <input
                       ref={tagRef}
-                      placeholder="Comma-separated tags\u2026"
+                      placeholder="Comma-separated tags..."
                       defaultValue={tags.join(", ")}
                       onBlur={(e) => {
                         setTags(
@@ -861,17 +1170,26 @@ export function LogEntryModal({
                     onChange={(e) => {
                       const next = e.target.value as EntryStatus;
                       setStatus(next);
-                      if (next === "completed" && !completionDate && !completionUnknown)
-                        setCompletionDate(todayISODate());
+                      if (next === "completed") {
+                        if (!completionDate && !completionUnknown) {
+                          setCompletionDate(todayISODate());
+                        }
+                        // Auto-fill progress
+                        if (episodeCount) setCurrentEpisodes(Number(episodeCount));
+                        if (totalSeasons) setCurrentSeasons(totalSeasons);
+                        if (chapterCount) setCurrentChapters(Number(chapterCount));
+                        if (volumeCount) setCurrentVolumes(volumeCount);
+                      }
                     }}
                     style={{ colorScheme: "dark" }}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-5 pr-10 appearance-none text-[13px] text-white focus:outline-none focus:border-white/20 transition-all"
+                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-5 pr-10 appearance-none text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
+                    disabled={currentMode === "view"}
                   >
                     <option value="unspecified">Select status</option>
                     {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
                       (s) => (
                         <option key={s} value={s}>
-                          {statusLabels[s]}
+                          {entryStatusLabels[s]}
                         </option>
                       ),
                     )}
@@ -885,72 +1203,113 @@ export function LogEntryModal({
                 <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-[#555] mb-3">
                   SCORE
                 </div>
-                <StarRating value={userRating} onChange={setUserRating} />
+                <StarRating value={userRating} onChange={setUserRating} readOnly={isViewMode} />
               </div>
 
               {/* PROGRESS STEPPERS */}
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                {(mediaType === "series" || mediaType === "anime") && (
-                  <Stepper
-                    label="EPISODE"
-                    value={currentEpisodes}
-                    onValueChange={setCurrentEpisodes}
-                  />
-                )}
-                {mediaType === "manga" && (
-                  <Stepper
-                    label="CHAPTER"
-                    value={currentChapters}
-                    onValueChange={setCurrentChapters}
-                  />
-                )}
-                {mediaType !== "movie" && (
-                  <Stepper
-                    label="SEASON"
-                    value={currentSeasons}
-                    onValueChange={setCurrentSeasons}
-                  />
-                )}
-              </div>
+              {mediaType !== "movie" && !isAnimeMovie && mediaType !== "game" && (
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  {(mediaType === "series" || (mediaType === "anime" && !isAnimeMovie)) && (
+                    <>
+                      <Stepper
+                        label="EPISODE"
+                        value={currentEpisodes}
+                        onValueChange={setCurrentEpisodes}
+                        readOnly={isViewMode}
+                        max={episodeCount ? Number(episodeCount) : undefined}
+                      />
+                      <Stepper
+                        label="SEASON"
+                        value={currentSeasons}
+                        onValueChange={setCurrentSeasons}
+                        readOnly={isViewMode}
+                        max={totalSeasons || undefined}
+                      />
+                    </>
+                  )}
+                  {mediaType === "manga" && (
+                    <>
+                      <Stepper
+                        label="CHAPTER"
+                        value={currentChapters}
+                        onValueChange={setCurrentChapters}
+                        readOnly={isViewMode}
+                        max={chapterCount ? Number(chapterCount) : undefined}
+                      />
+                      <Stepper
+                        label="VOLUME"
+                        value={currentVolumes}
+                        onValueChange={setCurrentVolumes}
+                        readOnly={isViewMode}
+                        max={volumeCount || undefined}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
 
               <div className="mb-6">
                 <Stepper
-                  label="REWATCH COUNT"
+                  label={rewatchLabel}
                   value={rewatchCount}
                   onValueChange={setRewatchCount}
+                  readOnly={isViewMode}
                 />
               </div>
 
               {/* ARCHIVAL LISTS */}
               <SectionHeader title="Archival Lists" />
-              <div className="flex flex-wrap gap-2 mb-2">
-                {availableLists.map((list) => (
-                  <button
-                    key={list.id}
-                    type="button"
-                    onClick={() => {
-                      const next = new Set(selectedListIds);
-                      next.has(list.id) ? next.delete(list.id) : next.add(list.id);
-                      setSelectedListIds(next);
-                    }}
-                    className={cn(
-                      "px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition-all border",
-                      selectedListIds.has(list.id)
-                        ? "bg-white text-black border-white font-bold"
-                        : "bg-transparent text-[#aaa] border-white/10 hover:border-white/20 hover:text-white",
+              {isViewMode ? (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {availableLists
+                    .filter((l) => selectedListIds.has(l.id))
+                    .map((list) => (
+                      <span
+                        key={list.id}
+                        className="px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider bg-white/5 text-white/60 border border-white/10"
+                      >
+                        {list.name}
+                      </span>
+                    ))}
+                  {Array.from(selectedListIds).filter(
+                    (id) => !availableLists.find((l) => l.id === id),
+                  ).length === 0 &&
+                    selectedListIds.size === 0 && (
+                      <span className="text-[11px] font-mono text-white/20 italic">
+                        No lists selected
+                      </span>
                     )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {availableLists.map((list) => (
+                    <button
+                      key={list.id}
+                      type="button"
+                      onClick={() => {
+                        const next = new Set(selectedListIds);
+                        next.has(list.id) ? next.delete(list.id) : next.add(list.id);
+                        setSelectedListIds(next);
+                      }}
+                      className={cn(
+                        "px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition-all border",
+                        selectedListIds.has(list.id)
+                          ? "bg-white text-black border-white font-bold"
+                          : "bg-transparent text-[#aaa] border-white/10 hover:border-white/20 hover:text-white",
+                      )}
+                    >
+                      {list.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setIsNewListOpen(true)}
+                    className="px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider border border-dashed border-white/10 text-[#555] hover:text-[#888] hover:border-white/20 transition-all"
                   >
-                    {list.name}
+                    + NEW LIST
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setIsNewListOpen(true)}
-                  className="px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider border border-dashed border-white/10 text-[#555] hover:text-[#888] hover:border-white/20 transition-all"
-                >
-                  + NEW LIST
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* ARCHIVAL DATES */}
               <SectionHeader title="Archival Dates" />
@@ -962,26 +1321,34 @@ export function LogEntryModal({
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                    }}
                     style={{ colorScheme: "dark" }}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all"
+                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
+                    disabled={isViewMode}
                   />
-                  <div className="flex gap-4 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setStartDate(todayISODate())}
-                      className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
-                    >
-                      SET TODAY
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStartDate("")}
-                      className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
-                    >
-                      UNKNOWN
-                    </button>
-                  </div>
+                  {!isViewMode && (
+                    <div className="flex gap-4 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setStartDate(todayISODate())}
+                        className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
+                      >
+                        SET TODAY
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStartDate("")}
+                        className={cn(
+                          "text-[10px] font-mono uppercase tracking-[0.1em] transition-colors",
+                          !startDate ? "text-white" : "text-[#555] hover:text-white",
+                        )}
+                      >
+                        UNKNOWN
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -991,35 +1358,39 @@ export function LogEntryModal({
                   <input
                     type="date"
                     value={completionDate}
-                    onChange={(e) => setCompletionDate(e.target.value)}
-                    disabled={completionUnknown}
+                    onChange={(e) => {
+                      setCompletionDate(e.target.value);
+                      if (e.target.value) setCompletionUnknown(false);
+                    }}
                     style={{ colorScheme: "dark" }}
                     className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
+                    disabled={isViewMode || status !== "completed"}
                   />
-                  <div className="flex gap-4 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setCompletionDate(todayISODate())}
-                      className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
-                    >
-                      SET TODAY
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = !completionUnknown;
-                        setCompletionUnknown(next);
-                        if (next) setCompletionDate("");
-                        else setCompletionDate(todayISODate());
-                      }}
-                      className={cn(
-                        "text-[10px] font-mono uppercase tracking-[0.1em] transition-colors",
-                        completionUnknown ? "text-white" : "text-[#555] hover:text-white",
-                      )}
-                    >
-                      UNKNOWN
-                    </button>
-                  </div>
+                  {!isViewMode && status === "completed" && (
+                    <div className="flex gap-4 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setCompletionDate(todayISODate())}
+                        className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
+                      >
+                        SET TODAY
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !completionUnknown;
+                          setCompletionUnknown(next);
+                          if (next) setCompletionDate("");
+                        }}
+                        className={cn(
+                          "text-[10px] font-mono uppercase tracking-[0.1em] transition-colors",
+                          completionUnknown ? "text-white" : "text-[#555] hover:text-white",
+                        )}
+                      >
+                        UNKNOWN
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1034,8 +1405,9 @@ export function LogEntryModal({
                     setRelationQuery(e.target.value);
                     setSelectedRelationDoc(null);
                   }}
-                  placeholder="Search for related media\u2026"
-                  className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white placeholder-[#444] focus:outline-none focus:border-white/10"
+                  placeholder="Search for related media…"
+                  disabled={isViewMode}
+                  className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white placeholder-[#444] focus:outline-none focus:border-white/10 disabled:opacity-40"
                 />
                 {relationQuery && !selectedRelationDoc && (
                   <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-20">
@@ -1083,13 +1455,15 @@ export function LogEntryModal({
                           {rel.type}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setRelations((prev) => prev.filter((_, i) => i !== idx))}
-                        className="text-[#444] hover:text-white transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                      {!isViewMode && (
+                        <button
+                          type="button"
+                          onClick={() => setRelations((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-[#444] hover:text-white transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1156,23 +1530,106 @@ export function LogEntryModal({
           </div>
 
           <div className="h-16 shrink-0 bg-[#111] border-t border-white/[0.06] px-6 flex items-center justify-between z-30">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#555] hover:text-[#888] transition-colors"
-            >
-              DISCARD DRAFT
-            </button>
-            <span className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#2a2a2a]">
-              PRESS ESC TO EXIT
-            </span>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="bg-white text-[#111] px-7 py-2.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-[0.14em] hover:bg-neutral-200 transition-colors disabled:opacity-50"
-            >
-              {isSaving ? "SAVING\u2026" : "SAVE ENTRY"}
-            </button>
+            {showDeleteConfirm ? (
+              <>
+                <div className="text-[11px] font-mono text-red-500/80 uppercase tracking-widest animate-pulse font-bold">
+                  Confirm Deletion?
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#555] hover:text-[#888] transition-colors"
+                  >
+                    CANCEL
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={handleDelete}
+                    className="bg-red-500 text-white px-7 py-2.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-[0.14em] hover:bg-red-600 transition-colors disabled:opacity-50"
+                  >
+                    {isDeleting ? "DELETING..." : "CONFIRM DELETE"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Left */}
+                <div className="w-1/3 flex justify-start">
+                  {currentMode === "create" && (
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#555] hover:text-[#888] transition-colors"
+                    >
+                      DISCARD DRAFT
+                    </button>
+                  )}
+                  {currentMode === "view" && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="text-[11px] font-mono uppercase tracking-[0.12em] text-red-500/30 hover:text-red-500/60 transition-colors"
+                    >
+                      DELETE ENTRY
+                    </button>
+                  )}
+                  {currentMode === "edit" && (
+                    <button
+                      type="button"
+                      onClick={handleDiscardChanges}
+                      className="text-[11px] font-mono uppercase tracking-[0.12em] text-[#555] hover:text-[#888] transition-colors"
+                    >
+                      DISCARD CHANGES
+                    </button>
+                  )}
+                </div>
+
+                {/* Center */}
+                <div className="w-1/3 flex justify-center">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/10 select-none">
+                    PRESS ESC TO EXIT
+                  </div>
+                </div>
+
+                {/* Right */}
+                <div className="w-1/3 flex justify-end">
+                  {currentMode === "create" && (
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="bg-white text-[#111] px-7 py-2.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-[0.14em] hover:bg-neutral-200 transition-all disabled:opacity-50"
+                    >
+                      {isSaving ? "SAVING..." : "SAVE ENTRY"}
+                    </button>
+                  )}
+                  {currentMode === "view" && (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentMode("edit")}
+                      className="bg-white cursor-pointer text-black px-7 py-2.5 rounded-full text-xs font-mono font-bold uppercase tracking-[0.14em] hover:bg-neutral-200 transition-all"
+                    >
+                      EDIT
+                    </button>
+                  )}
+                  {currentMode === "edit" && (
+                    <button
+                      type="submit"
+                      disabled={isSaving || !isDirty}
+                      className={cn(
+                        "px-7 py-2.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-[0.14em] transition-all",
+                        isDirty
+                          ? "bg-white text-[#111] hover:bg-neutral-200"
+                          : "bg-white/5 text-white/40 cursor-not-allowed",
+                      )}
+                    >
+                      {isSaving ? "SAVING..." : "SAVE CHANGES"}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </form>
       </div>

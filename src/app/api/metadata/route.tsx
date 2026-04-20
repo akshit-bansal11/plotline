@@ -16,6 +16,7 @@ type MetadataResult = {
   chapterCount?: number | null;
   genresThemes?: string[];
   genreIds?: number[];
+  cast?: string[];
 };
 
 type FetchResult = { ok: true; data: unknown } | { ok: false; error: string };
@@ -178,6 +179,10 @@ const mergeMetadata = (
   const genreIds = Array.from(
     new Set([...(primary.genreIds || []), ...(secondary.genreIds || [])]),
   );
+  const cast = Array.from(
+    new Set([...(primary.cast || []), ...(secondary.cast || [])]),
+  ).slice(0, 10);
+
   return {
     title: primary.title || secondary.title,
     description: primaryDesc.length >= secondaryDesc.length ? primaryDesc : secondaryDesc,
@@ -197,6 +202,7 @@ const mergeMetadata = (
     chapterCount: primary.chapterCount ?? secondary.chapterCount ?? null,
     genresThemes: genres,
     genreIds,
+    cast,
   };
 };
 
@@ -226,6 +232,30 @@ const searchTmdbIdByTitle = async (
   return match?.id ? String(match.id) : null;
 };
 
+const fetchTmdbCredits = async (
+  id: string,
+  mediaType: MediaType,
+): Promise<string[]> => {
+  const apiKey = process.env.TMDB_API_KEY;
+  const bearerToken = process.env.TMDB_BEARER_TOKEN;
+  if (!apiKey && !bearerToken) return [];
+  if (mediaType !== "movie" && mediaType !== "series") return [];
+
+  const tmdbType = mediaType === "series" ? "tv" : "movie";
+  const url = `https://api.themoviedb.org/3/${tmdbType}/${encodeURIComponent(id)}/credits?language=en-US`;
+  const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
+  const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
+  const response = await safeFetchJson(finalUrl, { headers });
+  if (!response.ok) return [];
+  
+  const data = response.data as {
+    cast?: Array<{ name?: string }>;
+  };
+  return Array.isArray(data.cast)
+    ? data.cast.slice(0, 5).map((c) => c.name).filter((v): v is string => Boolean(v))
+    : [];
+};
+
 const fetchTmdbMetadataById = async (
   id: string,
   mediaType: MediaType,
@@ -239,9 +269,13 @@ const fetchTmdbMetadataById = async (
   const url = `https://api.themoviedb.org/3/${tmdbType}/${encodeURIComponent(id)}?language=en-US`;
   const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
-  const response = await safeFetchJson(finalUrl, { headers });
-  if (!response.ok) return null;
-  const data = response.data as {
+  const [detailsRes, cast] = await Promise.all([
+    safeFetchJson(finalUrl, { headers }),
+    fetchTmdbCredits(id, mediaType),
+  ]);
+  
+  if (!detailsRes.ok) return null;
+  const data = detailsRes.data as {
     title?: string;
     name?: string;
     overview?: string;
@@ -285,6 +319,7 @@ const fetchTmdbMetadataById = async (
           .map((g) => g.id)
           .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
       : [],
+    cast,
   };
 };
 
@@ -317,6 +352,7 @@ const fetchOmdbMetadataById = async (
     Plot?: string;
     Runtime?: string;
     Genre?: string;
+    Actors?: string;
     Poster?: string;
     imdbRating?: string;
   };
@@ -331,6 +367,10 @@ const fetchOmdbMetadataById = async (
           .map((g) => g.trim())
           .filter(Boolean)
       : [];
+  const cast = data.Actors && data.Actors !== "N/A"
+    ? data.Actors.split(",").map(a => a.trim()).filter(Boolean)
+    : [];
+
   return {
     title: data.Title || "",
     description: data.Plot && data.Plot !== "N/A" ? data.Plot : "",
@@ -341,6 +381,7 @@ const fetchOmdbMetadataById = async (
     imdbRating: ratingRounded,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes,
+    cast,
   };
 };
 
@@ -363,6 +404,7 @@ const fetchOmdbMetadataByTitle = async (
     Plot?: string;
     Runtime?: string;
     Genre?: string;
+    Actors?: string;
     Poster?: string;
     imdbRating?: string;
   };
@@ -377,6 +419,10 @@ const fetchOmdbMetadataByTitle = async (
           .map((g) => g.trim())
           .filter(Boolean)
       : [];
+  const cast = data.Actors && data.Actors !== "N/A"
+    ? data.Actors.split(",").map(a => a.trim()).filter(Boolean)
+    : [];
+
   return {
     title: data.Title || "",
     description: data.Plot && data.Plot !== "N/A" ? data.Plot : "",
@@ -387,6 +433,7 @@ const fetchOmdbMetadataByTitle = async (
     imdbRating: ratingRounded,
     lengthMinutes: parseRuntimeMinutes(data.Runtime),
     genresThemes,
+    cast,
   };
 };
 

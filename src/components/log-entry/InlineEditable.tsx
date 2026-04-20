@@ -1,80 +1,88 @@
-import { useEffect, useRef, useState } from "react";
+"use client";
+
+import { type ReactNode, useEffect, useRef } from "react";
 import { cn } from "@/utils";
+import { FieldEditButton } from "./FieldEditButton";
+
+interface InlineEditableProps {
+  value: string | number;
+  onCommit: (value: string) => void;
+  fieldId: string;
+  activeField: string | null;
+  setActiveField: (fieldId: string | null) => void;
+  children?: ReactNode;
+  className?: string;
+  multiline?: boolean;
+  type?: "text" | "number";
+  readOnly?: boolean;
+}
 
 export function InlineEditable({
   value,
   onCommit,
-  type = "text",
-  className = "",
   fieldId,
   activeField,
   setActiveField,
-  multiline = false,
   children,
-}: {
-  value: string;
-  onCommit: (v: string) => void;
-  type?: string;
-  className?: string;
-  fieldId: string;
-  activeField: string | null;
-  setActiveField: (f: string | null) => void;
-  multiline?: boolean;
-  children?: React.ReactNode;
-}) {
+  className,
+  multiline = false,
+  type = "text",
+  readOnly = false,
+}: InlineEditableProps) {
   const isActive = activeField === fieldId;
-  const [local, setLocal] = useState(value);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setLocal(value);
-  }, [value]);
+    if (isActive && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isActive]);
 
-  const commit = () => {
-    onCommit(local);
-    setActiveField(null);
-  };
+  if (isActive && !readOnly) {
+    if (multiline) {
+      return (
+        <textarea
+          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+          className={cn(
+            "w-full bg-[#1a1a1a] border border-white/20 rounded-lg p-3 text-[13px] text-white focus:outline-none min-h-[100px] resize-none",
+            className,
+          )}
+          defaultValue={String(value)}
+          onBlur={(e) => {
+            onCommit(e.target.value);
+            setActiveField(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              onCommit(e.currentTarget.value);
+              setActiveField(null);
+            }
+            if (e.key === "Escape") setActiveField(null);
+          }}
+        />
+      );
+    }
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!isActive) return;
-
-    if (multiline) textareaRef.current?.focus();
-    else inputRef.current?.focus();
-  }, [isActive, multiline]);
-
-  const inputCls =
-    "w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/20 transition-all";
-
-  if (isActive) {
-    return multiline ? (
-      <textarea
-        ref={textareaRef}
-        value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        onBlur={commit}
+    return (
+      <input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        type={type}
+        className={cn(
+          "w-full bg-[#1a1a1a] border border-white/20 rounded-lg px-2 py-1 text-[13px] text-white focus:outline-none",
+          className,
+        )}
+        defaultValue={String(value)}
+        onBlur={(e) => {
+          onCommit(e.target.value);
+          setActiveField(null);
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            commit();
+          if (e.key === "Enter") {
+            onCommit(e.currentTarget.value);
+            setActiveField(null);
           }
           if (e.key === "Escape") setActiveField(null);
         }}
-        className={cn(inputCls, className, "min-h-20 resize-none")}
-      />
-    ) : (
-      <input
-        ref={inputRef}
-        type={type}
-        value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") setActiveField(null);
-        }}
-        className={cn(inputCls, className)}
       />
     );
   }
@@ -82,26 +90,22 @@ export function InlineEditable({
   return (
     <button
       type="button"
-      className="group relative cursor-pointer text-left w-full"
-      onClick={() => setActiveField(fieldId)}
-    >
-      {children ?? (
-        <div className={className}>{value || <span className="text-[#333]">—</span>}</div>
+      className={cn(
+        "group relative flex items-center justify-between w-full min-h-[1.5em] text-left",
+        !readOnly && "cursor-pointer",
       )}
-      <span className="absolute -top-1 -right-5 opacity-0 group-hover:opacity-100 transition-opacity p-1 pointer-events-none">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#666"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-        </svg>
-      </span>
+      onClick={() => !readOnly && setActiveField(fieldId)}
+    >
+      <div className={cn("flex-1 min-w-0 pr-6", className)}>
+        {children ?? (
+          <div className="truncate">{value || <span className="text-[#333]">\u2014</span>}</div>
+        )}
+      </div>
+      {!readOnly && (
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <FieldEditButton active={isActive} />
+        </div>
+      )}
     </button>
   );
 }

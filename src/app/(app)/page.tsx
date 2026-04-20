@@ -5,16 +5,14 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
-  where,
-  writeBatch,
 } from "firebase/firestore";
+
 import { LayoutGrid, List, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +30,7 @@ import { useAuth } from "@/context/AuthContext";
 import { type EntryDoc, type EntryMediaType, useData } from "@/context/DataContext";
 import { type SectionKey, useSection } from "@/context/SectionContext";
 import { db } from "@/lib/firebase";
+import { deleteLogEntry } from "@/services/log-entry";
 import {
   inverseRelationMap,
   RELATION_OPTIONS,
@@ -1384,7 +1383,7 @@ export default function Home() {
   const { user } = useAuth();
   const uid = user?.uid || null;
   const { activeSection } = useSection();
-  const { entries, status, error, refresh, setSelectedEntry } = useData();
+  const { entries, status, error, refresh } = useData();
   const [libraryFilters, setLibraryFilters] = useState<Record<Exclude<SectionKey, "home">, string>>(
     {
       movies: "",
@@ -1404,6 +1403,7 @@ export default function Home() {
     games: "list",
   });
   const [isEditingEntry, setIsEditingEntry] = useState<EntryDoc | null>(null);
+  const [viewingEntry, setViewingEntry] = useState<EntryDoc | null>(null);
   const [isListsModalOpen, setIsListsModalOpen] = useState(false);
   const [isNewListOpen, setIsNewListOpen] = useState(false);
   const [newListDefaultType, setNewListDefaultType] = useState<ListModalType>("movie");
@@ -1425,6 +1425,14 @@ export default function Home() {
     (entry: EntryDoc) => {
       const latestEntry = entries.find((candidate) => candidate.id === entry.id) || entry;
       setIsEditingEntry(latestEntry);
+    },
+    [entries],
+  );
+
+  const handleViewEntry = useCallback(
+    (entry: EntryDoc) => {
+      const latestEntry = entries.find((candidate) => candidate.id === entry.id) || entry;
+      setViewingEntry(latestEntry);
     },
     [entries],
   );
@@ -1459,46 +1467,7 @@ export default function Home() {
     async (entry: EntryDoc) => {
       try {
         if (!uid) return false;
-        const entryRef = doc(db, "users", uid, "entries", entry.id);
-
-        await updateBidirectionalRelations(uid, entry.id, entry.relations || [], []);
-
-        const danglingRelationSources = entries.filter(
-          (candidate) =>
-            candidate.id !== entry.id &&
-            candidate.relations.some((relation) => relation.targetId === entry.id),
-        );
-
-        await Promise.all(
-          danglingRelationSources.map((candidate) => {
-            const cleanedRelations = candidate.relations.filter(
-              (relation) => relation.targetId !== entry.id,
-            );
-            return updateDoc(doc(db, "users", uid, "entries", candidate.id), {
-              relations: cleanedRelations,
-              updatedAt: serverTimestamp(),
-            });
-          }),
-        );
-
-        // Delete from all lists
-        const listsSnap = await getDocs(collection(db, "users", uid, "lists"));
-        const batch = writeBatch(db);
-
-        for (const listDoc of listsSnap.docs) {
-          const itemsSnap = await getDocs(
-            query(
-              collection(db, "users", uid, "lists", listDoc.id, "items"),
-              where("externalId", "==", entry.id),
-            ),
-          );
-          itemsSnap.forEach((itemDoc) => {
-            batch.delete(itemDoc.ref);
-          });
-        }
-
-        batch.delete(entryRef);
-        await batch.commit();
+        await deleteLogEntry(uid, entry.id, entries);
         return true;
       } catch (err) {
         console.error("Failed to delete entry:", err);
@@ -1548,7 +1517,7 @@ export default function Home() {
           status={status}
           error={error}
           onRetry={refresh}
-          onSelectEntry={setSelectedEntry}
+          onSelectEntry={handleViewEntry}
         />
       );
     }
@@ -1568,7 +1537,7 @@ export default function Home() {
         status={status}
         error={error}
         onRetry={refresh}
-        onSelectEntry={setSelectedEntry}
+        onSelectEntry={handleViewEntry}
         onEditEntry={handleEditEntry}
         onDeleteEntry={handleDeleteEntry}
         onEditList={handleEditList}
@@ -1583,11 +1552,11 @@ export default function Home() {
     status,
     error,
     refresh,
-    setSelectedEntry,
     sectionConfigs,
     libraryFilters,
     libraryViewModes,
     handleEditEntry,
+    handleViewEntry,
     handleDeleteEntry,
     handleEditList,
     handleDeleteList,
@@ -1612,38 +1581,41 @@ export default function Home() {
         </motion.div>
       </AnimatePresence>
       <LogEntryModal
-        isOpen={!!isEditingEntry}
-        onClose={() => setIsEditingEntry(null)}
-        isEditing={!!isEditingEntry}
-        initialMedia={
-          isEditingEntry
-            ? {
-                id: isEditingEntry.id,
-                title: isEditingEntry.title,
-                image: isEditingEntry.image,
-                year: isEditingEntry.releaseYear || undefined,
-                releaseYear: isEditingEntry.releaseYear || undefined,
-                type: isEditingEntry.mediaType,
-                description: isEditingEntry.description,
-                userRating: isEditingEntry.userRating,
-                imdbRating: isEditingEntry.imdbRating,
-                lengthMinutes: isEditingEntry.lengthMinutes,
-                episodeCount: isEditingEntry.episodeCount,
-                chapterCount: isEditingEntry.chapterCount,
-                playTime: isEditingEntry.playTime,
-                achievements: isEditingEntry.achievements,
-                totalAchievements: isEditingEntry.totalAchievements,
-                platform: isEditingEntry.platform,
-                isMovie: isEditingEntry.isMovie,
-                listIds: isEditingEntry.listIds,
-                genresThemes: isEditingEntry.genresThemes,
-                relations: isEditingEntry.relations,
-                status: isEditingEntry.status,
-                completedAt: isEditingEntry.completedAtMs,
-                completionDateUnknown: isEditingEntry.completionDateUnknown,
-              }
-            : null
-        }
+        isOpen={!!isEditingEntry || !!viewingEntry}
+        onClose={() => {
+          setIsEditingEntry(null);
+          setViewingEntry(null);
+        }}
+        mode={isEditingEntry ? "edit" : "view"}
+        initialMedia={(() => {
+          const entry = isEditingEntry || viewingEntry;
+          if (!entry) return null;
+          return {
+            id: entry.id,
+            title: entry.title,
+            image: entry.image,
+            year: entry.releaseYear || undefined,
+            releaseYear: entry.releaseYear || undefined,
+            type: entry.mediaType,
+            description: entry.description,
+            userRating: entry.userRating,
+            imdbRating: entry.imdbRating,
+            lengthMinutes: entry.lengthMinutes,
+            episodeCount: entry.episodeCount,
+            chapterCount: entry.chapterCount,
+            playTime: entry.playTime,
+            achievements: entry.achievements,
+            totalAchievements: entry.totalAchievements,
+            platform: entry.platform,
+            isMovie: entry.isMovie,
+            listIds: entry.listIds,
+            genresThemes: entry.genresThemes,
+            relations: entry.relations,
+            status: entry.status,
+            completedAt: entry.completedAtMs,
+            completionDateUnknown: entry.completionDateUnknown,
+          };
+        })()}
       />
       <MyListsModal
         isOpen={isListsModalOpen}

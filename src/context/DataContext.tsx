@@ -46,11 +46,24 @@ export type EntryDoc = {
   lengthMinutes: number | null;
   episodeCount: number | null;
   chapterCount: number | null;
+  totalSeasons: number;
   // Game specific
   playTime: number | null;
   achievements: number | null;
   totalAchievements: number | null;
   platform: string | null;
+  // User progress fields
+  currentEpisodes: number;
+  currentSeasons: number;
+  currentChapters: number;
+  rewatchCount: number;
+  currentVolumes: number;
+  volumeCount: number;
+  director: string | null;
+  producer: string | null;
+  cast: string[];
+  // Archival dates
+  startDate: string | null;
 
   isMovie: boolean;
   listIds: string[];
@@ -207,10 +220,21 @@ const parseEntry = (id: string, raw: Record<string, unknown>): EntryDoc => {
     lengthMinutes: toNumber(raw.lengthMinutes),
     episodeCount: toNumber(raw.episodeCount),
     chapterCount: toNumber(raw.chapterCount),
+    totalSeasons: toNumber(raw.totalSeasons) ?? 0,
     playTime: toNumber(raw.playTime),
     achievements: toNumber(raw.achievements),
     totalAchievements: toNumber(raw.totalAchievements),
     platform: raw.platform ? String(raw.platform) : null,
+    currentEpisodes: toNumber(raw.currentEpisodes) ?? 0,
+    currentSeasons: toNumber(raw.currentSeasons) ?? 0,
+    currentChapters: toNumber(raw.currentChapters) ?? 0,
+    currentVolumes: toNumber(raw.currentVolumes) ?? 0,
+    volumeCount: toNumber(raw.volumeCount) ?? 0,
+    rewatchCount: toNumber(raw.rewatchCount) ?? 0,
+    director: raw.director ? String(raw.director) : null,
+    producer: raw.producer ? String(raw.producer) : null,
+    cast: Array.isArray(raw.cast) ? raw.cast.filter((v): v is string => typeof v === "string") : [],
+    startDate: raw.startDate ? String(raw.startDate) : null,
     isMovie,
     listIds,
     createdAtMs: toMillis(raw.createdAt),

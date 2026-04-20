@@ -49,6 +49,7 @@ export type LoggableMedia = {
   isMovie?: boolean;
   listIds?: string[];
   genresThemes?: string[];
+  cast?: string[];
   status?: EntryStatus;
   completedAt?: number | null;
   completionDateUnknown?: boolean;
@@ -63,6 +64,7 @@ export type LogEntryData = {
   title: string;
   mediaType: EntryMediaType;
   status: EntryStatus;
+  director: string | null;
   userRating: number | null;
   imdbRating: number | null;
   releaseYear: string | null;
@@ -82,6 +84,16 @@ export type LogEntryData = {
   completionDateUnknown: boolean;
   updatedAt: FieldValue;
   listIds: string[];
+  currentEpisodes: number;
+  currentSeasons: number;
+  totalSeasons: number;
+  currentChapters: number;
+  currentVolumes: number;
+  volumeCount: number;
+  rewatchCount: number;
+  producer: string | null;
+  cast: string[];
+  startDate: string | null;
   relations: { targetId: string; type: string; createdAtMs: number }[];
   externalId?: string | null;
 };
