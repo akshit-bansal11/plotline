@@ -889,8 +889,8 @@ export async function GET(request: Request) {
         searchTMDB(queryValue),
         searchOMDB(queryValue, filters.baseType === "movie" ? "movie" : "series"),
       ]);
-      if (tmdb.error) errors.push(tmdb.error);
-      if (omdb.error) errors.push(omdb.error);
+      if (tmdb.error && !errors.includes(tmdb.error)) errors.push(tmdb.error);
+      if (omdb.error && !errors.includes(omdb.error)) errors.push(omdb.error);
 
       const tmdbMatches = tmdb.results.filter((item) => item.type === filters.baseType);
       const omdbMatches = omdb.results.filter((item) => item.type === filters.baseType);
@@ -898,15 +898,15 @@ export async function GET(request: Request) {
     } else if (filters.baseType === "anime") {
       const anime = await searchMALAnime(queryValue);
       results = anime.results;
-      if (anime.error) errors.push(anime.error);
+      if (anime.error && !errors.includes(anime.error)) errors.push(anime.error);
     } else if (filters.baseType === "manga") {
       const manga = await searchMALManga(queryValue);
       results = manga.results;
-      if (manga.error) errors.push(manga.error);
+      if (manga.error && !errors.includes(manga.error)) errors.push(manga.error);
     } else if (filters.baseType === "game") {
       const games = await searchIGDBGames(queryValue);
       results = games.results;
-      if (games.error) errors.push(games.error);
+      if (games.error && !errors.includes(games.error)) errors.push(games.error);
     }
   } else {
     const [tmdb, omdb, anime, manga, games] = await Promise.all([
@@ -917,11 +917,11 @@ export async function GET(request: Request) {
       searchIGDBGames(queryValue),
     ]);
 
-    if (tmdb.error) errors.push(tmdb.error);
-    if (omdb.error) errors.push(omdb.error);
-    if (anime.error) errors.push(anime.error);
-    if (manga.error) errors.push(manga.error);
-    if (games.error) errors.push(games.error);
+    if (tmdb.error && !errors.includes(tmdb.error)) errors.push(tmdb.error);
+    if (omdb.error && !errors.includes(omdb.error)) errors.push(omdb.error);
+    if (anime.error && !errors.includes(anime.error)) errors.push(anime.error);
+    if (manga.error && !errors.includes(manga.error)) errors.push(manga.error);
+    if (games.error && !errors.includes(games.error)) errors.push(games.error);
 
     const mergedMovieSeries = mergeMovieSeriesResults(tmdb.results, omdb.results);
     results = [...mergedMovieSeries, ...anime.results, ...manga.results, ...games.results];

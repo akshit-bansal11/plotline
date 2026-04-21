@@ -40,6 +40,11 @@ type SearchResult = {
   serialization?: string | null;
 };
 
+interface SearchError {
+  id: string;
+  message: string;
+}
+
 interface SearchResponse {
   results: SearchResult[];
   errors?: string[];
@@ -104,7 +109,7 @@ export function GlobalSearch({
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [errors, setErrors] = useState<SearchError[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [discoveryNonce, setDiscoveryNonce] = useState(0);
@@ -328,7 +333,12 @@ export function GlobalSearch({
     const cached = cacheRef.current.get(cacheKey);
     if (cached) {
       setResults(cached.results || []);
-      setErrors(cached.errors || []);
+      setErrors(
+        (cached.errors || []).map((msg) => ({
+          id: `${msg}-${Math.random().toString(36).substring(2, 9)}`,
+          message: msg,
+        })),
+      );
       finishLoading(startedAt);
       return () => {
         cancelled = true;
@@ -359,11 +369,22 @@ export function GlobalSearch({
 
         cacheRef.current.set(cacheKey, normalized);
         setResults(normalized.results);
-        setErrors(normalized.errors || []);
+        setErrors(
+          (normalized.errors || []).map((msg) => ({
+            id: `${msg}-${Math.random().toString(36).substring(2, 9)}`,
+            message: msg,
+          })),
+        );
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         setResults([]);
-        setErrors([error instanceof Error ? error.message : "Search failed."]);
+        const msg = error instanceof Error ? error.message : "Search failed.";
+        setErrors([
+          {
+            id: `${msg}-${Date.now().toString()}`,
+            message: msg,
+          },
+        ]);
       } finally {
         finishLoading(startedAt);
       }
@@ -515,7 +536,7 @@ export function GlobalSearch({
   const subtitleLabel = showEpisodesFilter ? "Episodes" : showChaptersFilter ? "Chapters" : "Count";
   const showSearchLoadingLabel = debouncedQuery.length > 0 || hasActiveFilters;
   const visibleErrors = useMemo(
-    () => errors.filter((error) => !/fetch failed|failed to fetch/i.test(error)),
+    () => errors.filter((err) => !/fetch failed|failed to fetch/i.test(err.message)),
     [errors],
   );
 
@@ -612,8 +633,8 @@ export function GlobalSearch({
                 {!isLoading && visibleErrors.length > 0 ? (
                   <div className="space-y-1 p-4">
                     {visibleErrors.map((error) => (
-                      <div key={error} className="text-xs text-amber-300">
-                        {error}
+                      <div key={error.id} className="text-xs text-amber-300">
+                        {error.message}
                       </div>
                     ))}
                   </div>
