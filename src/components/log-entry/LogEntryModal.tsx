@@ -4,7 +4,7 @@
 import { serverTimestamp, Timestamp } from "firebase/firestore";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, RefreshCw, Search, X } from "lucide-react";
 
 // ─── Next & React ────────────────────────────────────────────────────────────────────
 import Image from "next/image";
@@ -151,6 +151,8 @@ export function LogEntryModal({
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [refetchError, setRefetchError] = useState<string | null>(null);
   const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(
     null,
   );
@@ -378,6 +380,7 @@ export function LogEntryModal({
     if (!isOpen) {
       initializedRef.current = null;
       setDuplicateToast(null);
+      setRefetchError(null);
       return;
     }
 
@@ -607,6 +610,7 @@ export function LogEntryModal({
       setSelectedRelationDoc(null);
       setError(null);
       setInfo(null);
+      setRefetchError(null);
     }
   }, [isOpen, normalizedInitial, entries, currentMode]);
 
@@ -634,6 +638,57 @@ export function LogEntryModal({
     }
     if (!completionUnknown && !completionDate) setCompletionDate(todayISODate());
   }, [status, isOpen, completionDate, completionUnknown]);
+
+  // ── REFETCH HANDLER ─────────────────────────────────────────────────────────
+
+  const handleRefetch = async () => {
+    if (!externalId) {
+      setRefetchError("No external ID available for this entry.");
+      return;
+    }
+    setIsRefetching(true);
+    setRefetchError(null);
+    try {
+      const typeForApi = mediaType === "anime" && isMovie ? "anime_movie" : mediaType;
+      const params = new URLSearchParams({
+        type: typeForApi,
+        id: externalId,
+        title: title,
+      });
+      if (releaseYear) params.set("year", releaseYear);
+
+      const response = await fetch(`/api/metadata?${params.toString()}`);
+      if (!response.ok) throw new Error("Metadata fetch failed.");
+
+      const payload = await response.json();
+      const data = payload.data;
+      if (!data) throw new Error("No data found.");
+
+      if (data.title) setTitle(data.title);
+      if (data.description) setDescription(data.description);
+      if (data.image) setImage(data.image);
+      if (data.year) setReleaseYear(data.year);
+      if (data.rating !== undefined && data.rating !== null) setImdbRating(String(data.rating));
+      if (data.lengthMinutes !== undefined && data.lengthMinutes !== null)
+        setLengthMinutes(String(data.lengthMinutes));
+      if (data.episodeCount !== undefined && data.episodeCount !== null)
+        setEpisodeCount(String(data.episodeCount));
+      if (data.chapterCount !== undefined && data.chapterCount !== null)
+        setChapterCount(String(data.chapterCount));
+      if (data.genresThemes) setTags(data.genresThemes.slice(0, 10));
+      if (data.cast) setCast(data.cast);
+      if (data.director) setDirector(data.director);
+      if (data.producer) setProducer(data.producer);
+
+      setInfo("Metadata refetched successfully.");
+      setTimeout(() => setInfo(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setRefetchError("Refetch failed. Please try again.");
+    } finally {
+      setIsRefetching(false);
+    }
+  };
 
   // ── SUBMIT HANDLER ──────────────────────────────────────────────────────────
 
@@ -890,11 +945,28 @@ export function LogEntryModal({
           <div className="flex-1 flex overflow-hidden min-h-0">
             {/* LEFT PANEL */}
             <div className="w-[540px] shrink-0 border-r border-white/5 overflow-y-auto p-8 flex flex-col bg-[#111]">
-              {/* 1. TYPE BADGE */}
-              <div className="mb-6">
+              {/* 1. TYPE BADGE & REFETCH */}
+              <div className="mb-6 flex justify-between items-center">
                 <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
                   {entryMediaTypeLabels[mediaType] ?? mediaType}
                 </span>
+
+                {currentMode !== "create" && externalId && (
+                  <div className="flex items-center gap-3">
+                    {refetchError && (
+                      <span className="text-[10px] font-mono text-red-400">{refetchError}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleRefetch}
+                      disabled={isRefetching}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-[10px] font-mono text-white/60 hover:text-white disabled:opacity-50"
+                    >
+                      <RefreshCw className={cn("w-3 h-3", isRefetching && "animate-spin")} />
+                      {isRefetching ? "REFETCHING..." : "REFETCH"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 2. IMAGE + MAIN INFO (TITLE, DIRECTOR, YEAR) */}
@@ -1544,7 +1616,7 @@ export function LogEntryModal({
             </div>
           </div>
 
-          <div className="h-16 shrink-0 bg-[#111] border-t border-white/[0.06] px-6 flex items-center justify-between z-30">
+          <div className="h-16 shrink-0 bg-[#111] border-t border-white/[0.06] px-6 flex items-center justify-between z-1000">
             {showDeleteConfirm ? (
               <>
                 <div className="text-[11px] font-mono text-red-500/80 uppercase tracking-widest animate-pulse font-bold">

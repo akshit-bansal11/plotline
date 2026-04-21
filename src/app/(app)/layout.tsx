@@ -1,12 +1,12 @@
 // import Image from "next/image";
 import { Navbar } from "@/components/layout/Navbar";
-import { AvailabilityInfographic } from "@/components/overlay/AvailabilityInfographic";
+// import { AvailabilityInfographic } from "@/components/overlay/AvailabilityInfographic";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
-      <AvailabilityInfographic />
+      {/* <AvailabilityInfographic /> */}
       <main className="relative z-0 min-h-screen flex flex-col pt-24 pb-12">{children}</main>
       <footer className="border-t border-white/5 bg-neutral-950/70 px-4 py-5 text-neutral-400 md:px-8">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
