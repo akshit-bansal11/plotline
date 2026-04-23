@@ -400,14 +400,13 @@ export function LogEntryModal({
       const nMediaType = normalizedInitial.inferredType;
       const nIsMovie = !!normalizedInitial.inferredIsMovie;
       const nImage = normalizedInitial.image ?? null;
-      const nExternalId =
-        entryDoc?.externalId
-          ? String(entryDoc.externalId)
-          : ("externalId" in normalizedInitial && normalizedInitial.externalId)
-            ? String(normalizedInitial.externalId)
-            : normalizedInitial.id
-              ? String(normalizedInitial.id)
-              : null;
+      const nExternalId = entryDoc?.externalId
+        ? String(entryDoc.externalId)
+        : "externalId" in normalizedInitial && normalizedInitial.externalId
+          ? String(normalizedInitial.externalId)
+          : normalizedInitial.id
+            ? String(normalizedInitial.id)
+            : null;
       const nDescription = normalizedInitial.description ?? "";
       const nReleaseYear = normalizedInitial.releaseYear ?? normalizedInitial.year ?? "";
       const nTags = Array.isArray(normalizedInitial.genresThemes)
@@ -1752,46 +1751,44 @@ export function LogEntryModal({
                   </div>
 
                   {/* RELATIONS */}
-                  <>
-                    <SectionHeader title="Relations" />
+                  <SectionHeader title="Relations" />
 
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
-                      <input
-                        value={relationQuery}
-                        onChange={(e) => {
-                          setRelationQuery(e.target.value);
-                          setSelectedRelationDoc(null);
-                        }}
-                        placeholder="Search for related media…"
-                        className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white placeholder-[#444] focus:outline-none focus:border-white/10"
-                      />
-                      {relationQuery && !selectedRelationDoc && (
-                        <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-20">
-                          {entries
-                            .filter(
-                              (ent) =>
-                                ent.title.toLowerCase().includes(relationQuery.toLowerCase()) &&
-                                String(ent.id) !== String(normalizedInitial?.id ?? "") &&
-                                !relatedTargetIdSet.has(String(ent.id)),
-                            )
-                            .map((ent) => (
-                              <button
-                                key={ent.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedRelationDoc(ent);
-                                  setRelationQuery(ent.title);
-                                }}
-                                className="w-full text-left px-4 py-2.5 text-[12px] text-[#888] hover:bg-white/[0.03] hover:text-white transition-colors"
-                              >
-                                {ent.title}
-                              </button>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
+                    <input
+                      value={relationQuery}
+                      onChange={(e) => {
+                        setRelationQuery(e.target.value);
+                        setSelectedRelationDoc(null);
+                      }}
+                      placeholder="Search for related media…"
+                      className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white placeholder-[#444] focus:outline-none focus:border-white/10"
+                    />
+                    {relationQuery && !selectedRelationDoc && (
+                      <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-20">
+                        {entries
+                          .filter(
+                            (ent) =>
+                              ent.title.toLowerCase().includes(relationQuery.toLowerCase()) &&
+                              String(ent.id) !== String(normalizedInitial?.id ?? "") &&
+                              !relatedTargetIdSet.has(String(ent.id)),
+                          )
+                          .map((ent) => (
+                            <button
+                              key={ent.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedRelationDoc(ent);
+                                setRelationQuery(ent.title);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-[12px] text-[#888] hover:bg-white/[0.03] hover:text-white transition-colors"
+                            >
+                              {ent.title}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
 
                   {relations.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">
