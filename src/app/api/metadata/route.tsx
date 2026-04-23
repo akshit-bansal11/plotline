@@ -521,7 +521,9 @@ const fetchMalMetadata = async (
   const response = await safeFetchJson(url, {
     headers: { "X-MAL-CLIENT-ID": clientId },
   });
-  if (!response.ok) return null;
+  if (!response.ok) {
+    throw new Error(`MAL fetch failed for url ${url} with error: ${response.error}`);
+  }
   const data = response.data as {
     title?: string;
     synopsis?: string;
@@ -808,9 +810,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ data, cached: false, missingFields: missing });
     }
   } else if (type === "anime" || type === "manga") {
-    if (id) data = await fetchMalMetadata(id, type);
+    if (id) {
+      try {
+        data = await fetchMalMetadata(id, type);
+      } catch (err: any) {
+        return NextResponse.json({ data: null, error: err.message }, { status: 404 });
+      }
+      if (!data) {
+        return NextResponse.json({ data: null, error: `fetchMalMetadata returned null for id: ${id}, type: ${type}` }, { status: 404 });
+      }
+    }
   } else if (type === "game") {
     data = await fetchIgdbMetadata(id, title);
+  }
+
+  if (!data) {
+    return NextResponse.json({ data: null, error: `No metadata found for type ${type} with id ${id} and title ${title}` }, { status: 404 });
   }
 
   cache.set(cacheKey, { timestamp: Date.now(), data });

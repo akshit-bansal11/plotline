@@ -400,7 +400,14 @@ export function LogEntryModal({
       const nMediaType = normalizedInitial.inferredType;
       const nIsMovie = !!normalizedInitial.inferredIsMovie;
       const nImage = normalizedInitial.image ?? null;
-      const nExternalId = normalizedInitial.id ? String(normalizedInitial.id) : null;
+      const nExternalId =
+        entryDoc?.externalId
+          ? String(entryDoc.externalId)
+          : ("externalId" in normalizedInitial && normalizedInitial.externalId)
+            ? String(normalizedInitial.externalId)
+            : normalizedInitial.id
+              ? String(normalizedInitial.id)
+              : null;
       const nDescription = normalizedInitial.description ?? "";
       const nReleaseYear = normalizedInitial.releaseYear ?? normalizedInitial.year ?? "";
       const nTags = Array.isArray(normalizedInitial.genresThemes)
@@ -649,20 +656,26 @@ export function LogEntryModal({
     setIsRefetching(true);
     setRefetchError(null);
     try {
-      const typeForApi = mediaType === "anime" && isMovie ? "anime_movie" : mediaType;
       const params = new URLSearchParams({
-        type: typeForApi,
+        type: mediaType,
         id: externalId,
         title: title,
       });
       if (releaseYear) params.set("year", releaseYear);
 
       const response = await fetch(`/api/metadata?${params.toString()}`);
-      if (!response.ok) throw new Error("Metadata fetch failed.");
+      if (!response.ok) {
+        let errMsg = "Metadata fetch failed.";
+        try {
+          const errPayload = await response.json();
+          if (errPayload?.error) errMsg = errPayload.error;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
 
       const payload = await response.json();
       const data = payload.data;
-      if (!data) throw new Error("No data found.");
+      if (!data) throw new Error(payload.error || "No data found.");
 
       if (data.title) setTitle(data.title);
       if (data.description) setDescription(data.description);
