@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useData } from "@/context/DataContext";
 import { cn } from "@/utils";
 
-/* â”€â”€ Flag image helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Flag image helpers ────────────────────────────────────────────────── */
 const FLAG_URL = (code: string) => `https://flagsapi.com/${code}/flat/24.png`;
 
 // Codes that have known flags on flagsapi (all standard ISO-3166-1 alpha-2 used by them)
@@ -28,7 +28,7 @@ function FlagImg({ code, size = 18 }: { code: string; size?: number }) {
   );
 }
 
-/* â”€â”€ Country data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Country data ───────────────────────────────────────────────────────── */
 const POPULAR_CODES = ["US", "GB", "IN", "CA", "AU", "JP", "DE", "FR", "BR", "KR"];
 
 const ALL_COUNTRIES: { code: string; name: string }[] = [
@@ -65,7 +65,7 @@ const ALL_COUNTRIES: { code: string; name: string }[] = [
   { code: "CF", name: "Central African Republic" },
   { code: "CG", name: "Congo" },
   { code: "CH", name: "Switzerland" },
-  { code: "CI", name: "CÃ´te d'Ivoire" },
+  { code: "CI", name: "Côte d'Ivoire" },
   { code: "CL", name: "Chile" },
   { code: "CM", name: "Cameroon" },
   { code: "CN", name: "China" },
@@ -196,7 +196,7 @@ const ALL_COUNTRIES: { code: string; name: string }[] = [
   { code: "SO", name: "Somalia" },
   { code: "SR", name: "Suriname" },
   { code: "SS", name: "South Sudan" },
-  { code: "ST", name: "SÃ£o TomÃ© and PrÃ­ncipe" },
+  { code: "ST", name: "São Tomé and Príncipe" },
   { code: "SV", name: "El Salvador" },
   { code: "SY", name: "Syria" },
   { code: "SZ", name: "Eswatini" },
@@ -234,7 +234,7 @@ const POPULAR_COUNTRIES = POPULAR_CODES.map((code) =>
   ALL_COUNTRIES.find((c) => c.code === code),
 ).filter((c): c is (typeof ALL_COUNTRIES)[number] => Boolean(c));
 
-/* â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Component ─────────────────────────────────────────────────────────── */
 export function CountrySelector() {
   const { selectedCountry, setSelectedCountry } = useData();
   const [isOpen, setIsOpen] = useState(false);
@@ -343,7 +343,7 @@ export function CountrySelector() {
                   ref={searchInputRef}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search countriesâ€¦"
+                  placeholder="Search countries…"
                   className="w-full rounded-lg bg-neutral-800/60 border border-white/5 py-1.5 pl-8 pr-3 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 transition-colors"
                 />
               </div>

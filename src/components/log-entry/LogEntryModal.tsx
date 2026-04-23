@@ -861,7 +861,7 @@ export function LogEntryModal({
       if (currentMode !== "create") {
         setTimeout(onClose, 1000);
       } else {
-        // Reset for next entry
+        // Reset for next entry, then close
         setTitle("");
         setImage(null);
         setExternalId(null);
@@ -892,6 +892,7 @@ export function LogEntryModal({
         setOriginalRelations([]);
         setRelationQuery("");
         setSelectedRelationDoc(null);
+        setTimeout(onClose, 1000);
       }
     } catch (err) {
       console.error(err);
@@ -928,7 +929,7 @@ export function LogEntryModal({
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm">
       <div
         className="relative w-full max-w-[1200px] bg-[#111] rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/5"
         style={{ height: "min(720px, 90vh)" }}
@@ -943,677 +944,936 @@ export function LogEntryModal({
 
         <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
           <div className="flex-1 flex overflow-hidden min-h-0">
-            {/* LEFT PANEL */}
-            <div className="w-[540px] shrink-0 border-r border-white/5 overflow-y-auto p-8 flex flex-col bg-[#111]">
-              {/* 1. TYPE BADGE & REFETCH */}
-              <div className="mb-6 flex justify-between items-center">
-                <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
-                  {entryMediaTypeLabels[mediaType] ?? mediaType}
-                </span>
-
-                {currentMode !== "create" && externalId && (
-                  <div className="flex items-center gap-3">
-                    {refetchError && (
-                      <span className="text-[10px] font-mono text-red-400">{refetchError}</span>
+            {isViewMode ? (
+              <div className="flex-1 overflow-y-auto p-8 bg-[#111] flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border backdrop-blur-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider",
+                      mediaType === "game"
+                        ? status === "main_story_completed"
+                          ? "border-emerald-700/50 bg-emerald-950/80 text-emerald-600"
+                          : status === "fully_completed"
+                            ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
+                            : status === "backlogged"
+                              ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
+                              : status === "bored"
+                                ? "border-orange-500/50 bg-orange-950/80 text-orange-400"
+                                : status === "own"
+                                  ? "border-pink-500/50 bg-pink-950/80 text-pink-400"
+                                  : status === "wishlist"
+                                    ? "border-white/50 bg-neutral-950/80 text-white"
+                                    : status === "committed"
+                                      ? "border-sky-500/50 bg-sky-950/80 text-sky-400"
+                                      : status === "not_committed"
+                                        ? "border-blue-700/50 bg-blue-950/80 text-blue-500"
+                                        : status === "dropped"
+                                          ? "border-red-500/50 bg-red-950/80 text-red-400"
+                                          : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400"
+                        : status === "completed"
+                          ? "border-emerald-500/50 bg-emerald-950/80 text-emerald-400"
+                          : status === "watching"
+                            ? "border-blue-500/50 bg-blue-950/80 text-blue-400"
+                            : status === "plan_to_watch"
+                              ? "border-violet-500/50 bg-violet-950/80 text-violet-400"
+                              : status === "on_hold"
+                                ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
+                                : status === "dropped"
+                                  ? "border-red-500/50 bg-red-950/80 text-red-400"
+                                  : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400",
                     )}
-                    <button
-                      type="button"
-                      onClick={handleRefetch}
-                      disabled={isRefetching}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-[10px] font-mono text-white/60 hover:text-white disabled:opacity-50"
-                    >
-                      <RefreshCw className={cn("w-3 h-3", isRefetching && "animate-spin")} />
-                      {isRefetching ? "REFETCHING..." : "REFETCH"}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 2. IMAGE + MAIN INFO (TITLE, DIRECTOR, YEAR) */}
-              <div className="flex gap-6 mb-8">
-                <div className="relative h-64 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
-                  {image ? (
-                    <Image src={image} alt={title} fill className="object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Search className="w-6 h-6 text-white/10" />
-                    </div>
-                  )}
+                  >
+                    {entryStatusLabels[status] ?? status}
+                  </span>
+                  <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
+                    {entryMediaTypeLabels[mediaType] ?? mediaType}
+                  </span>
                 </div>
 
-                <div className="flex flex-col justify-end min-w-0 flex-1">
-                  <InlineEditable
-                    value={title}
-                    onCommit={setTitle}
-                    fieldId="left-title"
-                    {...editableProps}
-                    noTruncate
-                    className={cn(
-                      "font-black leading-tight uppercase tracking-tight text-white mb-3 pr-2",
-                      titleFontSize,
-                    )}
-                  />
+                {userRating && (
+                  <div className="mb-8 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl inline-flex flex-col w-max">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-yellow-500/80 mb-1.5 px-1">
+                      YOUR RATING
+                    </div>
+                    <div className="px-1">
+                      <StarRating value={userRating} onChange={() => {}} readOnly />
+                    </div>
+                  </div>
+                )}
 
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                        {creatorLabels.field1}
-                      </span>
-                      <InlineEditable
-                        value={director || "—"}
-                        onCommit={setDirector}
-                        fieldId="left-director"
-                        {...editableProps}
-                        className="text-[13px] font-medium text-white/70"
-                      />
+                <div className="flex gap-8 mb-8">
+                  <div className="relative h-64 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
+                    {image ? (
+                      <Image src={image} alt={title} fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Search className="w-6 h-6 text-white/10" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col justify-end min-w-0 flex-1 pb-2">
+                    <div
+                      className={cn(
+                        "font-black leading-tight uppercase tracking-tight text-white mb-6 pr-2",
+                        titleFontSize,
+                      )}
+                    >
+                      {title}
                     </div>
 
-                    {creatorLabels.field2 && (
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                          {creatorLabels.field2}
+                          {creatorLabels.field1}
                         </span>
-                        <InlineEditable
-                          value={producer || "—"}
-                          onCommit={setProducer}
-                          fieldId="left-producer"
-                          {...editableProps}
-                          className="text-[13px] font-medium text-white/70"
-                        />
+                        <span className="text-[13px] font-medium text-white/70">
+                          {director || "—"}
+                        </span>
                       </div>
-                    )}
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                        {castLabel}
-                      </span>
-                      <div className="flex flex-wrap gap-1 mt-0.5">
-                        {cast.map((p) => (
+
+                      {creatorLabels.field2 && (
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                            {creatorLabels.field2}
+                          </span>
+                          <span className="text-[13px] font-medium text-white/70">
+                            {producer || "—"}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col col-span-2">
+                        <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                          {castLabel}
+                        </span>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {cast.length > 0 ? (
+                            cast.map((p) => (
+                              <span
+                                key={p}
+                                className="text-[11px] text-white/50 bg-white/5 px-2 py-0.5 rounded cursor-default"
+                              >
+                                {p}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[13px] font-medium text-white/70">—</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                          RELEASED
+                        </span>
+                        <span className="text-[13px] font-medium text-white/70">
+                          {releaseYear || "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-12 mb-8 p-6 bg-[#1a1a1a] rounded-xl border border-white/5 flex-wrap">
+                  {(mediaType === "movie" || isAnimeMovie) && (
+                    <StatColumn
+                      label="LENGTH"
+                      value={lengthMinutes ? `${lengthMinutes} min` : "—"}
+                    />
+                  )}
+
+                  {(mediaType === "series" || (mediaType === "anime" && !isAnimeMovie)) && (
+                    <>
+                      <StatColumn
+                        label="EPISODES"
+                        value={`${currentEpisodes} / ${episodeCount || "?"}`}
+                      />
+                      <StatColumn
+                        label="SEASONS"
+                        value={`${currentSeasons} / ${totalSeasons || "?"}`}
+                      />
+                    </>
+                  )}
+
+                  {mediaType === "manga" && (
+                    <>
+                      <StatColumn
+                        label="CHAPTERS"
+                        value={`${currentChapters} / ${chapterCount || "?"}`}
+                      />
+                      <StatColumn
+                        label="VOLUMES"
+                        value={`${currentVolumes} / ${volumeCount || "?"}`}
+                      />
+                    </>
+                  )}
+
+                  {rewatchCount > 0 && (
+                    <StatColumn
+                      label={rewatchLabel}
+                      value={String(rewatchCount).padStart(2, "0")}
+                    />
+                  )}
+
+                  <StatColumn label="IMDB RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
+                </div>
+
+                {tags.length > 0 && (
+                  <div className="mb-8">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+                      GENRE / THEMES
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2.5 py-1 rounded-md border border-white/[0.05] bg-white/[0.03] text-[10px] text-white/50 font-mono uppercase tracking-[0.05em]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedListIds.size > 0 && (
+                  <div className="mb-8">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+                      LISTS
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {availableLists
+                        .filter((l) => selectedListIds.has(l.id))
+                        .map((list) => (
                           <span
-                            key={p}
-                            className="text-[11px] text-white/50 bg-white/5 px-2 py-0.5 rounded cursor-default"
+                            key={list.id}
+                            className="px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider bg-white/5 text-white/60 border border-white/10"
                           >
-                            {p}
+                            {list.name}
                           </span>
                         ))}
-                        <button
-                          type="button"
-                          onClick={() => setActiveField("left-cast")}
-                          className="text-[10px] text-white/20 hover:text-white/40 font-mono transition-colors"
-                        >
-                          {cast.length > 0 ? "+ EDIT" : "+ ADD"}
-                        </button>
-                      </div>
-                      {activeField === "left-cast" && (
-                        <div className="mt-2">
-                          <input
-                            ref={castRef}
-                            placeholder="Comma-separated names..."
-                            defaultValue={cast.join(", ")}
-                            onBlur={(e) => {
-                              setCast(
-                                e.target.value
-                                  .split(",")
-                                  .map((v) => v.trim())
-                                  .filter(Boolean)
-                                  .slice(0, 20),
-                              );
-                              setActiveField(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                              if (e.key === "Escape") setActiveField(null);
-                            }}
-                            className="w-full bg-[#1a1a1a] border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-white/20"
-                          />
+                    </div>
+                  </div>
+                )}
+
+                {(startDate || status === "completed") && (
+                  <div className="mb-8">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+                      DATES
+                    </div>
+                    <div className="flex gap-12">
+                      {startDate && (
+                        <div>
+                          <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-1">
+                            STARTED
+                          </div>
+                          <div className="text-[13px] text-white/70 font-medium">{startDate}</div>
+                        </div>
+                      )}
+                      {status === "completed" && (
+                        <div>
+                          <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-1">
+                            COMPLETED
+                          </div>
+                          <div className="text-[13px] text-white/70 font-medium">
+                            {completionUnknown ? "Unknown" : completionDate || "—"}
+                          </div>
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                        Released
-                      </span>
-                      <InlineEditable
-                        value={releaseYear}
-                        onCommit={setReleaseYear}
-                        type="number"
-                        fieldId="left-year"
-                        {...editableProps}
-                        className="text-[13px] font-medium text-white/70"
-                      />
+                  </div>
+                )}
+
+                {relations.length > 0 && (
+                  <div className="mb-8">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+                      RELATIONS
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {relations.map((rel) => (
+                        <div
+                          key={rel.targetId}
+                          className="flex items-center gap-3 bg-[#1a1a1a] border border-white/5 p-2 pr-4 rounded-lg min-w-[200px]"
+                        >
+                          <div className="w-10 h-14 relative rounded overflow-hidden bg-[#222] shrink-0">
+                            {rel.image && (
+                              <Image src={rel.image} alt="" fill className="object-cover" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] text-white font-medium truncate">
+                              {rel.title}
+                            </div>
+                            <div className="text-[10px] text-[#555] font-mono uppercase mt-0.5">
+                              {rel.type}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* 3. STATS (EPISODES, SEASONS, RATING) */}
-              <div className="grid grid-cols-3 gap-4 mb-8">
-                {(mediaType === "movie" || isAnimeMovie) && (
-                  <InlineEditable
-                    value={lengthMinutes}
-                    onCommit={setLengthMinutes}
-                    type="number"
-                    fieldId="left-length"
-                    {...editableProps}
-                  >
-                    <StatColumn label="LENGTH (min)" value={lengthMinutes || "—"} />
-                  </InlineEditable>
                 )}
 
-                {(mediaType === "series" || (mediaType === "anime" && !isAnimeMovie)) && (
-                  <>
-                    <InlineEditable
-                      value={episodeCount}
-                      onCommit={setEpisodeCount}
-                      type="number"
-                      fieldId="left-episodes"
-                      {...editableProps}
-                    >
-                      <StatColumn label="EPISODES" value={episodeCount || "—"} />
-                    </InlineEditable>
-
-                    <InlineEditable
-                      value={String(totalSeasons)}
-                      onCommit={(v) => setTotalSeasons(Number(v) || 0)}
-                      type="number"
-                      fieldId="left-seasons"
-                      {...editableProps}
-                    >
-                      <StatColumn
-                        label="SEASONS"
-                        value={totalSeasons ? String(totalSeasons).padStart(2, "0") : "0"}
-                      />
-                    </InlineEditable>
-                  </>
-                )}
-
-                {mediaType === "manga" && (
-                  <>
-                    <InlineEditable
-                      value={chapterCount}
-                      onCommit={setChapterCount}
-                      type="number"
-                      fieldId="left-chapters"
-                      {...editableProps}
-                    >
-                      <StatColumn label="CHAPTERS" value={chapterCount || "—"} />
-                    </InlineEditable>
-
-                    <InlineEditable
-                      value={String(volumeCount)}
-                      onCommit={(v) => setVolumeCount(Number(v) || 0)}
-                      type="number"
-                      fieldId="left-volumes"
-                      {...editableProps}
-                    >
-                      <StatColumn
-                        label="VOLUMES"
-                        value={volumeCount ? String(volumeCount).padStart(2, "0") : "0"}
-                      />
-                    </InlineEditable>
-                  </>
-                )}
-
-                {mediaType !== "game" && (
-                  <InlineEditable
-                    value={imdbRating}
-                    onCommit={setImdbRating}
-                    type="number"
-                    fieldId="left-rating"
-                    {...editableProps}
-                  >
-                    <StatColumn label="RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
-                  </InlineEditable>
-                )}
-
-                {mediaType === "game" && (
-                  <div className="col-start-3">
-                    <InlineEditable
-                      value={imdbRating}
-                      onCommit={setImdbRating}
-                      type="number"
-                      fieldId="left-rating"
-                      {...editableProps}
-                    >
-                      <StatColumn label="RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
-                    </InlineEditable>
+                <div className="flex flex-col gap-2 pb-8">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20">
+                    DESCRIPTION
                   </div>
-                )}
+                  <div className="text-[13px] text-white/40 leading-relaxed italic pr-4 whitespace-pre-wrap">
+                    {description || "No description provided."}
+                  </div>
+                </div>
               </div>
-
-              {/* 4. GENRE / THEMES */}
-              <div className="mb-8">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
-                  GENRE / THEMES
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2.5 py-1 rounded-md border border-white/[0.05] bg-white/[0.03] text-[10px] text-white/50 font-mono uppercase tracking-[0.05em]"
-                    >
-                      {tag}
+            ) : (
+              <>
+                {/* LEFT PANEL */}
+                <div className="w-[540px] shrink-0 border-r border-white/5 overflow-y-auto p-8 flex flex-col bg-[#111]">
+                  {/* 1. TYPE BADGE & REFETCH */}
+                  <div className="mb-6 flex justify-between items-center">
+                    <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
+                      {entryMediaTypeLabels[mediaType] ?? mediaType}
                     </span>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setActiveField("left-tags")}
-                    className="px-2.5 py-1 rounded-md border border-dashed border-white/10 text-[10px] font-mono text-white/20 hover:text-white/40 hover:border-white/20 transition-all"
-                  >
-                    + EDIT
-                  </button>
-                </div>
-                {activeField === "left-tags" && (
-                  <div className="mt-3">
-                    <input
-                      ref={tagRef}
-                      placeholder="Comma-separated tags..."
-                      defaultValue={tags.join(", ")}
-                      onBlur={(e) => {
-                        setTags(
-                          e.target.value
-                            .split(",")
-                            .map((t) => t.trim())
-                            .filter(Boolean)
-                            .slice(0, 10),
-                        );
-                        setActiveField(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                        if (e.key === "Escape") setActiveField(null);
-                      }}
-                      className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20"
+
+                    {currentMode !== "create" && externalId && (
+                      <div className="flex items-center gap-3">
+                        {refetchError && (
+                          <span className="text-[10px] font-mono text-red-400">{refetchError}</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleRefetch}
+                          disabled={isRefetching}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-[10px] font-mono text-white/60 hover:text-white disabled:opacity-50"
+                        >
+                          <RefreshCw className={cn("w-3 h-3", isRefetching && "animate-spin")} />
+                          {isRefetching ? "REFETCHING..." : "REFETCH"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. IMAGE + MAIN INFO (TITLE, DIRECTOR, YEAR) */}
+                  <div className="flex gap-6 mb-8">
+                    <div className="relative h-64 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
+                      {image ? (
+                        <Image src={image} alt={title} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Search className="w-6 h-6 text-white/10" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col justify-end min-w-0 flex-1">
+                      <InlineEditable
+                        value={title}
+                        onCommit={setTitle}
+                        fieldId="left-title"
+                        {...editableProps}
+                        noTruncate
+                        className={cn(
+                          "font-black leading-tight uppercase tracking-tight text-white mb-3 pr-2",
+                          titleFontSize,
+                        )}
+                      />
+
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                            {creatorLabels.field1}
+                          </span>
+                          <InlineEditable
+                            value={director || "—"}
+                            onCommit={setDirector}
+                            fieldId="left-director"
+                            {...editableProps}
+                            className="text-[13px] font-medium text-white/70"
+                          />
+                        </div>
+
+                        {creatorLabels.field2 && (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                              {creatorLabels.field2}
+                            </span>
+                            <InlineEditable
+                              value={producer || "—"}
+                              onCommit={setProducer}
+                              fieldId="left-producer"
+                              {...editableProps}
+                              className="text-[13px] font-medium text-white/70"
+                            />
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                            {castLabel}
+                          </span>
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {cast.map((p) => (
+                              <span
+                                key={p}
+                                className="text-[11px] text-white/50 bg-white/5 px-2 py-0.5 rounded cursor-default"
+                              >
+                                {p}
+                              </span>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => setActiveField("left-cast")}
+                              className="text-[10px] text-white/20 hover:text-white/40 font-mono transition-colors"
+                            >
+                              {cast.length > 0 ? "+ EDIT" : "+ ADD"}
+                            </button>
+                          </div>
+                          {activeField === "left-cast" && (
+                            <div className="mt-2">
+                              <input
+                                ref={castRef}
+                                placeholder="Comma-separated names..."
+                                defaultValue={cast.join(", ")}
+                                onBlur={(e) => {
+                                  setCast(
+                                    e.target.value
+                                      .split(",")
+                                      .map((v) => v.trim())
+                                      .filter(Boolean)
+                                      .slice(0, 20),
+                                  );
+                                  setActiveField(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                  if (e.key === "Escape") setActiveField(null);
+                                }}
+                                className="w-full bg-[#1a1a1a] border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-white/20"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                            Released
+                          </span>
+                          <InlineEditable
+                            value={releaseYear}
+                            onCommit={setReleaseYear}
+                            type="number"
+                            fieldId="left-year"
+                            {...editableProps}
+                            className="text-[13px] font-medium text-white/70"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. STATS (EPISODES, SEASONS, RATING) */}
+                  <div className="grid grid-cols-3 gap-4 mb-8">
+                    {(mediaType === "movie" || isAnimeMovie) && (
+                      <InlineEditable
+                        value={lengthMinutes}
+                        onCommit={setLengthMinutes}
+                        type="number"
+                        fieldId="left-length"
+                        {...editableProps}
+                      >
+                        <StatColumn label="LENGTH (min)" value={lengthMinutes || "—"} />
+                      </InlineEditable>
+                    )}
+
+                    {(mediaType === "series" || (mediaType === "anime" && !isAnimeMovie)) && (
+                      <>
+                        <InlineEditable
+                          value={episodeCount}
+                          onCommit={setEpisodeCount}
+                          type="number"
+                          fieldId="left-episodes"
+                          {...editableProps}
+                        >
+                          <StatColumn label="EPISODES" value={episodeCount || "—"} />
+                        </InlineEditable>
+
+                        <InlineEditable
+                          value={String(totalSeasons)}
+                          onCommit={(v) => setTotalSeasons(Number(v) || 0)}
+                          type="number"
+                          fieldId="left-seasons"
+                          {...editableProps}
+                        >
+                          <StatColumn
+                            label="SEASONS"
+                            value={totalSeasons ? String(totalSeasons).padStart(2, "0") : "0"}
+                          />
+                        </InlineEditable>
+                      </>
+                    )}
+
+                    {mediaType === "manga" && (
+                      <>
+                        <InlineEditable
+                          value={chapterCount}
+                          onCommit={setChapterCount}
+                          type="number"
+                          fieldId="left-chapters"
+                          {...editableProps}
+                        >
+                          <StatColumn label="CHAPTERS" value={chapterCount || "—"} />
+                        </InlineEditable>
+
+                        <InlineEditable
+                          value={String(volumeCount)}
+                          onCommit={(v) => setVolumeCount(Number(v) || 0)}
+                          type="number"
+                          fieldId="left-volumes"
+                          {...editableProps}
+                        >
+                          <StatColumn
+                            label="VOLUMES"
+                            value={volumeCount ? String(volumeCount).padStart(2, "0") : "0"}
+                          />
+                        </InlineEditable>
+                      </>
+                    )}
+
+                    {mediaType !== "game" && (
+                      <InlineEditable
+                        value={imdbRating}
+                        onCommit={setImdbRating}
+                        type="number"
+                        fieldId="left-rating"
+                        {...editableProps}
+                      >
+                        <StatColumn label="RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
+                      </InlineEditable>
+                    )}
+
+                    {mediaType === "game" && (
+                      <div className="col-start-3">
+                        <InlineEditable
+                          value={imdbRating}
+                          onCommit={setImdbRating}
+                          type="number"
+                          fieldId="left-rating"
+                          {...editableProps}
+                        >
+                          <StatColumn label="RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
+                        </InlineEditable>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 4. GENRE / THEMES */}
+                  <div className="mb-8">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
+                      GENRE / THEMES
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2.5 py-1 rounded-md border border-white/[0.05] bg-white/[0.03] text-[10px] text-white/50 font-mono uppercase tracking-[0.05em]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setActiveField("left-tags")}
+                        className="px-2.5 py-1 rounded-md border border-dashed border-white/10 text-[10px] font-mono text-white/20 hover:text-white/40 hover:border-white/20 transition-all"
+                      >
+                        + EDIT
+                      </button>
+                    </div>
+                    {activeField === "left-tags" && (
+                      <div className="mt-3">
+                        <input
+                          ref={tagRef}
+                          placeholder="Comma-separated tags..."
+                          defaultValue={tags.join(", ")}
+                          onBlur={(e) => {
+                            setTags(
+                              e.target.value
+                                .split(",")
+                                .map((t) => t.trim())
+                                .filter(Boolean)
+                                .slice(0, 10),
+                            );
+                            setActiveField(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                            if (e.key === "Escape") setActiveField(null);
+                          }}
+                          className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. DESCRIPTION */}
+                  <div className="flex flex-col gap-2">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20">
+                      DESCRIPTION
+                    </div>
+                    <InlineEditable
+                      value={description}
+                      onCommit={setDescription}
+                      fieldId="left-desc"
+                      multiline
+                      {...editableProps}
+                      className="text-[13px] text-white/40 leading-relaxed italic pr-4"
                     />
                   </div>
-                )}
-              </div>
-
-              {/* 5. DESCRIPTION */}
-              <div className="flex flex-col gap-2">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20">
-                  DESCRIPTION
                 </div>
-                <InlineEditable
-                  value={description}
-                  onCommit={setDescription}
-                  fieldId="left-desc"
-                  multiline
-                  {...editableProps}
-                  className="text-[13px] text-white/40 leading-relaxed italic pr-4"
-                />
-              </div>
-            </div>
 
-            {/* RIGHT PANEL */}
-            <div className="flex-1 overflow-y-auto p-7 bg-[#111]">
-              {/* STATUS */}
-              <div className="mb-6">
-                <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-[#555] mb-2">
-                  CURRENT STATUS
-                </div>
-                <div className="relative">
-                  <select
-                    value={status}
-                    onChange={(e) => {
-                      const next = e.target.value as EntryStatus;
-                      setStatus(next);
-                      if (next === "completed") {
-                        if (!completionDate && !completionUnknown) {
-                          setCompletionDate(todayISODate());
-                        }
-                        // Auto-fill progress
-                        if (episodeCount) setCurrentEpisodes(Number(episodeCount));
-                        if (totalSeasons) setCurrentSeasons(totalSeasons);
-                        if (chapterCount) setCurrentChapters(Number(chapterCount));
-                        if (volumeCount) setCurrentVolumes(volumeCount);
-                      }
-                    }}
-                    style={{ colorScheme: "dark" }}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-5 pr-10 appearance-none text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
-                    disabled={currentMode === "view"}
-                  >
-                    <option value="unspecified">Select status</option>
-                    {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
-                      (s) => (
-                        <option key={s} value={s}>
-                          {entryStatusLabels[s]}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555] pointer-events-none" />
-                </div>
-              </div>
-
-              {/* SCORE */}
-              <div className="mb-6 p-4 bg-[#1a1a1a] rounded-xl border border-white/[0.05]">
-                <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-[#555] mb-3">
-                  SCORE
-                </div>
-                <StarRating value={userRating} onChange={setUserRating} readOnly={isViewMode} />
-              </div>
-
-              {/* PROGRESS STEPPERS */}
-              {mediaType !== "movie" && !isAnimeMovie && mediaType !== "game" && (
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  {(mediaType === "series" || (mediaType === "anime" && !isAnimeMovie)) && (
-                    <>
-                      <Stepper
-                        label="EPISODE"
-                        value={currentEpisodes}
-                        onValueChange={setCurrentEpisodes}
-                        readOnly={isViewMode}
-                        max={episodeCount ? Number(episodeCount) : undefined}
-                      />
-                      <Stepper
-                        label="SEASON"
-                        value={currentSeasons}
-                        onValueChange={setCurrentSeasons}
-                        readOnly={isViewMode}
-                        max={totalSeasons || undefined}
-                      />
-                    </>
-                  )}
-                  {mediaType === "manga" && (
-                    <>
-                      <Stepper
-                        label="CHAPTER"
-                        value={currentChapters}
-                        onValueChange={setCurrentChapters}
-                        readOnly={isViewMode}
-                        max={chapterCount ? Number(chapterCount) : undefined}
-                      />
-                      <Stepper
-                        label="VOLUME"
-                        value={currentVolumes}
-                        onValueChange={setCurrentVolumes}
-                        readOnly={isViewMode}
-                        max={volumeCount || undefined}
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="mb-6">
-                <Stepper
-                  label={rewatchLabel}
-                  value={rewatchCount}
-                  onValueChange={setRewatchCount}
-                  readOnly={isViewMode}
-                />
-              </div>
-
-              {/* LISTS */}
-              <SectionHeader title="Lists" />
-              {isViewMode ? (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {availableLists
-                    .filter((l) => selectedListIds.has(l.id))
-                    .map((list) => (
-                      <span
-                        key={list.id}
-                        className="px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider bg-white/5 text-white/60 border border-white/10"
+                {/* RIGHT PANEL */}
+                <div className="flex-1 overflow-y-auto p-7 bg-[#111]">
+                  {/* STATUS */}
+                  <div className="mb-6">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-[#555] mb-2">
+                      CURRENT STATUS
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={status}
+                        onChange={(e) => {
+                          const next = e.target.value as EntryStatus;
+                          setStatus(next);
+                          if (next === "completed") {
+                            if (!completionDate && !completionUnknown) {
+                              setCompletionDate(todayISODate());
+                            }
+                            // Auto-fill progress
+                            if (episodeCount) setCurrentEpisodes(Number(episodeCount));
+                            if (totalSeasons) setCurrentSeasons(totalSeasons);
+                            if (chapterCount) setCurrentChapters(Number(chapterCount));
+                            if (volumeCount) setCurrentVolumes(volumeCount);
+                          }
+                        }}
+                        style={{ colorScheme: "dark" }}
+                        className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-5 pr-10 appearance-none text-[13px] text-white focus:outline-none focus:border-white/20 transition-all"
                       >
-                        {list.name}
-                      </span>
-                    ))}
-                  {Array.from(selectedListIds).filter(
-                    (id) => !availableLists.find((l) => l.id === id),
-                  ).length === 0 &&
-                    selectedListIds.size === 0 && (
-                      <span className="text-[11px] font-mono text-white/20 italic">
-                        No lists selected
-                      </span>
-                    )}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {availableLists.map((list) => (
-                    <button
-                      key={list.id}
-                      type="button"
-                      onClick={() => {
-                        const next = new Set(selectedListIds);
-                        next.has(list.id) ? next.delete(list.id) : next.add(list.id);
-                        setSelectedListIds(next);
-                      }}
-                      className={cn(
-                        "px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition-all border",
-                        selectedListIds.has(list.id)
-                          ? "bg-white text-black border-white font-bold"
-                          : "bg-transparent text-[#aaa] border-white/10 hover:border-white/20 hover:text-white",
-                      )}
-                    >
-                      {list.name}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setIsNewListOpen(true)}
-                    className="px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider border border-dashed border-white/10 text-[#555] hover:text-[#888] hover:border-white/20 transition-all"
-                  >
-                    + NEW LIST
-                  </button>
-                </div>
-              )}
-
-              {/* DATES */}
-              <SectionHeader title="Dates" />
-              <div className="grid grid-cols-2 gap-5 mb-2">
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">
-                    STARTED
-                  </div>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                    }}
-                    style={{ colorScheme: "dark" }}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
-                    disabled={isViewMode}
-                  />
-                  {!isViewMode && (
-                    <div className="flex gap-4 mt-2">
-                      <button
-                        type="button"
-                        onClick={() => setStartDate(todayISODate())}
-                        className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
-                      >
-                        SET TODAY
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setStartDate("")}
-                        className={cn(
-                          "text-[10px] font-mono uppercase tracking-[0.1em] transition-colors",
-                          !startDate ? "text-white" : "text-[#555] hover:text-white",
+                        <option value="unspecified">Select status</option>
+                        {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
+                          (s) => (
+                            <option key={s} value={s}>
+                              {entryStatusLabels[s]}
+                            </option>
+                          ),
                         )}
-                      >
-                        UNKNOWN
-                      </button>
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555] pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* SCORE */}
+                  <div className="mb-6 p-4 bg-[#1a1a1a] rounded-xl border border-white/[0.05]">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-[#555] mb-3">
+                      SCORE
+                    </div>
+                    <StarRating value={userRating} onChange={setUserRating} readOnly={false} />
+                  </div>
+
+                  {/* PROGRESS STEPPERS */}
+                  {mediaType !== "movie" && !isAnimeMovie && mediaType !== "game" && (
+                    <div className="grid grid-cols-2 gap-6 mb-6">
+                      {(mediaType === "series" || (mediaType === "anime" && !isAnimeMovie)) && (
+                        <>
+                          <Stepper
+                            label="EPISODE"
+                            value={currentEpisodes}
+                            onValueChange={setCurrentEpisodes}
+                            readOnly={false}
+                            max={episodeCount ? Number(episodeCount) : undefined}
+                          />
+                          <Stepper
+                            label="SEASON"
+                            value={currentSeasons}
+                            onValueChange={setCurrentSeasons}
+                            readOnly={false}
+                            max={totalSeasons || undefined}
+                          />
+                        </>
+                      )}
+                      {mediaType === "manga" && (
+                        <>
+                          <Stepper
+                            label="CHAPTER"
+                            value={currentChapters}
+                            onValueChange={setCurrentChapters}
+                            readOnly={false}
+                            max={chapterCount ? Number(chapterCount) : undefined}
+                          />
+                          <Stepper
+                            label="VOLUME"
+                            value={currentVolumes}
+                            onValueChange={setCurrentVolumes}
+                            readOnly={false}
+                            max={volumeCount || undefined}
+                          />
+                        </>
+                      )}
                     </div>
                   )}
-                </div>
 
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">
-                    COMPLETED
+                  {/* Rewatch / reread / replay count */}
+                  <div className="mb-6">
+                    <Stepper
+                      label={rewatchLabel}
+                      value={rewatchCount}
+                      onValueChange={setRewatchCount}
+                      readOnly={false}
+                    />
                   </div>
-                  <input
-                    type="date"
-                    value={completionDate}
-                    onChange={(e) => {
-                      setCompletionDate(e.target.value);
-                      if (e.target.value) setCompletionUnknown(false);
-                    }}
-                    style={{ colorScheme: "dark" }}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
-                    disabled={isViewMode || status !== "completed"}
-                  />
-                  {!isViewMode && status === "completed" && (
-                    <div className="flex gap-4 mt-2">
+
+                  {/* LISTS */}
+                  <SectionHeader title="Lists" />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {availableLists.map((list) => (
                       <button
+                        key={list.id}
                         type="button"
-                        onClick={() => setCompletionDate(todayISODate())}
-                        className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
+                        onClick={() => {
+                          const next = new Set(selectedListIds);
+                          next.has(list.id) ? next.delete(list.id) : next.add(list.id);
+                          setSelectedListIds(next);
+                        }}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition-all border",
+                          selectedListIds.has(list.id)
+                            ? "bg-white text-black border-white font-bold"
+                            : "bg-transparent text-[#aaa] border-white/10 hover:border-white/20 hover:text-white",
+                        )}
                       >
-                        SET TODAY
+                        {list.name}
                       </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setIsNewListOpen(true)}
+                      className="px-4 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider border border-dashed border-white/10 text-[#555] hover:text-[#888] hover:border-white/20 transition-all"
+                    >
+                      + NEW LIST
+                    </button>
+                  </div>
+
+                  {/* DATES */}
+                  <SectionHeader title="Dates" />
+                  <div className="grid grid-cols-2 gap-5 mb-2">
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">
+                        STARTED
+                      </div>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => {
+                          setStartDate(e.target.value);
+                        }}
+                        style={{ colorScheme: "dark" }}
+                        className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all"
+                      />
+                      <div className="flex gap-4 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setStartDate(todayISODate())}
+                          className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
+                        >
+                          SET TODAY
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStartDate("")}
+                          className={cn(
+                            "text-[10px] font-mono uppercase tracking-[0.1em] transition-colors",
+                            !startDate ? "text-white" : "text-[#555] hover:text-white",
+                          )}
+                        >
+                          UNKNOWN
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-2">
+                        COMPLETED
+                      </div>
+                      <input
+                        type="date"
+                        value={completionDate}
+                        onChange={(e) => {
+                          setCompletionDate(e.target.value);
+                          if (e.target.value) setCompletionUnknown(false);
+                        }}
+                        style={{ colorScheme: "dark" }}
+                        className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
+                        disabled={status !== "completed"}
+                      />
+                      {status === "completed" && (
+                        <div className="flex gap-4 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setCompletionDate(todayISODate())}
+                            className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#555] hover:text-white transition-colors"
+                          >
+                            SET TODAY
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = !completionUnknown;
+                              setCompletionUnknown(next);
+                              if (next) setCompletionDate("");
+                            }}
+                            className={cn(
+                              "text-[10px] font-mono uppercase tracking-[0.1em] transition-colors",
+                              completionUnknown ? "text-white" : "text-[#555] hover:text-white",
+                            )}
+                          >
+                            UNKNOWN
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RELATIONS */}
+                  <>
+                    <SectionHeader title="Relations" />
+
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
+                      <input
+                        value={relationQuery}
+                        onChange={(e) => {
+                          setRelationQuery(e.target.value);
+                          setSelectedRelationDoc(null);
+                        }}
+                        placeholder="Search for related media…"
+                        className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white placeholder-[#444] focus:outline-none focus:border-white/10"
+                      />
+                      {relationQuery && !selectedRelationDoc && (
+                        <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-20">
+                          {entries
+                            .filter(
+                              (ent) =>
+                                ent.title.toLowerCase().includes(relationQuery.toLowerCase()) &&
+                                String(ent.id) !== String(normalizedInitial?.id ?? "") &&
+                                !relatedTargetIdSet.has(String(ent.id)),
+                            )
+                            .map((ent) => (
+                              <button
+                                key={ent.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedRelationDoc(ent);
+                                  setRelationQuery(ent.title);
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-[12px] text-[#888] hover:bg-white/[0.03] hover:text-white transition-colors"
+                              >
+                                {ent.title}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+
+                  {relations.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {relations.map((rel, idx) => (
+                        <div
+                          key={rel.targetId}
+                          className="flex items-center gap-3 bg-[#1a1a1a] border border-white/5 p-2 pr-3 rounded-lg"
+                        >
+                          <div className="w-8 h-12 relative rounded overflow-hidden bg-[#222] shrink-0">
+                            {rel.image && (
+                              <Image src={rel.image} alt="" fill className="object-cover" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[12px] text-white font-medium truncate max-w-[100px]">
+                              {rel.title}
+                            </div>
+                            <div className="text-[10px] text-[#555] font-mono uppercase">
+                              {rel.type}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setRelations((prev) => prev.filter((_, i) => i !== idx))}
+                            className="text-[#444] hover:text-white transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedRelationDoc && (
+                    <div className="p-4 bg-[#1a1a1a] rounded-xl border border-white/10 space-y-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-14 relative rounded overflow-hidden bg-[#222] shrink-0">
+                          {selectedRelationDoc.image && (
+                            <Image
+                              src={selectedRelationDoc.image}
+                              alt=""
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="text-[13px] font-bold text-white">
+                          {selectedRelationDoc.title}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-mono text-[#555] uppercase tracking-widest mb-2">
+                          RELATION TYPE
+                        </div>
+                        <CustomDropdown
+                          value={selectedRelationType}
+                          onChange={(v) => setSelectedRelationType(v as RelationType)}
+                          options={RELATION_OPTIONS}
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
-                          const next = !completionUnknown;
-                          setCompletionUnknown(next);
-                          if (next) setCompletionDate("");
+                          const targetId = String(selectedRelationDoc.id);
+                          if (relations.some((r) => r.targetId === targetId)) {
+                            setError("Already related. Remove it first to change type.");
+                            return;
+                          }
+                          setRelations((prev) => [
+                            ...prev,
+                            {
+                              targetId,
+                              type: selectedRelationType,
+                              title: selectedRelationDoc.title,
+                              image: selectedRelationDoc.image,
+                              mediaType: selectedRelationDoc.mediaType,
+                            },
+                          ]);
+                          setRelationQuery("");
+                          setSelectedRelationDoc(null);
                         }}
-                        className={cn(
-                          "text-[10px] font-mono uppercase tracking-[0.1em] transition-colors",
-                          completionUnknown ? "text-white" : "text-[#555] hover:text-white",
-                        )}
+                        className="w-full py-2.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-neutral-200 transition-colors uppercase tracking-widest"
                       >
-                        UNKNOWN
+                        CONFIRM ATTACHMENT
                       </button>
                     </div>
                   )}
+
+                  {error && <div className="mt-4 text-[12px] font-mono text-red-400">{error}</div>}
+                  {info && (
+                    <div className="mt-4 text-[12px] font-mono text-emerald-400">{info}</div>
+                  )}
                 </div>
-              </div>
-
-              {/* RELATIONS */}
-              <SectionHeader title="Relations" />
-
-              <div className="relative mb-3">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
-                <input
-                  value={relationQuery}
-                  onChange={(e) => {
-                    setRelationQuery(e.target.value);
-                    setSelectedRelationDoc(null);
-                  }}
-                  placeholder="Search for related media…"
-                  disabled={isViewMode}
-                  className="w-full bg-[#1a1a1a] border border-white/5 rounded-lg py-3 pl-11 pr-4 text-[13px] text-white placeholder-[#444] focus:outline-none focus:border-white/10 disabled:opacity-40"
-                />
-                {relationQuery && !selectedRelationDoc && (
-                  <div className="absolute top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-20">
-                    {entries
-                      .filter(
-                        (ent) =>
-                          ent.title.toLowerCase().includes(relationQuery.toLowerCase()) &&
-                          String(ent.id) !== String(normalizedInitial?.id ?? "") &&
-                          !relatedTargetIdSet.has(String(ent.id)),
-                      )
-                      .map((ent) => (
-                        <button
-                          key={ent.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedRelationDoc(ent);
-                            setRelationQuery(ent.title);
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-[12px] text-[#888] hover:bg-white/[0.03] hover:text-white transition-colors"
-                        >
-                          {ent.title}
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
-
-              {relations.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {relations.map((rel, idx) => (
-                    <div
-                      key={rel.targetId}
-                      className="flex items-center gap-3 bg-[#1a1a1a] border border-white/5 p-2 pr-3 rounded-lg"
-                    >
-                      <div className="w-8 h-12 relative rounded overflow-hidden bg-[#222] shrink-0">
-                        {rel.image && (
-                          <Image src={rel.image} alt="" fill className="object-cover" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[12px] text-white font-medium truncate max-w-[100px]">
-                          {rel.title}
-                        </div>
-                        <div className="text-[10px] text-[#555] font-mono uppercase">
-                          {rel.type}
-                        </div>
-                      </div>
-                      {!isViewMode && (
-                        <button
-                          type="button"
-                          onClick={() => setRelations((prev) => prev.filter((_, i) => i !== idx))}
-                          className="text-[#444] hover:text-white transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {selectedRelationDoc && (
-                <div className="p-4 bg-[#1a1a1a] rounded-xl border border-white/10 space-y-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-14 relative rounded overflow-hidden bg-[#222] shrink-0">
-                      {selectedRelationDoc.image && (
-                        <Image
-                          src={selectedRelationDoc.image}
-                          alt=""
-                          fill
-                          className="object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="text-[13px] font-bold text-white">
-                      {selectedRelationDoc.title}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-mono text-[#555] uppercase tracking-widest mb-2">
-                      RELATION TYPE
-                    </div>
-                    <CustomDropdown
-                      value={selectedRelationType}
-                      onChange={(v) => setSelectedRelationType(v as RelationType)}
-                      options={RELATION_OPTIONS}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const targetId = String(selectedRelationDoc.id);
-                      if (relations.some((r) => r.targetId === targetId)) {
-                        setError("Already related. Remove it first to change type.");
-                        return;
-                      }
-                      setRelations((prev) => [
-                        ...prev,
-                        {
-                          targetId,
-                          type: selectedRelationType,
-                          title: selectedRelationDoc.title,
-                          image: selectedRelationDoc.image,
-                          mediaType: selectedRelationDoc.mediaType,
-                        },
-                      ]);
-                      setRelationQuery("");
-                      setSelectedRelationDoc(null);
-                    }}
-                    className="w-full py-2.5 bg-white text-black text-[11px] font-bold rounded-lg hover:bg-neutral-200 transition-colors uppercase tracking-widest"
-                  >
-                    CONFIRM ATTACHMENT
-                  </button>
-                </div>
-              )}
-
-              {error && <div className="mt-4 text-[12px] font-mono text-red-400">{error}</div>}
-              {info && <div className="mt-4 text-[12px] font-mono text-emerald-400">{info}</div>}
-            </div>
+              </>
+            )}
           </div>
 
           <div className="h-16 shrink-0 bg-[#111] border-t border-white/[0.06] px-6 flex items-center justify-between z-1000">

@@ -213,7 +213,7 @@ function DashboardSection({
           {!uid && <div className="text-sm text-neutral-500">Sign in to start tracking.</div>}
         </div>
         {uid && status === "loading" ? (
-          <div className="mt-3 text-sm text-neutral-500">Syncingâ€¦</div>
+          <div className="mt-3 text-sm text-neutral-500">Syncing…</div>
         ) : null}
         {visibleEntriesError ? (
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-red-400">
@@ -340,7 +340,7 @@ function DashboardSection({
                           {entry.releaseYear || entry.completedAtMs ? (
                             <div className="mt-1 text-xs text-neutral-500">
                               {entry.releaseYear ? `${entry.releaseYear}` : ""}
-                              {entry.releaseYear && entry.completedAtMs ? " â€¢ " : ""}
+                              {entry.releaseYear && entry.completedAtMs ? " • " : ""}
                               {entry.completedAtMs ? formatISODate(entry.completedAtMs) : ""}
                             </div>
                           ) : null}
@@ -809,7 +809,7 @@ function LibrarySection({
       ) : (
         <>
           {uid && status === "loading" && entries.length === 0 ? (
-            <div className="w-full px-4 md:px-8 text-sm text-neutral-400">Loadingâ€¦</div>
+            <div className="w-full px-4 md:px-8 text-sm text-neutral-400">Loading…</div>
           ) : null}
           {visibleEntriesError ? (
             <div className="w-full px-4 md:px-8 flex flex-wrap items-center gap-3 text-sm text-red-400">

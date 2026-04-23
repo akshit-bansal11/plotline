@@ -88,7 +88,7 @@ export function LinkDropZone({ onResolved, disabled, onRequireAuth }: LinkDropZo
     [disabled, onRequireAuth, onResolved],
   );
 
-  // â€” Global drag-and-drop listeners â€”
+  // — Global drag-and-drop listeners —
   useEffect(() => {
     const handleDragEnter = (e: DragEvent) => {
       // Only show overlay if the drag contains text/URLs and is NOT an internal app drag
@@ -211,7 +211,7 @@ export function LinkDropZone({ onResolved, disabled, onRequireAuth }: LinkDropZo
               <div className="space-y-2">
                 <div className="text-lg font-semibold text-white">Drop media link</div>
                 <div className="text-sm text-neutral-400 max-w-xs">
-                  IMDb Â· TMDB Â· MyAnimeList Â· Netflix Â· Prime Video
+                  IMDb · TMDB · MyAnimeList · Netflix · Prime Video
                 </div>
               </div>
             </div>
@@ -240,7 +240,7 @@ export function LinkDropZone({ onResolved, disabled, onRequireAuth }: LinkDropZo
               </div>
               <div className="space-y-1 text-center">
                 <div className="text-sm font-semibold text-white">
-                  Resolving {sourceLabel || "link"}â€¦
+                  Resolving {sourceLabel || "link"}…
                 </div>
                 {droppedUrl && (
                   <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 max-w-xs truncate">

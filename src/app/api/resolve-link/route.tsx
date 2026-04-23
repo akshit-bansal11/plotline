@@ -90,7 +90,7 @@ const stripServiceSuffix = (s: string) =>
     .trim();
 
 const extractTitleFromHtml = (html: string): string | null => {
-  // 1. JSON-LD structured data â€” most reliable (Netflix, Prime both embed this)
+  // 1. JSON-LD structured data — most reliable (Netflix, Prime both embed this)
   const jsonLdMatches = html.matchAll(
     /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
   );

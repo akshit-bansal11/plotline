@@ -622,7 +622,7 @@ export function GlobalSearch({
             className="absolute right-0 top-[calc(100%+10px)] w-[min(94vw,620px)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950/95 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
           >
             <div className="grid max-h-[72vh] grid-cols-1 md:grid-cols-[minmax(0,1fr)_340px]">
-              <div className="min-h-0 overflow-y-auto custom-scrollbar">
+              <div className="min-h-0 max-h-[72vh] overflow-y-auto custom-scrollbar">
                 {isLoading ? (
                   <div className="flex items-center gap-3 p-5 text-sm text-neutral-400">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
