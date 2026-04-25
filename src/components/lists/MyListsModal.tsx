@@ -707,78 +707,73 @@ export function MyListsModal({
                     </div>
                   )}
                   <div
-                    role={item.externalId ? "button" : undefined}
-                    tabIndex={item.externalId ? 0 : undefined}
-                    onClick={() => {
-                      if (!item.externalId) return;
-                      onOpenEntry?.(item.externalId);
-                    }}
-                    onKeyDown={(event) => {
-                      if (!item.externalId) return;
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onOpenEntry?.(item.externalId);
-                      }
-                    }}
                     className={cn(
                       "block w-full text-left rounded-4xl overflow-hidden",
                       !item.externalId && "cursor-default",
                     )}
-                    aria-label={`Open ${item.title}`}
                   >
                     <GlassCard
                       className="aspect-3/4 p-0 border-white/5 overflow-hidden transition-all duration-700 group-hover:border-white/20 group-hover:shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)]"
                       hoverEffect
                     >
-                    {item.image ? (
-                      <>
-                        <div className="absolute inset-0 animate-pulse bg-neutral-800/60" />
-                        <Image
-                          src={item.image}
-                          alt={item.title}
-                          width={500}
-                          height={750}
-                          className="relative w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                        />
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-neutral-800 gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
-                          <Filter size={20} className="opacity-10" />
+                      {item.image ? (
+                        <>
+                          <div className="absolute inset-0 animate-pulse bg-neutral-800/60" />
+                          <Image
+                            src={item.image}
+                            alt={item.title}
+                            width={500}
+                            height={750}
+                            className="relative w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                          />
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-neutral-800 gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
+                            <Filter size={20} className="opacity-10" />
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-30 text-center px-4">
+                            Artwork Unavailable
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-30 text-center px-4">
-                          Artwork Unavailable
-                        </span>
+                      )}
+
+                      <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-b from-black/60 to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-black via-black/60 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
+
+                      <div className="absolute inset-0 p-6 flex flex-col justify-end gap-3 z-20 pointer-events-none">
+                        <div className="flex flex-col gap-4 transform transition-transform duration-500 group-hover:-translate-y-2">
+                          <span className="inline-block w-min px-2 py-0.5 rounded-md bg-white/25 border border-white/5 text-[9px] font-bold text-white uppercase tracking-[0.2em]">
+                            {mediaTypeLabels[item.mediaType]}
+                          </span>
+                          <h3 className="text-lg font-bold text-white leading-tight line-clamp-2 drop-shadow-lg">
+                            {item.title}
+                          </h3>
+                        </div>
                       </div>
-                    )}
 
-                    <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-b from-black/60 to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-black via-black/60 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
-
-                    <div className="absolute inset-0 p-6 flex flex-col justify-end gap-3 z-20">
-                      <div className="flex flex-col gap-4 transform transition-transform duration-500 group-hover:-translate-y-2">
-                        <span className="inline-block w-min px-2 py-0.5 rounded-md bg-white/25 border border-white/5 text-[9px] font-bold text-white uppercase tracking-[0.2em]">
-                          {mediaTypeLabels[item.mediaType]}
-                        </span>
-                        <h3 className="text-lg font-bold text-white leading-tight line-clamp-2 drop-shadow-lg">
-                          {item.title}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <div className="absolute top-4 right-4 z-30">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeItem(item.id, item.title);
-                        }}
-                        className="p-3 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 text-white/40 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/30 transition-all duration-300 shadow-xl opacity-0 group-hover:opacity-100 -translate-y-2.5 group-hover:translate-y-0"
-                        title="Remove from list"
-                      >
-                        <Trash2 size={16} />
+                      <div className="absolute top-4 right-4 z-30">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeItem(item.id, item.title);
+                          }}
+                          className="p-3 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 text-white/40 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/30 transition-all duration-300 shadow-xl opacity-0 group-hover:opacity-100 -translate-y-2.5 group-hover:translate-y-0"
+                          title="Remove from list"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
+
+                      {item.externalId && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenEntry?.(item.externalId)}
+                          className="absolute inset-0 z-25 w-full h-full bg-transparent border-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white/20 rounded-4xl"
+                          aria-label={`Open ${item.title}`}
+                        />
+                      )}
                     </GlassCard>
                   </div>
                 </div>

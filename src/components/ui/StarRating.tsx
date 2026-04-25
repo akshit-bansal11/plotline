@@ -82,10 +82,7 @@ export function StarRating({
                 <title>Rating Star</title>
                 <defs>
                   <linearGradient id={`star-grad-${n}`}>
-                    <stop
-                      offset="50%"
-                      stopColor={isFull || isHalf ? "#eab308" : "transparent"}
-                    />
+                    <stop offset="50%" stopColor={isFull || isHalf ? "#eab308" : "transparent"} />
                     <stop offset="50%" stopColor="transparent" />
                   </linearGradient>
                 </defs>

@@ -41,11 +41,11 @@ import {
   parseISODate,
   todayISODate,
 } from "../../utils/log-entry";
+import { acquireModalZIndex } from "../overlay/modalStack";
 import { InlineEditable } from "./InlineEditable";
 import { SectionHeader } from "./SectionHeader";
 import { StatColumn } from "./StatColumn";
 import { Stepper } from "./Stepper";
-import { acquireModalZIndex } from "../overlay/modalStack";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
