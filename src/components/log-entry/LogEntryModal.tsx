@@ -9,6 +9,7 @@ import { ChevronDown, RefreshCw, Search, X } from "lucide-react";
 // ─── Next & React ────────────────────────────────────────────────────────────────────
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 // ─── Internal imports ─────────────────────────────────────────────────────────
 import { NewListModal } from "@/components/lists/NewListModal";
@@ -949,7 +950,9 @@ export function LogEntryModal({
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm"
       style={modalZIndexRef.current ? { zIndex: modalZIndexRef.current } : undefined}
@@ -2021,6 +2024,7 @@ export function LogEntryModal({
         message={duplicateToast?.message ?? ""}
         onClose={() => setDuplicateToast(null)}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }
