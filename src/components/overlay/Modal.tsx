@@ -2,10 +2,11 @@
 
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { cn } from "@/utils";
+import { acquireModalZIndex } from "./modalStack";
 
 interface ModalProps {
   isOpen: boolean;
@@ -50,6 +51,14 @@ export function Modal({
     };
   }, [isOpen, handleKeyDown]);
 
+  const zIndexRef = useRef<number | null>(null);
+  if (isOpen && zIndexRef.current === null) {
+    zIndexRef.current = acquireModalZIndex();
+  }
+  if (!isOpen) {
+    zIndexRef.current = null;
+  }
+
   if (typeof document === "undefined") return null;
 
   return createPortal(
@@ -57,9 +66,10 @@ export function Modal({
       {isOpen && (
         <div
           className={cn(
-            "fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6",
+            "fixed inset-0 flex items-center justify-center p-4 sm:p-6",
             overlayClassName,
           )}
+          style={zIndexRef.current ? { zIndex: zIndexRef.current } : undefined}
         >
           <motion.div
             initial={{ opacity: 0, backdropFilter: "blur(0px)" }}

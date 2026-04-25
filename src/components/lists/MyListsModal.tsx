@@ -99,6 +99,7 @@ const toMillis = (value: unknown) => {
 export function MyListsModal({
   isOpen,
   onClose,
+  onOpenEntry,
   viewListId,
   editListId,
   deleteListId,
@@ -108,6 +109,7 @@ export function MyListsModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onOpenEntry?: (entryId: string) => void;
   viewListId?: string | null;
   editListId?: string | null;
   deleteListId?: string | null;
@@ -704,10 +706,30 @@ export function MyListsModal({
                       </div>
                     </div>
                   )}
-                  <GlassCard
-                    className="aspect-3/4 p-0 border-white/5 overflow-hidden transition-all duration-700 group-hover:border-white/20 group-hover:shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)]"
-                    hoverEffect
+                  <div
+                    role={item.externalId ? "button" : undefined}
+                    tabIndex={item.externalId ? 0 : undefined}
+                    onClick={() => {
+                      if (!item.externalId) return;
+                      onOpenEntry?.(item.externalId);
+                    }}
+                    onKeyDown={(event) => {
+                      if (!item.externalId) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onOpenEntry?.(item.externalId);
+                      }
+                    }}
+                    className={cn(
+                      "block w-full text-left rounded-4xl overflow-hidden",
+                      !item.externalId && "cursor-default",
+                    )}
+                    aria-label={`Open ${item.title}`}
                   >
+                    <GlassCard
+                      className="aspect-3/4 p-0 border-white/5 overflow-hidden transition-all duration-700 group-hover:border-white/20 group-hover:shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)]"
+                      hoverEffect
+                    >
                     {item.image ? (
                       <>
                         <div className="absolute inset-0 animate-pulse bg-neutral-800/60" />
@@ -755,9 +777,10 @@ export function MyListsModal({
                         title="Remove from list"
                       >
                         <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </GlassCard>
+                        </button>
+                      </div>
+                    </GlassCard>
+                  </div>
                 </div>
               ))}
             </div>

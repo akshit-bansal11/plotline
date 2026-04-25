@@ -7,10 +7,12 @@ export function StarRating({
   value,
   onChange,
   readOnly = false,
+  showValue = true,
 }: {
   value: string;
   onChange: (v: string) => void;
   readOnly?: boolean;
+  showValue?: boolean;
 }) {
   const [hoverValue, setHoverValue] = useState<number | null>(null);
   const numericValue = parseFloat(value) || 0;
@@ -80,14 +82,17 @@ export function StarRating({
                 <title>Rating Star</title>
                 <defs>
                   <linearGradient id={`star-grad-${n}`}>
-                    <stop offset="50%" stopColor={isFull || isHalf ? "#fff" : "transparent"} />
+                    <stop
+                      offset="50%"
+                      stopColor={isFull || isHalf ? "#eab308" : "transparent"}
+                    />
                     <stop offset="50%" stopColor="transparent" />
                   </linearGradient>
                 </defs>
                 <polygon
                   points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                  fill={isFull ? "#fff" : isHalf ? `url(#star-grad-${n})` : "none"}
-                  stroke={isFull || isHalf ? "#fff" : "#333"}
+                  fill={isFull ? "#eab308" : isHalf ? `url(#star-grad-${n})` : "none"}
+                  stroke={isFull || isHalf ? "#eab308" : "#333"}
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -97,9 +102,11 @@ export function StarRating({
           );
         })}
       </button>
-      <span className="text-[18px] font-extrabold text-white min-w-[3ch]">
-        {displayValue > 0 ? displayValue.toFixed(1) : "0.0"}
-      </span>
+      {showValue && (
+        <span className="text-[18px] font-extrabold text-white min-w-[3ch]">
+          {displayValue > 0 ? displayValue.toFixed(1) : "0.0"}
+        </span>
+      )}
     </div>
   );
 }

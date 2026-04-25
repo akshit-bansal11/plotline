@@ -44,6 +44,7 @@ import { InlineEditable } from "./InlineEditable";
 import { SectionHeader } from "./SectionHeader";
 import { StatColumn } from "./StatColumn";
 import { Stepper } from "./Stepper";
+import { acquireModalZIndex } from "../overlay/modalStack";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -158,6 +159,7 @@ export function LogEntryModal({
   );
   const tagRef = useRef<HTMLInputElement>(null);
   const castRef = useRef<HTMLInputElement>(null);
+  const modalZIndexRef = useRef<number | null>(null);
 
   // ── DYNAMIC FONT SIZES ─────────────────────────────────────────────────────
 
@@ -238,7 +240,8 @@ export function LogEntryModal({
     const raw = userRating.trim();
     if (!raw) return null;
     const v = Number(raw);
-    if (!Number.isInteger(v) || v < 1 || v > 10) return "Rating must be 1–10.";
+    if (!Number.isFinite(v) || v < 0.5 || v > 10 || v * 2 !== Math.round(v * 2))
+      return "Rating must be 0.5–10 in 0.5 increments.";
     return null;
   }, [userRating]);
 
@@ -928,7 +931,10 @@ export function LogEntryModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    modalZIndexRef.current = null;
+    return null;
+  }
 
   const handleDiscardChanges = () => {
     initializedRef.current = null;
@@ -937,11 +943,17 @@ export function LogEntryModal({
 
   const isViewMode = currentMode === "view";
   const editableProps = { activeField, setActiveField, readOnly: isViewMode };
+  if (isOpen && modalZIndexRef.current === null) {
+    modalZIndexRef.current = acquireModalZIndex();
+  }
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm"
+      style={modalZIndexRef.current ? { zIndex: modalZIndexRef.current } : undefined}
+    >
       <div
         className="relative w-full max-w-[1200px] bg-[#111] rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/5"
         style={{ height: "min(720px, 90vh)" }}
@@ -958,130 +970,137 @@ export function LogEntryModal({
           <div className="flex-1 flex overflow-hidden min-h-0">
             {isViewMode ? (
               <div className="flex-1 overflow-y-auto p-8 bg-[#111] flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full border backdrop-blur-md px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider",
-                      mediaType === "game"
-                        ? status === "main_story_completed"
-                          ? "border-emerald-700/50 bg-emerald-950/80 text-emerald-600"
-                          : status === "fully_completed"
-                            ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
-                            : status === "backlogged"
-                              ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
-                              : status === "bored"
-                                ? "border-orange-500/50 bg-orange-950/80 text-orange-400"
-                                : status === "own"
-                                  ? "border-pink-500/50 bg-pink-950/80 text-pink-400"
-                                  : status === "wishlist"
-                                    ? "border-white/50 bg-neutral-950/80 text-white"
-                                    : status === "committed"
-                                      ? "border-sky-500/50 bg-sky-950/80 text-sky-400"
-                                      : status === "not_committed"
-                                        ? "border-blue-700/50 bg-blue-950/80 text-blue-500"
-                                        : status === "dropped"
-                                          ? "border-red-500/50 bg-red-950/80 text-red-400"
-                                          : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400"
-                        : status === "completed"
-                          ? "border-emerald-500/50 bg-emerald-950/80 text-emerald-400"
-                          : status === "watching"
-                            ? "border-blue-500/50 bg-blue-950/80 text-blue-400"
-                            : status === "plan_to_watch"
-                              ? "border-violet-500/50 bg-violet-950/80 text-violet-400"
-                              : status === "on_hold"
-                                ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
-                                : status === "dropped"
-                                  ? "border-red-500/50 bg-red-950/80 text-red-400"
-                                  : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400",
-                    )}
-                  >
-                    {entryStatusLabels[status] ?? status}
-                  </span>
-                  <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em]">
-                    {entryMediaTypeLabels[mediaType] ?? mediaType}
-                  </span>
-                </div>
-
-                {userRating && (
-                  <div className="mb-8 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl inline-flex flex-col w-max">
-                    <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-yellow-500/80 mb-1.5 px-1">
-                      YOUR RATING
-                    </div>
-                    <div className="px-1">
-                      <StarRating value={userRating} onChange={() => {}} readOnly />
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex gap-8 mb-8">
-                  <div className="relative h-64 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
-                    {image ? (
-                      <Image src={image} alt={title} fill className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Search className="w-6 h-6 text-white/10" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col justify-end min-w-0 flex-1 pb-2">
-                    <div
+                <div className="flex flex-col gap-5 mb-8">
+                  <div className="flex flex-col items-start gap-5">
+                    <span
                       className={cn(
-                        "font-black leading-tight uppercase tracking-tight text-white mb-6 pr-2",
-                        titleFontSize,
+                        "inline-flex items-center gap-2 rounded-full border backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider shrink-0",
+                        mediaType === "game"
+                          ? status === "main_story_completed"
+                            ? "border-emerald-700/50 bg-emerald-950/80 text-emerald-600"
+                            : status === "fully_completed"
+                              ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
+                              : status === "backlogged"
+                                ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
+                                : status === "bored"
+                                  ? "border-orange-500/50 bg-orange-950/80 text-orange-400"
+                                  : status === "own"
+                                    ? "border-pink-500/50 bg-pink-950/80 text-pink-400"
+                                    : status === "wishlist"
+                                      ? "border-white/50 bg-neutral-950/80 text-white"
+                                      : status === "committed"
+                                        ? "border-sky-500/50 bg-sky-950/80 text-sky-400"
+                                        : status === "not_committed"
+                                          ? "border-blue-700/50 bg-blue-950/80 text-blue-500"
+                                          : status === "dropped"
+                                            ? "border-red-500/50 bg-red-950/80 text-red-400"
+                                            : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400"
+                          : status === "completed"
+                            ? "border-emerald-500/50 bg-emerald-950/80 text-emerald-400"
+                            : status === "watching"
+                              ? "border-blue-500/50 bg-blue-950/80 text-blue-400"
+                              : status === "plan_to_watch"
+                                ? "border-violet-500/50 bg-violet-950/80 text-violet-400"
+                                : status === "on_hold"
+                                  ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
+                                  : status === "dropped"
+                                    ? "border-red-500/50 bg-red-950/80 text-red-400"
+                                    : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400",
                       )}
                     >
-                      {title}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                          {creatorLabels.field1}
-                        </span>
-                        <span className="text-[13px] font-medium text-white/70">
-                          {director || "—"}
-                        </span>
+                      {entryStatusLabels[status] ?? status}
+                    </span>
+                    {userRating && (
+                      <div className="p-3 bg-neutral-500/10 rounded-xl inline-flex flex-col w-max">
+                        <div className="px-1">
+                          <StarRating
+                            value={userRating}
+                            onChange={() => {}}
+                            readOnly
+                            showValue={false}
+                          />
+                        </div>
                       </div>
+                    )}
+                  </div>
 
-                      {creatorLabels.field2 && (
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                            {creatorLabels.field2}
-                          </span>
-                          <span className="text-[13px] font-medium text-white/70">
-                            {producer || "—"}
-                          </span>
+                  <div className="flex gap-5">
+                    <div className="relative h-64 aspect-[2/3] rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 shadow-2xl border border-white/5">
+                      {image ? (
+                        <Image src={image} alt={title} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Search className="w-6 h-6 text-white/10" />
                         </div>
                       )}
+                    </div>
 
-                      <div className="flex flex-col col-span-2">
-                        <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                          {castLabel}
-                        </span>
-                        <div className="flex flex-wrap gap-1 mt-0.5">
-                          {cast.length > 0 ? (
-                            cast.map((p) => (
-                              <span
-                                key={p}
-                                className="text-[11px] text-white/50 bg-white/5 px-2 py-0.5 rounded cursor-default"
-                              >
-                                {p}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-[13px] font-medium text-white/70">—</span>
-                          )}
+                    <div className="flex flex-col justify-end min-w-0 flex-1 pb-2">
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex flex-col min-w-0 items-start gap-3">
+                          <span className="px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.15em] shrink-0">
+                            {entryMediaTypeLabels[mediaType] ?? mediaType}
+                          </span>
+                          <div
+                            className={cn(
+                              "font-black leading-tight uppercase tracking-tight text-white pr-2",
+                              titleFontSize,
+                            )}
+                          >
+                            {title}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
-                          RELEASED
-                        </span>
-                        <span className="text-[13px] font-medium text-white/70">
-                          {releaseYear || "—"}
-                        </span>
+                      <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                            {creatorLabels.field1}
+                          </span>
+                          <span className="text-[13px] font-medium text-white/70">
+                            {director || "—"}
+                          </span>
+                        </div>
+
+                        {creatorLabels.field2 && (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                              {creatorLabels.field2}
+                            </span>
+                            <span className="text-[13px] font-medium text-white/70">
+                              {producer || "—"}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col col-span-2">
+                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                            {castLabel}
+                          </span>
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {cast.length > 0 ? (
+                              cast.map((p) => (
+                                <span
+                                  key={p}
+                                  className="text-[11px] text-white/50 bg-white/5 px-2 py-0.5 rounded cursor-default"
+                                >
+                                  {p}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[13px] font-medium text-white/70">—</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-white/20 mb-0.5">
+                            RELEASED
+                          </span>
+                          <span className="text-[13px] font-medium text-white/70">
+                            {releaseYear || "—"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1128,13 +1147,13 @@ export function LogEntryModal({
                     />
                   )}
 
-                  <StatColumn label="IMDB RATING" value={imdbRating ? `★ ${imdbRating}` : "—"} />
+                  <StatColumn label="IMDB RATING" value={imdbRating ? `${imdbRating}` : "—"} />
                 </div>
 
                 {tags.length > 0 && (
                   <div className="mb-8">
                     <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
-                      GENRE / THEMES
+                      GENRE / THEME
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {tags.map((tag) => (
@@ -1171,9 +1190,6 @@ export function LogEntryModal({
 
                 {(startDate || status === "completed") && (
                   <div className="mb-8">
-                    <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/20 mb-3">
-                      DATES
-                    </div>
                     <div className="flex gap-12">
                       {startDate && (
                         <div>

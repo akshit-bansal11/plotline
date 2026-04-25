@@ -1625,6 +1625,10 @@ export default function Home() {
           setListsModalType(null);
           setListsModalMode("view");
         }}
+        onOpenEntry={(entryId) => {
+          const entry = entries.find((candidate) => String(candidate.id) === String(entryId));
+          if (entry) handleViewEntry(entry);
+        }}
         mediaType={listsModalType}
         initialViewListId={listsModalMode === "view" ? listsModalListId : null}
         initialEditListId={listsModalMode === "edit" ? listsModalListId : null}
