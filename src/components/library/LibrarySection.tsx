@@ -1,6 +1,7 @@
 import { LayoutGrid, List, Pencil, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { Fragment, useMemo, useState } from "react";
+import placeholderImage from "@/assets/images/item-placeholder.svg";
 import { MediaGrid } from "@/components/library/MediaGrid";
 import { MediaSection } from "@/components/library/MediaSection";
 import { RemoveDropTarget } from "@/components/library/RemoveDropTarget";
@@ -334,7 +335,7 @@ export function LibrarySection({
                                             className="relative h-14 w-14 overflow-hidden rounded-full border-4 border-neutral-950 bg-neutral-800 shadow-2xl ring-1 ring-white/5"
                                           >
                                             <Image
-                                              src={item.image!}
+                                              src={item.image || placeholderImage}
                                               alt=""
                                               fill
                                               className="object-cover"
