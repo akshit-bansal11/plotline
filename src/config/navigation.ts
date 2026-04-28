@@ -26,3 +26,21 @@ export const categorySectionLinks: SectionLink[] = [
 ];
 
 export const allSectionLinks: SectionLink[] = [homeSectionLink, ...categorySectionLinks];
+
+export type SectionConfig = {
+  title: string;
+  mediaTypes: string[];
+  gridType: string;
+};
+
+export const sectionConfigs: Record<Exclude<SectionKey, "home">, SectionConfig> = {
+  movies: { title: "Movies", mediaTypes: ["movie"], gridType: "movie" },
+  series: { title: "Series", mediaTypes: ["series"], gridType: "series" },
+  anime: {
+    title: "Anime",
+    mediaTypes: ["anime", "anime_movie"],
+    gridType: "anime",
+  },
+  manga: { title: "Manga", mediaTypes: ["manga"], gridType: "manga" },
+  games: { title: "Games", mediaTypes: ["game"], gridType: "game" },
+};
