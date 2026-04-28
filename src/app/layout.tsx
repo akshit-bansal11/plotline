@@ -22,9 +22,7 @@ export const metadata: Metadata = {
   },
 };
 
-import { AuthProvider } from "@/context/AuthContext";
-import { DataProvider } from "@/context/DataContext";
-import { SectionProvider } from "@/context/SectionContext";
+import { Providers } from "./providers";
 
 export default function RootLayout({
   children,
@@ -44,11 +42,7 @@ export default function RootLayout({
       >
         <div className="fixed inset-0 opacity-[0.03] pointer-events-none z-50 mix-blend-overlay"></div>
 
-        <AuthProvider>
-          <SectionProvider>
-            <DataProvider>{children}</DataProvider>
-          </SectionProvider>
-        </AuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
