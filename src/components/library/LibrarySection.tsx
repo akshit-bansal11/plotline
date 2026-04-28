@@ -235,9 +235,8 @@ export function LibrarySection({
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
                         {listSections.map(({ list, allListItems }) => {
                           const isEmpty = allListItems.length === 0;
-                          const previewImages = allListItems
-                            .map((item) => item.image)
-                            .filter((image): image is string => Boolean(image))
+                          const previewItems = allListItems
+                            .filter((item) => Boolean(item.image))
                             .slice(0, 5);
                           return (
                             <Fragment key={list.id}>
@@ -308,7 +307,7 @@ export function LibrarySection({
                                   </div>
 
                                   <div className="flex flex-wrap gap-2">
-                                    {list.types.map((type) => (
+                                    {Array.from(new Set(list.types)).map((type) => (
                                       <span
                                         key={`${list.id}-${type}`}
                                         className="rounded-full border border-white/5 bg-white/3 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-neutral-400 group-hover:text-neutral-200 transition-colors"
@@ -328,14 +327,14 @@ export function LibrarySection({
 
                                   <div className="mt-auto flex items-center justify-between gap-3">
                                     <div className="flex -space-x-3">
-                                      {previewImages.length > 0 ? (
-                                        previewImages.map((image) => (
+                                      {previewItems.length > 0 ? (
+                                        previewItems.map((item) => (
                                           <div
-                                            key={`${list.id}-image-${image}`}
+                                            key={`${list.id}-image-${item.id}`}
                                             className="relative h-14 w-14 overflow-hidden rounded-full border-4 border-neutral-950 bg-neutral-800 shadow-2xl ring-1 ring-white/5"
                                           >
                                             <Image
-                                              src={image}
+                                              src={item.image!}
                                               alt=""
                                               fill
                                               className="object-cover"
