@@ -17,10 +17,7 @@ import { InfographicToast } from "@/components/overlay/InfographicToast";
 import { Modal } from "@/components/overlay/Modal";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import type {
-  EntryMediaType as BaseEntryMediaType,
-  EntryStatusValue as EntryStatus,
-} from "@/types/log-entry";
+import type { EntryMediaType as BaseEntryMediaType, EntryStatusValue as EntryStatus } from "@/types/log-entry";
 import { cn } from "@/utils";
 
 type EntryMediaType = BaseEntryMediaType | "anime_movie";

@@ -22,6 +22,7 @@ import { deleteLogEntry, saveLogEntry } from "@/services/log-entry";
 import { RELATION_OPTIONS, type RelationType } from "@/services/relations";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/utils";
 import { getLogEntryStatusOptions } from "../../data/log-entry";
+import { isCompletionStatus } from "../../types/log-entry";
 import {
   useBodyScrollLock,
   useEscapeKey,

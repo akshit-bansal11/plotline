@@ -13,9 +13,9 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import {
+  normalizeEntryStatus,
   type EntryMediaType,
   type EntryStatusValue,
-  normalizeEntryStatus,
 } from "@/types/log-entry";
 
 export type { EntryMediaType, EntryStatusValue as EntryStatus };

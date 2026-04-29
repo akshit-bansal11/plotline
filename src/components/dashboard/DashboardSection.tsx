@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type { EntryDoc, EntryMediaType, EntryStatus } from "@/context/DataContext";
+import { isCompletionStatus } from "@/types/log-entry";
 import type { MetricCounts } from "@/types/lists";
 import { isCompletionStatus } from "@/types/log-entry";
 import { cn, entryStatusLabels } from "@/utils";

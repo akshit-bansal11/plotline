@@ -10,9 +10,9 @@ import {
   Terminal,
 } from "lucide-react";
 import {
-  type EntryMediaType,
-  type EntryStatus,
   getStatusOptionsForMediaType,
+  type EntryStatus,
+  type EntryMediaType,
 } from "../types/log-entry";
 
 export const PLATFORM_OPTIONS = [

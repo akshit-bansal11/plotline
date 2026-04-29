@@ -2,7 +2,12 @@ import type { FieldValue, Timestamp } from "firebase/firestore";
 
 export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 
-export type MovieStatus = "completed" | "watching" | "rewatching" | "plan_to_watch" | "dropped";
+export type MovieStatus =
+  | "completed"
+  | "watching"
+  | "rewatching"
+  | "plan_to_watch"
+  | "dropped";
 
 export type SeriesAnimeStatus =
   | "completed"
@@ -64,8 +69,9 @@ export const ENTRY_STATUS_OPTIONS_BY_MEDIA_TYPE = {
 export const isCompletionStatus = (status: EntryStatusValue): status is EntryStatus =>
   status === "completed" || status === "fully_completed";
 
-export const getStatusOptionsForMediaType = (mediaType: EntryMediaType): readonly EntryStatus[] =>
-  ENTRY_STATUS_OPTIONS_BY_MEDIA_TYPE[mediaType];
+export const getStatusOptionsForMediaType = (
+  mediaType: EntryMediaType,
+): readonly EntryStatus[] => ENTRY_STATUS_OPTIONS_BY_MEDIA_TYPE[mediaType];
 
 export const normalizeEntryStatus = (value: unknown): EntryStatusValue => {
   if (typeof value !== "string") return "unspecified";
