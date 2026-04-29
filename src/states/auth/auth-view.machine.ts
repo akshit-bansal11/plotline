@@ -7,7 +7,10 @@ export const transitions: Record<AuthView, AuthView[]> = {
   "forgot-password": ["login"],
 };
 
-export function authViewReducer(state: AuthView, action: { type: "GO_TO"; view: AuthView }): AuthView {
+export function authViewReducer(
+  state: AuthView,
+  action: { type: "GO_TO"; view: AuthView },
+): AuthView {
   if (transitions[state].includes(action.view)) {
     return action.view;
   }

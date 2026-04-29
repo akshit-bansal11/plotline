@@ -72,11 +72,11 @@ export function RelationModal({
       });
 
       await updateBidirectionalRelations(uid, data.sourceId, oldRelations, newRelations);
-      
+
       const announcement = existingRelation
         ? `Updated: ${data.targetTitle} is now ${localType} of ${data.sourceTitle}.`
         : `Linked: ${data.targetTitle} is ${localType} of ${data.sourceTitle}.`;
-      
+
       onSuccess(announcement);
     } catch {
       setRelationModalError("Failed to save relationship. Please try again.");
@@ -124,7 +124,9 @@ export function RelationModal({
             <span className="text-white">{data.targetTitle}</span>.
           </p>
         </div>
-        {relationModalError ? <div className="text-xs text-red-400">{relationModalError}</div> : null}
+        {relationModalError ? (
+          <div className="text-xs text-red-400">{relationModalError}</div>
+        ) : null}
         <div className="flex gap-3 justify-end pt-4 border-t border-white/5 mt-2">
           <button
             type="button"

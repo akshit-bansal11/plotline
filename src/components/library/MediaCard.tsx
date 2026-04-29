@@ -103,11 +103,7 @@ export function MediaCard({
   }, [userRating]);
 
   const statusOptions =
-    type === "movie" ||
-    type === "series" ||
-    type === "anime" ||
-    type === "manga" ||
-    type === "game"
+    type === "movie" || type === "series" || type === "anime" || type === "manga" || type === "game"
       ? getStatusOptionsForMediaType(type as EntryMediaType)
       : getStatusOptionsForMediaType("series");
 

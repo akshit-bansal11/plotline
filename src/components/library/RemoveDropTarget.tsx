@@ -35,9 +35,7 @@ export function RemoveDropTarget({
             onDrop={onDrop}
             className={cn(
               "flex h-16 w-16 items-center justify-center rounded-full border text-white shadow-2xl backdrop-blur-xl transition-colors",
-              isActive
-                ? "border-red-300/80 bg-red-500/30"
-                : "border-white/20 bg-neutral-900/70",
+              isActive ? "border-red-300/80 bg-red-500/30" : "border-white/20 bg-neutral-900/70",
             )}
             title="Drop here to remove from list"
           >
