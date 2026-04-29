@@ -1,5 +1,5 @@
 import type { AuthView } from "@/types/auth";
-import { AUTH_COPY } from "../data/auth-copy";
+import { AUTH_COPY } from "../../data/auth/auth-copy";
 
 export const transitions: Record<AuthView, AuthView[]> = {
   login: ["signup", "forgot-password"],

@@ -6,12 +6,12 @@ import { ForgotPassword } from "@/components/auth/ForgotPassword";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
-import { TextDivider } from "@/components/ui/TextDivider";
-import { GlassCard } from "@/components/ui/GlassCard";
-import type { AuthView as AuthViewType } from "@/types/auth";
 import { AuthBackground } from "@/components/background/AuthBackground";
-import { getHeading, getSubtext } from "../state/auth-view.machine";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { TextDivider } from "@/components/ui/TextDivider";
 import { scaleFade, slideLeft, slideRight } from "@/lib/animations/auth";
+import type { AuthView as AuthViewType } from "@/types/auth";
+import { getHeading, getSubtext } from "../../states/auth/auth-view.machine";
 
 const AuthMethodBadge = dynamic(
   () => import("@/components/auth/AuthMethodBadge").then((module) => module.AuthMethodBadge),
