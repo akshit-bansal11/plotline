@@ -2,7 +2,6 @@ import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from "
 import { useEffect, useState } from "react";
 import type { EntryDoc, EntryMediaType } from "@/context/DataContext";
 import { db } from "@/lib/firebase";
-import type { RelationType } from "@/services/relations";
 import type { ListItemRow, ListRow } from "@/types/lists";
 import { entryMediaTypeLabels } from "@/utils";
 
