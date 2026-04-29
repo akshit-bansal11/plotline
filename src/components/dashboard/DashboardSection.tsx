@@ -4,13 +4,41 @@ import { Star } from "lucide-react";
 import Image from "next/image";
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import type { EntryDoc, EntryMediaType } from "@/context/DataContext";
+import type { EntryDoc, EntryMediaType, EntryStatus } from "@/context/DataContext";
+import { isCompletionStatus } from "@/types/log-entry";
 import type { MetricCounts } from "@/types/lists";
 import { cn, entryStatusLabels } from "@/utils";
 import { contentTypeLabels, metricLabels } from "@/utils/dashboard";
 import { formatISODate } from "@/utils/date";
 import { Hero } from "../library/Hero";
 import { GlassCard } from "../ui/GlassCard";
+
+const getStatusBadgeClass = (status: EntryStatus) => {
+  switch (status) {
+    case "completed":
+    case "fully_completed":
+      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
+    case "watching":
+    case "reading":
+    case "playing":
+      return "border-blue-500/20 bg-blue-500/10 text-blue-400";
+    case "rewatching":
+    case "rereading":
+    case "replaying":
+      return "border-sky-500/20 bg-sky-500/10 text-sky-400";
+    case "plan_to_watch":
+    case "plan_to_read":
+    case "plan_to_play":
+      return "border-violet-500/20 bg-violet-500/10 text-violet-400";
+    case "on_hold":
+    case "backlogged":
+      return "border-amber-500/20 bg-amber-500/10 text-amber-400";
+    case "dropped":
+      return "border-red-500/20 bg-red-500/10 text-red-400";
+    default:
+      return "border-neutral-500/20 bg-neutral-800/40 text-neutral-400";
+  }
+};
 
 export function DashboardSection({
   entries,
@@ -29,15 +57,7 @@ export function DashboardSection({
   const uid = user?.uid || null;
 
   const completedEntries = useMemo(() => {
-    return entries.filter((entry) => {
-      if (entry.status === "completed") return true;
-      if (
-        entry.mediaType === "game" &&
-        (entry.status === "main_story_completed" || entry.status === "fully_completed")
-      )
-        return true;
-      return false;
-    });
+    return entries.filter((entry) => isCompletionStatus(entry.status));
   }, [entries]);
 
   const metricsByType = useMemo(() => {
@@ -194,43 +214,7 @@ export function DashboardSection({
                             <span
                               className={cn(
                                 "shrink-0 rounded-full border px-2 py-0.5 text-[10px]",
-                                entry.mediaType === "game"
-                                  ? {
-                                      "border-emerald-700/20 bg-emerald-700/10 text-emerald-600":
-                                        entry.status === "main_story_completed",
-                                      "border-emerald-400/20 bg-emerald-400/10 text-emerald-300":
-                                        entry.status === "fully_completed",
-                                      "border-amber-500/20 bg-amber-500/10 text-amber-400":
-                                        entry.status === "backlogged",
-                                      "border-orange-500/20 bg-orange-500/10 text-orange-400":
-                                        entry.status === "bored",
-                                      "border-pink-500/20 bg-pink-500/10 text-pink-400":
-                                        entry.status === "own",
-                                      "border-white/20 bg-white/10 text-white":
-                                        entry.status === "wishlist",
-                                      "border-sky-500/20 bg-sky-500/10 text-sky-400":
-                                        entry.status === "committed",
-                                      "border-blue-700/20 bg-blue-700/10 text-blue-500":
-                                        entry.status === "not_committed",
-                                      "border-red-500/20 bg-red-500/10 text-red-400":
-                                        entry.status === "dropped",
-                                      "border-neutral-500/20 bg-neutral-800/40 text-neutral-400":
-                                        entry.status === "unspecified",
-                                    }
-                                  : {
-                                      "border-violet-500/20 bg-violet-500/10 text-violet-400":
-                                        entry.status === "plan_to_watch",
-                                      "border-blue-500/20 bg-blue-500/10 text-blue-400":
-                                        entry.status === "watching",
-                                      "border-emerald-500/20 bg-emerald-500/10 text-emerald-400":
-                                        entry.status === "completed",
-                                      "border-amber-500/20 bg-amber-500/10 text-amber-400":
-                                        entry.status === "on_hold",
-                                      "border-red-500/20 bg-red-500/10 text-red-400":
-                                        entry.status === "dropped",
-                                      "border-neutral-500/20 bg-neutral-800/40 text-neutral-400":
-                                        entry.status === "unspecified",
-                                    },
+                                getStatusBadgeClass(entry.status),
                               )}
                             >
                               {entryStatusLabels[entry.status] ?? "Unspecified"}

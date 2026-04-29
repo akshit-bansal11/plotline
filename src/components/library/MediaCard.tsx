@@ -8,9 +8,10 @@ import { useEffect, useRef, useState } from "react";
 import { DescriptionErrorWrapper } from "@/components/ui/DescriptionErrorWrapper";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { useAuth } from "@/context/AuthContext";
-import type { EntryStatus } from "@/context/DataContext";
+import type { EntryMediaType, EntryStatus } from "@/context/DataContext";
 import { useData } from "@/context/DataContext";
 import { db } from "@/lib/firebase";
+import { getStatusOptionsForMediaType } from "@/types/log-entry";
 import { cn, entryStatusLabels } from "@/utils";
 import { getOTTAvailability } from "@/utils/ott";
 import { MAX_DESCRIPTION_LENGTH } from "@/utils/validation";
@@ -101,61 +102,34 @@ export function MediaCard({
     setLocalRating(next);
   }, [userRating]);
 
-  const STANDARD_STATUS_OPTIONS: EntryStatus[] = [
-    "watching",
-    "completed",
-    "plan_to_watch",
-    "on_hold",
-    "dropped",
-    "unspecified",
-  ];
-  const GAME_STATUS_OPTIONS: EntryStatus[] = [
-    "not_committed",
-    "committed",
-    "main_story_completed",
-    "fully_completed",
-    "backlogged",
-    "bored",
-    "own",
-    "wishlist",
-    "dropped",
-    "unspecified",
-  ];
-  const statusOptions = type === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS;
+  const statusOptions =
+    type === "movie" ||
+    type === "series" ||
+    type === "anime" ||
+    type === "manga" ||
+    type === "game"
+      ? getStatusOptionsForMediaType(type as EntryMediaType)
+      : getStatusOptionsForMediaType("series");
 
   const getStatusBadgeClass = (s: EntryStatus) => {
-    if (type === "game") {
-      switch (s) {
-        case "main_story_completed":
-          return "border-emerald-700/50 bg-emerald-950/80 text-emerald-600 hover:bg-emerald-900/80";
-        case "fully_completed":
-          return "border-emerald-400/50 bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/80";
-        case "backlogged":
-          return "border-yellow-500/50 bg-yellow-950/80 text-yellow-400 hover:bg-yellow-900/80";
-        case "bored":
-          return "border-orange-500/50 bg-orange-950/80 text-orange-400 hover:bg-orange-900/80";
-        case "own":
-          return "border-pink-500/50 bg-pink-950/80 text-pink-400 hover:bg-pink-900/80";
-        case "wishlist":
-          return "border-white/50 bg-neutral-950/80 text-white hover:bg-neutral-900/80";
-        case "committed":
-          return "border-sky-500/50 bg-sky-950/80 text-sky-400 hover:bg-sky-900/80";
-        case "not_committed":
-          return "border-blue-700/50 bg-blue-950/80 text-blue-500 hover:bg-blue-900/80";
-        case "dropped":
-          return "border-red-500/50 bg-red-950/80 text-red-400 hover:bg-red-900/80";
-        default:
-          return "border-neutral-500/30 bg-neutral-950/80 text-neutral-400 hover:bg-neutral-900/80";
-      }
-    }
     switch (s) {
       case "completed":
+      case "fully_completed":
         return "border-emerald-500/50 bg-emerald-950/80 text-emerald-400 hover:bg-emerald-900/80";
       case "watching":
+      case "reading":
+      case "playing":
         return "border-blue-500/50 bg-blue-950/80 text-blue-400 hover:bg-blue-900/80";
+      case "rewatching":
+      case "rereading":
+      case "replaying":
+        return "border-sky-500/50 bg-sky-950/80 text-sky-400 hover:bg-sky-900/80";
       case "plan_to_watch":
+      case "plan_to_read":
+      case "plan_to_play":
         return "border-violet-500/50 bg-violet-950/80 text-violet-400 hover:bg-violet-900/80";
       case "on_hold":
+      case "backlogged":
         return "border-yellow-500/50 bg-yellow-950/80 text-yellow-400 hover:bg-yellow-900/80";
       case "dropped":
         return "border-red-500/50 bg-red-950/80 text-red-400 hover:bg-red-900/80";

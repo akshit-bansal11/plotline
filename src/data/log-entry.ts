@@ -9,7 +9,11 @@ import {
   Tablet,
   Terminal,
 } from "lucide-react";
-import type { EntryStatus } from "../types/log-entry";
+import {
+  getStatusOptionsForMediaType,
+  type EntryStatus,
+  type EntryMediaType,
+} from "../types/log-entry";
 
 export const PLATFORM_OPTIONS = [
   { id: "Steam", label: "Steam", icon: Monitor },
@@ -39,22 +43,12 @@ export const PLATFORM_OPTIONS = [
   { id: "Linux", label: "Linux", icon: Terminal },
 ];
 
-export const STANDARD_STATUS_OPTIONS: EntryStatus[] = [
-  "watching",
-  "completed",
-  "plan_to_watch",
-  "on_hold",
-  "dropped",
-];
+export const MOVIE_STATUS_OPTIONS = getStatusOptionsForMediaType("movie");
+export const SERIES_ANIME_STATUS_OPTIONS = getStatusOptionsForMediaType("series");
+export const MANGA_STATUS_OPTIONS = getStatusOptionsForMediaType("manga");
+export const GAME_STATUS_OPTIONS = getStatusOptionsForMediaType("game");
 
-export const GAME_STATUS_OPTIONS: EntryStatus[] = [
-  "main_story_completed",
-  "fully_completed",
-  "backlogged",
-  "bored",
-  "own",
-  "wishlist",
-  "not_committed",
-  "committed",
-  "dropped",
-];
+export const getLogEntryStatusOptions = (mediaType: EntryMediaType): readonly EntryStatus[] =>
+  getStatusOptionsForMediaType(mediaType);
+
+export const STANDARD_STATUS_OPTIONS = SERIES_ANIME_STATUS_OPTIONS;

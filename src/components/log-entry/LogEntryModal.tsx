@@ -21,7 +21,8 @@ import { type EntryDoc, useData } from "@/context/DataContext";
 import { deleteLogEntry, saveLogEntry } from "@/services/log-entry";
 import { RELATION_OPTIONS, type RelationType } from "@/services/relations";
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/utils";
-import { GAME_STATUS_OPTIONS, STANDARD_STATUS_OPTIONS } from "../../data/log-entry";
+import { getLogEntryStatusOptions } from "../../data/log-entry";
+import { isCompletionStatus } from "../../types/log-entry";
 import {
   useBodyScrollLock,
   useEscapeKey,
@@ -32,7 +33,7 @@ import {
 import type {
   EditableRelation,
   EntryMediaType,
-  EntryStatus,
+  EntryStatusValue,
   LoggableMedia,
 } from "../../types/log-entry";
 import {
@@ -110,7 +111,7 @@ export function LogEntryModal({
   const [lengthMinutes, setLengthMinutes] = useState("");
 
   // User-progress fields
-  const [status, setStatus] = useState<EntryStatus>("unspecified");
+  const [status, setStatus] = useState<EntryStatusValue>("unspecified");
   const [userRating, setUserRating] = useState("");
   const [currentEpisodes, setCurrentEpisodes] = useState(0);
   const [currentSeasons, setCurrentSeasons] = useState(0);
@@ -262,6 +263,13 @@ export function LogEntryModal({
     if (!/^\d{4}$/.test(raw) || v < 1888 || v > max) return "Invalid release year.";
     return null;
   }, [releaseYear]);
+
+  useEffect(() => {
+    if (status === "unspecified") return;
+    if (!getLogEntryStatusOptions(mediaType).includes(status)) {
+      setStatus("unspecified");
+    }
+  }, [mediaType, status]);
 
   // ── DIRTY TRACKING ─────────────────────────────────────────────────────────
 
@@ -462,7 +470,7 @@ export function LogEntryModal({
 
       let nCompletionDate = "";
       let nCompletionUnknown = false;
-      if (normalizedInitial.status === "completed") {
+      if (isCompletionStatus(normalizedInitial.status ?? "unspecified")) {
         if (normalizedInitial.completionDateUnknown) {
           nCompletionUnknown = true;
         } else if (normalizedInitial.completedAt) {
@@ -641,7 +649,7 @@ export function LogEntryModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    if (status !== "completed") {
+    if (!isCompletionStatus(status)) {
       if (completionDate) setCompletionDate("");
       if (completionUnknown) setCompletionUnknown(false);
       return;
@@ -758,7 +766,7 @@ export function LogEntryModal({
 
     let completedAt: Timestamp | null = null;
     let completionDateUnknownValue = false;
-    if (status === "completed") {
+    if (isCompletionStatus(status)) {
       completionDateUnknownValue = completionUnknown;
       if (!completionUnknown) {
         const parsed = parseISODate(completionDate.trim());
@@ -944,6 +952,34 @@ export function LogEntryModal({
 
   const isViewMode = currentMode === "view";
   const editableProps = { activeField, setActiveField, readOnly: isViewMode };
+  const statusIsComplete = isCompletionStatus(status);
+  const statusOptions = getLogEntryStatusOptions(mediaType);
+  const getStatusBadgeClass = (s: EntryStatusValue) => {
+    switch (s) {
+      case "completed":
+      case "fully_completed":
+        return "border-emerald-500/50 bg-emerald-950/80 text-emerald-400";
+      case "watching":
+      case "reading":
+      case "playing":
+        return "border-blue-500/50 bg-blue-950/80 text-blue-400";
+      case "rewatching":
+      case "rereading":
+      case "replaying":
+        return "border-sky-500/50 bg-sky-950/80 text-sky-400";
+      case "plan_to_watch":
+      case "plan_to_read":
+      case "plan_to_play":
+        return "border-violet-500/50 bg-violet-950/80 text-violet-400";
+      case "on_hold":
+      case "backlogged":
+        return "border-yellow-500/50 bg-yellow-950/80 text-yellow-400";
+      case "dropped":
+        return "border-red-500/50 bg-red-950/80 text-red-400";
+      default:
+        return "border-neutral-500/30 bg-neutral-950/80 text-neutral-400";
+    }
+  };
   if (isOpen && modalZIndexRef.current === null) {
     modalZIndexRef.current = acquireModalZIndex();
   }
@@ -978,37 +1014,7 @@ export function LogEntryModal({
                     <span
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full border backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider shrink-0",
-                        mediaType === "game"
-                          ? status === "main_story_completed"
-                            ? "border-emerald-700/50 bg-emerald-950/80 text-emerald-600"
-                            : status === "fully_completed"
-                              ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
-                              : status === "backlogged"
-                                ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
-                                : status === "bored"
-                                  ? "border-orange-500/50 bg-orange-950/80 text-orange-400"
-                                  : status === "own"
-                                    ? "border-pink-500/50 bg-pink-950/80 text-pink-400"
-                                    : status === "wishlist"
-                                      ? "border-white/50 bg-neutral-950/80 text-white"
-                                      : status === "committed"
-                                        ? "border-sky-500/50 bg-sky-950/80 text-sky-400"
-                                        : status === "not_committed"
-                                          ? "border-blue-700/50 bg-blue-950/80 text-blue-500"
-                                          : status === "dropped"
-                                            ? "border-red-500/50 bg-red-950/80 text-red-400"
-                                            : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400"
-                          : status === "completed"
-                            ? "border-emerald-500/50 bg-emerald-950/80 text-emerald-400"
-                            : status === "watching"
-                              ? "border-blue-500/50 bg-blue-950/80 text-blue-400"
-                              : status === "plan_to_watch"
-                                ? "border-violet-500/50 bg-violet-950/80 text-violet-400"
-                                : status === "on_hold"
-                                  ? "border-yellow-500/50 bg-yellow-950/80 text-yellow-400"
-                                  : status === "dropped"
-                                    ? "border-red-500/50 bg-red-950/80 text-red-400"
-                                    : "border-neutral-500/30 bg-neutral-950/80 text-neutral-400",
+                        getStatusBadgeClass(status),
                       )}
                     >
                       {entryStatusLabels[status] ?? status}
@@ -1191,7 +1197,7 @@ export function LogEntryModal({
                   </div>
                 )}
 
-                {(startDate || status === "completed") && (
+                {(startDate || statusIsComplete) && (
                   <div className="mb-8">
                     <div className="flex gap-12">
                       {startDate && (
@@ -1202,7 +1208,7 @@ export function LogEntryModal({
                           <div className="text-[13px] text-white/70 font-medium">{startDate}</div>
                         </div>
                       )}
-                      {status === "completed" && (
+                      {statusIsComplete && (
                         <div>
                           <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[#555] mb-1">
                             COMPLETED
@@ -1569,9 +1575,9 @@ export function LogEntryModal({
                       <select
                         value={status}
                         onChange={(e) => {
-                          const next = e.target.value as EntryStatus;
+                          const next = e.target.value as EntryStatusValue;
                           setStatus(next);
-                          if (next === "completed") {
+                          if (isCompletionStatus(next)) {
                             if (!completionDate && !completionUnknown) {
                               setCompletionDate(todayISODate());
                             }
@@ -1586,13 +1592,11 @@ export function LogEntryModal({
                         className="w-full bg-[#1a1a1a] border border-white/10 rounded-full py-2.5 px-5 pr-10 appearance-none text-[13px] text-white focus:outline-none focus:border-white/20 transition-all"
                       >
                         <option value="unspecified">Select status</option>
-                        {(mediaType === "game" ? GAME_STATUS_OPTIONS : STANDARD_STATUS_OPTIONS).map(
-                          (s) => (
-                            <option key={s} value={s}>
-                              {entryStatusLabels[s]}
-                            </option>
-                          ),
-                        )}
+                        {statusOptions.map((s) => (
+                          <option key={s} value={s}>
+                            {entryStatusLabels[s]}
+                          </option>
+                        ))}
                       </select>
                       <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555] pointer-events-none" />
                     </div>
@@ -1739,9 +1743,9 @@ export function LogEntryModal({
                         }}
                         style={{ colorScheme: "dark" }}
                         className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg py-3 px-4 text-[13px] text-white focus:outline-none focus:border-white/20 transition-all disabled:opacity-40"
-                        disabled={status !== "completed"}
+                        disabled={!statusIsComplete}
                       />
-                      {status === "completed" && (
+                      {statusIsComplete && (
                         <div className="flex gap-4 mt-2">
                           <button
                             type="button"
