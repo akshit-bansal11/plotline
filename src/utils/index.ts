@@ -7,12 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 
 export const entryStatusLabels = {
   watching: "Watching",
+  rewatching: "Rewatching",
   completed: "Completed",
   plan_to_watch: "Plan to watch",
   on_hold: "On hold",
   dropped: "Dropped",
+  reading: "Reading",
+  rereading: "Rereading",
+  plan_to_read: "Plan to read",
+  playing: "Playing",
+  replaying: "Replaying",
+  plan_to_play: "Plan to play",
   unspecified: "Unspecified",
-  // Game specific
   main_story_completed: "Main Story Completed",
   fully_completed: "Fully Completed",
   backlogged: "Backlogged",

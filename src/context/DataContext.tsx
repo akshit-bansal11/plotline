@@ -12,29 +12,19 @@ import {
 } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
+import {
+  type EntryMediaType,
+  type EntryStatusValue,
+  normalizeEntryStatus,
+} from "@/types/log-entry";
 
-export type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
-export type EntryStatus =
-  | "watching"
-  | "completed"
-  | "plan_to_watch"
-  | "on_hold"
-  | "dropped"
-  | "unspecified"
-  | "main_story_completed"
-  | "fully_completed"
-  | "backlogged"
-  | "bored"
-  | "own"
-  | "wishlist"
-  | "not_committed"
-  | "committed";
+export type { EntryMediaType, EntryStatusValue as EntryStatus };
 
 export type EntryDoc = {
   id: string;
   title: string;
   mediaType: EntryMediaType;
-  status: EntryStatus;
+  status: EntryStatusValue;
   userRating: number | null;
   imdbRating: number | null;
   notes: string;
@@ -110,26 +100,7 @@ const coerceMediaType = (value: unknown): EntryMediaType => {
   return "movie";
 };
 
-const coerceStatus = (value: unknown): EntryStatus => {
-  if (
-    value === "watching" ||
-    value === "completed" ||
-    value === "plan_to_watch" ||
-    value === "on_hold" ||
-    value === "dropped" ||
-    value === "unspecified" ||
-    value === "main_story_completed" ||
-    value === "fully_completed" ||
-    value === "backlogged" ||
-    value === "bored" ||
-    value === "own" ||
-    value === "wishlist" ||
-    value === "not_committed" ||
-    value === "committed"
-  )
-    return value;
-  return "unspecified";
-};
+const coerceStatus = (value: unknown): EntryStatusValue => normalizeEntryStatus(value);
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value !== "number") return null;

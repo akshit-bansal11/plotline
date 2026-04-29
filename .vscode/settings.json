@@ -9,5 +9,8 @@
   "css.validate": false,
   "[typescriptreact]": {
     "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
   }
 }
