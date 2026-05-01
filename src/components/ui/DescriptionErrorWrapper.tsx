@@ -1,6 +1,15 @@
+// File: src/components/ui/DescriptionErrorWrapper.tsx
+// Purpose: Visual wrapper that displays a validation error overlay on top of children
+
 "use client";
 
+// ─── React
+import type { ReactNode } from "react";
+
+// ─── Third-party
 import { AlertTriangle } from "lucide-react";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
 interface DescriptionErrorWrapperProps {

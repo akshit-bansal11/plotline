@@ -1,47 +1,25 @@
+// File: src/context/SectionContext.tsx
+// Purpose: Tracking the active navigation section via URL hash and manual updates
+
 "use client";
 
+// ─── React
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
-export type SectionKey = "home" | "movies" | "series" | "anime" | "manga" | "games";
+// ─── Internal — hooks
+import { useSectionState, type SectionKey } from "@/hooks/useSectionState";
 
 interface SectionContextType {
   activeSection: SectionKey;
   setActiveSection: (section: SectionKey) => void;
 }
 
+// ─── Context Definition
 const SectionContext = createContext<SectionContextType | undefined>(undefined);
 
-const normalizeSection = (hash: string): SectionKey => {
-  const raw = hash.replace(/^#/, "").trim().toLowerCase();
-  if (!raw || raw === "home") return "home";
-  if (raw === "movies" || raw === "movie") return "movies";
-  if (raw === "series") return "series";
-  if (raw === "anime") return "anime";
-  if (raw === "manga") return "manga";
-  if (raw === "games" || raw === "game") return "games";
-  return "home";
-};
-
+// ─── Provider Component
 export function SectionProvider({ children }: { children: ReactNode }) {
-  const [activeSection, setActiveSection] = useState<SectionKey>("home");
-
-  useEffect(() => {
-    const syncFromHash = () => {
-      const currentHash = window.location.hash;
-      const normalized = normalizeSection(currentHash);
-      setActiveSection(normalized);
-    };
-
-    syncFromHash();
-
-    window.addEventListener("hashchange", syncFromHash);
-    window.addEventListener("popstate", syncFromHash);
-
-    return () => {
-      window.removeEventListener("hashchange", syncFromHash);
-      window.removeEventListener("popstate", syncFromHash);
-    };
-  }, []);
+  const { activeSection, setActiveSection } = useSectionState();
 
   return (
     <SectionContext.Provider value={{ activeSection, setActiveSection }}>
@@ -50,6 +28,7 @@ export function SectionProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// ─── Hook: useSection
 export function useSection() {
   const context = useContext(SectionContext);
   if (context === undefined) {

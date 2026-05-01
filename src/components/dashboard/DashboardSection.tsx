@@ -1,163 +1,90 @@
+// File: src/components/dashboard/DashboardSection.tsx
+// Purpose: Dashboard view presenting user metrics, recent activity, and library overview
+
 "use client";
 
-import { Star } from "lucide-react";
+// ─── Icons
+import { Clock, List, Star, Zap } from "lucide-react";
 import Image from "next/image";
+// ─── React & Next
 import { useMemo } from "react";
+
+// ─── Internal — hooks
 import { useAuth } from "@/context/AuthContext";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+
+// ─── Internal — types
 import type { EntryDoc, EntryMediaType, EntryStatus } from "@/context/DataContext";
-import type { MetricCounts } from "@/types/lists";
 import { isCompletionStatus } from "@/types/log-entry";
+
+// ─── Internal — utils
 import { cn, entryStatusLabels } from "@/utils";
 import { contentTypeLabels, metricLabels } from "@/utils/dashboard";
 import { formatISODate } from "@/utils/date";
+
+// ─── Internal — components
 import { Hero } from "../library/Hero";
 import { GlassCard } from "../ui/GlassCard";
 
-const getStatusBadgeClass = (status: EntryStatus) => {
-  switch (status) {
-    case "completed":
-    case "fully_completed":
-      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-400";
-    case "watching":
-    case "reading":
-    case "playing":
-      return "border-blue-500/20 bg-blue-500/10 text-blue-400";
-    case "rewatching":
-    case "rereading":
-    case "replaying":
-      return "border-sky-500/20 bg-sky-500/10 text-sky-400";
-    case "plan_to_watch":
-    case "plan_to_read":
-    case "plan_to_play":
-      return "border-violet-500/20 bg-violet-500/10 text-violet-400";
-    case "on_hold":
-    case "backlogged":
-      return "border-amber-500/20 bg-amber-500/10 text-amber-400";
-    case "dropped":
-      return "border-red-500/20 bg-red-500/10 text-red-400";
-    default:
-      return "border-neutral-500/20 bg-neutral-800/40 text-neutral-400";
-  }
-};
+// ─────────────────────────────────────────────────────────────────────────────
 
+interface DashboardSectionProps {
+  entries: EntryDoc[];
+  status: string;
+  error: string | null;
+  onRetry: () => void;
+  onSelectEntry: (entry: EntryDoc) => void;
+}
+
+/**
+ * Renders the primary dashboard view with statistics and activity.
+ */
 export function DashboardSection({
   entries,
   status,
   error,
   onRetry,
   onSelectEntry,
-}: {
-  entries: EntryDoc[];
-  status: string;
-  error: string | null;
-  onRetry: () => void;
-  onSelectEntry: (entry: EntryDoc) => void;
-}) {
+}: DashboardSectionProps) {
   const { user } = useAuth();
   const uid = user?.uid || null;
 
-  const completedEntries = useMemo(() => {
-    return entries.filter((entry) => isCompletionStatus(entry.status));
-  }, [entries]);
+  const { metricsByType, heroStats, recentByType } = useDashboardStats(entries);
 
-  const metricsByType = useMemo(() => {
-    const now = new Date();
-    const nowMs = now.getTime();
-    const startMonthMs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    const startYearMs = new Date(now.getFullYear(), 0, 1).getTime();
-
-    const base: Record<EntryMediaType, MetricCounts> = {
-      movie: { month: 0, year: 0, total: 0 },
-      series: { month: 0, year: 0, total: 0 },
-      anime: { month: 0, year: 0, total: 0 },
-      manga: { month: 0, year: 0, total: 0 },
-      game: { month: 0, year: 0, total: 0 },
-    };
-
-    for (const entry of completedEntries) {
-      base[entry.mediaType].total += 1;
-
-      const completedAtMs = entry.completedAtMs;
-      if (!completedAtMs) continue;
-      if (completedAtMs > nowMs) continue;
-
-      if (completedAtMs >= startYearMs) base[entry.mediaType].year += 1;
-      if (completedAtMs >= startMonthMs) base[entry.mediaType].month += 1;
-    }
-
-    return base;
-  }, [completedEntries]);
-
-  const totalsForHero = useMemo(
-    () => ({
-      movies: metricsByType.movie.total,
-      series: metricsByType.series.total,
-      anime: metricsByType.anime.total,
-      manga: metricsByType.manga.total,
-      games: metricsByType.game.total,
-    }),
-    [metricsByType],
-  );
-
-  const recentByType = useMemo(() => {
-    const grouped: Record<EntryMediaType, EntryDoc[]> = {
-      movie: [],
-      series: [],
-      anime: [],
-      manga: [],
-      game: [],
-    };
-
-    for (const entry of entries) {
-      grouped[entry.mediaType].push(entry);
-    }
-
-    const sortKey = (e: EntryDoc) => e.completedAtMs ?? e.createdAtMs ?? 0;
-    (Object.keys(grouped) as EntryMediaType[]).forEach((key) => {
-      grouped[key].sort((a, b) => sortKey(b) - sortKey(a));
-    });
-
-    return grouped;
-  }, [entries]);
-
-  const username = user?.displayName || user?.email || "Traveler";
-  const visibleEntriesError = uid ? error : null;
+  const username = user?.displayName || user?.email?.split("@")[0] || "Traveler";
 
   return (
-    <div className="flex flex-col gap-10 pb-20">
-      <Hero username={username} stats={totalsForHero} />
+    <div className="flex flex-col gap-10 pb-20 animate-in fade-in duration-500">
+      {/* Hero Section */}
+      <Hero username={username} stats={heroStats} />
 
-      <section className="w-full px-4 md:px-8">
-        <div className="flex items-end justify-between gap-6">
-          {!uid && <div className="text-sm text-neutral-500">Sign in to start tracking.</div>}
+      {/* Metrics Grid */}
+      <section className="px-4 md:px-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+            <Zap className="w-5 h-5 text-yellow-500" />
+            Library Statistics
+          </h2>
+          {!uid && <span className="text-xs text-zinc-500">Sign in to sync your library</span>}
         </div>
-        {uid && status === "loading" ? (
-          <div className="mt-3 text-sm text-neutral-500">Syncing…</div>
-        ) : null}
-        {visibleEntriesError ? (
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-red-400">
-            <div className="min-w-0 flex-1 truncate">{visibleEntriesError}</div>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="shrink-0 rounded-full border border-white/10 bg-neutral-900/40 px-3 py-1 text-xs text-neutral-200 transition-colors hover:bg-neutral-900/70"
-            >
-              Retry
-            </button>
-          </div>
-        ) : null}
 
-        <div className="mt-6 grid not-sm:grid-cols-1 grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {(Object.keys(contentTypeLabels) as EntryMediaType[]).map((type) => (
-            <GlassCard key={type} className="p-5" hoverEffect>
-              <div className="text-sm font-semibold text-white">{contentTypeLabels[type]}</div>
-              <div className="mt-4 space-y-3">
+            <GlassCard
+              key={type}
+              className="p-5 border-white/5 hover:border-white/10 transition-colors"
+              hoverEffect
+            >
+              <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">
+                {contentTypeLabels[type]}
+              </div>
+              <div className="space-y-4">
                 {metricLabels.map(({ key, label }) => (
-                  <div key={key} className="flex items-baseline justify-between gap-4">
-                    <div className="text-xs font-medium text-neutral-500">{label}</div>
-                    <div className="text-2xl font-bold text-white tabular-nums">
+                  <div key={key} className="flex items-baseline justify-between">
+                    <span className="text-[11px] text-zinc-500 font-medium">{label}</span>
+                    <span className="text-2xl font-bold text-zinc-100 tabular-nums">
                       {metricsByType[type][key].toLocaleString()}
-                    </div>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -166,90 +93,99 @@ export function DashboardSection({
         </div>
       </section>
 
-      <section className="w-full px-4 md:px-8">
-        <h2 className="text-xl font-semibold text-white">Recent activity</h2>
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* Recent Activity Section */}
+      <section className="px-4 md:px-8 space-y-6">
+        <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+          <Clock className="w-5 h-5 text-blue-500" />
+          Recent Activity
+        </h2>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {(Object.keys(contentTypeLabels) as EntryMediaType[]).map((type) => {
-            const items = recentByType[type].slice(0, 10);
+            const items = recentByType[type].slice(0, 5);
+            if (uid && items.length === 0) return null;
 
             return (
-              <GlassCard key={type} className="p-5" hoverEffect>
-                <div className="text-sm font-semibold text-white">{contentTypeLabels[type]}</div>
+              <GlassCard key={type} className="p-5 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-zinc-300">{contentTypeLabels[type]}</h3>
+                  <span className="text-[10px] text-zinc-600 uppercase font-bold tracking-tighter">
+                    Latest Entries
+                  </span>
+                </div>
 
-                {uid && items.length === 0 ? (
-                  <div className="mt-4 text-sm text-neutral-400">No recent activity</div>
-                ) : null}
-
-                {!uid ? (
-                  <div className="mt-4 text-sm text-neutral-500">
-                    Sign in to see your recent activity.
-                  </div>
-                ) : null}
-
-                {items.length > 0 ? (
-                  <div className="mt-4 space-y-3 max-h-85 overflow-y-auto pr-2">
-                    {items.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center gap-3 rounded-2xl border border-white/5 bg-neutral-900/40 p-3"
-                      >
-                        <div className="h-14 w-10 shrink-0 overflow-hidden rounded-lg bg-neutral-800/50">
-                          {entry.image ? (
-                            <Image
-                              src={entry.image}
-                              alt={entry.title}
-                              width={40}
-                              height={56}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-full w-full bg-neutral-800/50" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate text-sm font-semibold text-white">
-                              {entry.title}
-                            </span>
-                            <span
-                              className={cn(
-                                "shrink-0 rounded-full border px-2 py-0.5 text-[10px]",
-                                getStatusBadgeClass(entry.status),
-                              )}
-                            >
-                              {entryStatusLabels[entry.status] ?? "Unspecified"}
-                            </span>
-                          </div>
-                          {entry.releaseYear || entry.completedAtMs ? (
-                            <div className="mt-1 text-xs text-neutral-500">
-                              {entry.releaseYear ? `${entry.releaseYear}` : ""}
-                              {entry.releaseYear && entry.completedAtMs ? " • " : ""}
-                              {entry.completedAtMs ? formatISODate(entry.completedAtMs) : ""}
-                            </div>
-                          ) : null}
-                        </div>
-                        {typeof entry.userRating === "number" ? (
-                          <div className="flex items-center gap-1 shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-2.5 py-1 text-xs text-neutral-200 tabular-nums">
-                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                            {entry.userRating.toFixed(1)}
-                          </div>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => onSelectEntry(entry)}
-                          className="shrink-0 rounded-full border border-white/10 bg-neutral-800/40 px-3 py-1 text-xs text-neutral-200 hover:bg-neutral-800/70 transition-colors"
-                        >
-                          View
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+                <div className="space-y-2">
+                  {items.map((entry) => (
+                    <ActivityRow
+                      key={entry.id}
+                      entry={entry}
+                      onSelect={() => onSelectEntry(entry)}
+                    />
+                  ))}
+                  {items.length === 0 && (
+                    <div className="py-8 text-center text-zinc-600 text-xs italic">
+                      No activity tracked yet.
+                    </div>
+                  )}
+                </div>
               </GlassCard>
             );
           })}
         </div>
       </section>
     </div>
+  );
+}
+
+// ─── Sub-components
+function ActivityRow({ entry, onSelect }: { entry: EntryDoc; onSelect: () => void }) {
+  return (
+    <div
+      className="group flex items-center gap-3 p-2 rounded-xl bg-zinc-900/40 border border-transparent hover:border-zinc-800 hover:bg-zinc-800/40 transition-all cursor-pointer"
+      onClick={onSelect}
+    >
+      <div className="w-10 h-14 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0">
+        {entry.image && (
+          <Image
+            src={entry.image}
+            alt=""
+            width={40}
+            height={56}
+            className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all"
+          />
+        )}
+      </div>
+      <div className="flex-grow min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-zinc-200 truncate">{entry.title}</span>
+          <StatusBadge status={entry.status} />
+        </div>
+        <div className="text-[10px] text-zinc-500 mt-0.5 font-medium uppercase tracking-wide">
+          {entry.completedAtMs ? `Completed ${formatISODate(entry.completedAtMs)}` : "In Progress"}
+        </div>
+      </div>
+      {entry.userRating && (
+        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-zinc-800/80 text-[11px] font-bold text-zinc-200">
+          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+          {entry.userRating}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: EntryStatus }) {
+  const isDone = isCompletionStatus(status);
+  return (
+    <span
+      className={cn(
+        "px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter border",
+        isDone
+          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+          : "bg-blue-500/10 border-blue-500/20 text-blue-400",
+      )}
+    >
+      {entryStatusLabels[status] || "Unknown"}
+    </span>
   );
 }

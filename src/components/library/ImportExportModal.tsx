@@ -1,132 +1,54 @@
+// File: src/components/library/ImportExportModal.tsx
+// Purpose: Modal for importing from IMDB CSV and exporting user library to CSV
+
 "use client";
 
+// ─── React
+import { useEffect, useState } from "react";
+
+// ─── Firebase
 import {
   collection,
   doc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
   serverTimestamp,
-  Timestamp,
   writeBatch,
 } from "firebase/firestore";
+
+// ─── Icons
 import { Download, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+
+// ─── Internal — services
+import { db } from "@/lib/firebase";
+import {
+  escapeCsv,
+  formatDate,
+  getEntriesForExport,
+  getExistingLibrary,
+  mapImdbType,
+  normalizeHeader,
+  parseCsv,
+  parseRatingValue,
+  parseYearValue,
+  type EntryExportRow,
+} from "@/services/import-export";
+
+// ─── Internal — hooks/context
+import { useAuth } from "@/context/AuthContext";
+
+// ─── Internal — components
 import { InfographicToast } from "@/components/overlay/InfographicToast";
 import { Modal } from "@/components/overlay/Modal";
-import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+
+// ─── Internal — types
 import type {
   EntryMediaType as BaseEntryMediaType,
   EntryStatusValue as EntryStatus,
 } from "@/types/log-entry";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
 type EntryMediaType = BaseEntryMediaType | "anime_movie";
-
-type EntryExportRow = {
-  title: string;
-  mediaType: EntryMediaType;
-  status: EntryStatus;
-  userRating: number | null;
-  imdbRating: number | null;
-  lengthMinutes: number | null;
-  episodeCount: number | null;
-  chapterCount: number | null;
-  genresThemes: string[];
-  description: string;
-  releaseYear: string | null;
-  image: string | null;
-  completedAt: number | null;
-  createdAt: number | null;
-};
-
-const escapeCsv = (value: string) => {
-  const normalized = value.replace(/"/g, '""');
-  if (normalized.includes(",") || normalized.includes("\n") || normalized.includes('"')) {
-    return `"${normalized}"`;
-  }
-  return normalized;
-};
-
-const parseCsv = (text: string) => {
-  const rows: string[][] = [];
-  let current: string[] = [];
-  let field = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    const next = text[i + 1];
-    if (char === '"') {
-      if (inQuotes && next === '"') {
-        field += '"';
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-    if (char === "," && !inQuotes) {
-      current.push(field);
-      field = "";
-      continue;
-    }
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") i += 1;
-      current.push(field);
-      field = "";
-      if (current.length > 1 || current[0]?.trim()) rows.push(current);
-      current = [];
-      continue;
-    }
-    field += char;
-  }
-  current.push(field);
-  if (current.length > 1 || current[0]?.trim()) rows.push(current);
-  return rows;
-};
-
-const normalizeHeader = (value: string) => value.trim().toLowerCase();
-
-const parseYearValue = (value: string | null | undefined) => {
-  if (!value) return null;
-  const match = value.match(/\d{4}/);
-  if (!match) return null;
-  const year = Number(match[0]);
-  const maxYear = new Date().getFullYear() + 1;
-  if (Number.isNaN(year) || year < 1888 || year > maxYear) return null;
-  return match[0];
-};
-
-const parseRatingValue = (value: string | null | undefined, min: number, max: number) => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed) || parsed < min || parsed > max) return null;
-  return parsed;
-};
-
-const mapImdbType = (value: string): EntryMediaType => {
-  const normalized = value.trim().toLowerCase();
-  if (normalized.includes("tv") || normalized.includes("series")) return "series";
-  if (normalized.includes("video game") || normalized.includes("game")) return "game";
-  if (normalized.includes("anime")) return "anime";
-  if (normalized.includes("manga")) return "manga";
-  return "movie";
-};
-
-const formatDate = (millis: number | null) => {
-  if (!millis) return "";
-  const date = new Date(millis);
-  if (Number.isNaN(date.getTime())) return "";
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
 
 export function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { user } = useAuth();
@@ -159,36 +81,7 @@ export function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClos
     setImportError(null);
     setImportInfo(null);
     try {
-      const snapshot = await getDocs(
-        query(collection(db, "users", user.uid, "entries"), orderBy("createdAt", "desc")),
-      );
-      const rows: EntryExportRow[] = [];
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data() as Record<string, unknown>;
-        const releaseYearRaw = data.releaseYear ?? data.year ?? null;
-        const userRating =
-          typeof data.userRating === "number"
-            ? data.userRating
-            : typeof data.rating === "number"
-              ? data.rating
-              : null;
-        rows.push({
-          title: String(data.title || ""),
-          mediaType: data.mediaType as EntryMediaType,
-          status: data.status as EntryStatus,
-          userRating,
-          imdbRating: typeof data.imdbRating === "number" ? data.imdbRating : null,
-          lengthMinutes: typeof data.lengthMinutes === "number" ? data.lengthMinutes : null,
-          episodeCount: typeof data.episodeCount === "number" ? data.episodeCount : null,
-          chapterCount: typeof data.chapterCount === "number" ? data.chapterCount : null,
-          genresThemes: Array.isArray(data.genresThemes) ? (data.genresThemes as string[]) : [],
-          description: String(data.description || ""),
-          releaseYear: releaseYearRaw ? String(releaseYearRaw) : null,
-          image: typeof data.image === "string" ? data.image : null,
-          completedAt: data.completedAt instanceof Timestamp ? data.completedAt.toMillis() : null,
-          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : null,
-        });
-      });
+      const rows = await getEntriesForExport(user.uid);
       const headers = [
         "Title",
         "Media Type",
@@ -337,28 +230,7 @@ export function ImportExportModal({ isOpen, onClose }: { isOpen: boolean; onClos
         }
       };
 
-      const existingEntriesSnapshot = await getDocs(
-        query(collection(db, "users", user.uid, "entries"), limit(1000)),
-      );
-
-      const existingLibrary: {
-        title: string;
-        mediaType: string;
-        year: string;
-      }[] = [];
-      existingEntriesSnapshot.forEach((entryDoc) => {
-        const raw = entryDoc.data() as Record<string, unknown>;
-        existingLibrary.push({
-          title: typeof raw.title === "string" ? raw.title.trim().toLowerCase() : "",
-          mediaType: typeof raw.mediaType === "string" ? raw.mediaType : "movie",
-          year:
-            typeof raw.releaseYear === "string"
-              ? raw.releaseYear
-              : typeof raw.year === "string"
-                ? raw.year
-                : "",
-        });
-      });
+      const existingLibrary = await getExistingLibrary(user.uid);
 
       let imported = 0;
       let skipped = 0;

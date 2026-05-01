@@ -1,15 +1,32 @@
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+// File: src/hooks/useLists.ts
+// Purpose: Subscription to user lists and their associated items with auto-sorting
+
+// ─── React
 import { useEffect, useRef, useState } from "react";
-import type { EntryMediaType } from "@/context/DataContext";
+
+// ─── Firebase
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+
+// ─── Internal — services
 import { db } from "@/lib/firebase";
-import type { ListItemRow, ListRow } from "@/types/lists";
+
+// ─── Internal — utils
 import { coerceListType, toMillis } from "@/utils/lists";
 
+// ─── Internal — types
+import type { EntryMediaType } from "@/types/log-entry";
+import type { ListItemRow, ListRow } from "@/types/lists";
+
+/**
+ * Hook to manage subscriptions to user lists and their items.
+ * Handles filtering by media type and maintaining a local cache of items.
+ */
 export function useLists(uid: string | null, mediaTypes: string[]) {
   const [lists, setLists] = useState<ListRow[]>([]);
   const [listItemsById, setListItemsById] = useState<Record<string, ListItemRow[]>>({});
   const unsubscribersRef = useRef<Map<string, () => void>>(new Map());
 
+  // ─── Effect: Subscribe to Lists
   useEffect(() => {
     if (!uid) {
       setLists([]);
@@ -33,7 +50,7 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
         const types = Array.isArray(data.types) ? (data.types as EntryMediaType[]) : [singleType];
 
         // Normalize types for filtering: if it has anime or anime_movie, it counts for both
-        const normalizedTypes = types.map((t) => ((t as string) === "anime_movie" ? "anime" : t));
+        const normalizedTypes = types.map((t) => ((t as string) === "anime_movie" ? ("anime" as EntryMediaType) : t));
 
         return {
           id: snap.id,
@@ -42,7 +59,7 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
           type: singleType,
           types,
           normalizedTypes,
-        };
+        } as ListRow & { normalizedTypes: EntryMediaType[] };
       });
 
       const filteredLists = nextLists.filter((list) =>
@@ -60,19 +77,20 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
     return () => unsubscribe();
   }, [mediaTypes, uid]);
 
+  // ─── Effect: Subscribe to List Items
   useEffect(() => {
     if (!uid) {
       setListItemsById({});
       return;
     }
 
-    // Remove unsubscribers for lists that are no longer present
     const activeListIdSet = new Set(lists.map((l) => l.id));
+    
+    // Clean up unsubscribers for lists that are no longer present
     unsubscribersRef.current.forEach((unsub, id) => {
       if (!activeListIdSet.has(id)) {
         unsub();
         unsubscribersRef.current.delete(id);
-        // Also clean up the items state
         setListItemsById((prev) => {
           const next = { ...prev };
           delete next[id];
@@ -109,6 +127,7 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
               addedAtMs: toMillis((data as Record<string, unknown>).addedAt),
             };
           });
+
           const sortedItems = [...nextItems].sort((a, b) => {
             const aSort = a.sortOrder;
             const bSort = b.sortOrder;
@@ -117,6 +136,7 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
             if (typeof bSort === "number") return 1;
             return (b.addedAtMs ?? 0) - (a.addedAtMs ?? 0);
           });
+
           setListItemsById((prev) => ({ ...prev, [list.id]: sortedItems }));
         });
         unsubscribersRef.current.set(list.id, unsub);
@@ -124,6 +144,7 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
     });
   }, [lists, uid]);
 
+  // ─── Effect: Master Cleanup
   useEffect(() => {
     const currentUnsubs = unsubscribersRef.current;
     return () => {

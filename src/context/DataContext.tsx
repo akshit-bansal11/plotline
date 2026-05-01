@@ -1,3 +1,6 @@
+// File: src/context/DataContext.tsx
+// Purpose: Global data context for managing media entries and user preferences (e.g., country)
+
 "use client";
 
 import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";

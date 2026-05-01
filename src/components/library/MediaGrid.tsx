@@ -1,11 +1,22 @@
+// File: src/components/library/MediaGrid.tsx
+// Purpose: Renders a responsive grid of media items with integrated drag-and-drop orchestration
+
 "use client";
 
-import { motion } from "motion/react";
+// ─── React
 import { type DragEvent, useRef } from "react";
+
+// ─── Third-party: Framer Motion
+import { motion } from "motion/react";
+
+// ─── Internal — components
 import { MediaCard } from "@/components/library/MediaCard";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
-type DragStartDetails = {
+// ─── Types
+export type DragStartDetails = {
   entryId: string | number;
   sourceListId: string | null;
   title: string;
@@ -34,38 +45,32 @@ interface MediaGridProps {
   activeDragEntryId?: string | null;
   onItemDragStart?: (details: DragStartDetails) => void;
   onItemDragEnd?: () => void;
-  onItemDragOverPosition?: (
-    details: {
-      targetEntryId: string;
-      position: "before" | "after";
-      sourceListId: string | null;
-    } | null,
-  ) => void;
-  onItemDropPosition?: (details: {
-    targetEntryId: string;
-    position: "before" | "after";
-    sourceListId: string | null;
-  }) => void;
+  onItemDragOverPosition?: (details: { targetEntryId: string; position: "before" | "after"; sourceListId: string | null } | null) => void;
+  onItemDropPosition?: (details: { targetEntryId: string; position: "before" | "after"; sourceListId: string | null }) => void;
   onItemDropOnItem?: (details: { targetEntryId: string; sourceListId: string | null }) => void;
   dropIndicatorEntryId?: string | null;
   dropIndicatorPosition?: "before" | "after" | null;
 }
 
+// ─── Animation Variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
+    transition: { staggerChildren: 0.05 }
+  }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Responsive grid for media cards with advanced drag-and-drop support.
+ */
 export function MediaGrid({
   items,
   className,
@@ -85,122 +90,79 @@ export function MediaGrid({
   return (
     <motion.div
       variants={containerVariants}
-      initial={false}
+      initial="hidden"
       animate="visible"
       className={cn(
-        "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3",
-        className,
+        "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6",
+        className
       )}
     >
       {items.map((item) => {
-        const isActiveDrag =
-          activeDragEntryId !== null && String(activeDragEntryId) === String(item.id);
-        const isDropIndicator =
-          dropIndicatorEntryId !== null &&
-          String(dropIndicatorEntryId) === String(item.id) &&
-          Boolean(dropIndicatorPosition);
+        const isActiveDrag = activeDragEntryId !== null && String(activeDragEntryId) === String(item.id);
+        const isDropIndicator = dropIndicatorEntryId !== null && String(dropIndicatorEntryId) === String(item.id) && Boolean(dropIndicatorPosition);
+
         return (
           <motion.div
             key={item.id}
             variants={itemVariants}
-            className="relative"
-            draggable={Boolean(onItemDragStart)}
-            onDragStartCapture={(event: DragEvent<HTMLDivElement>) => {
+            className={cn("relative group", isActiveDrag && "opacity-40 grayscale")}
+            draggable={!!onItemDragStart}
+            onDragStartCapture={(e: DragEvent<HTMLDivElement>) => {
               if (!onItemDragStart) return;
               suppressClickRef.current = true;
-              event.dataTransfer.effectAllowed = "move";
-              // Tag this as an internal app drag to avoid triggering external URL drop zones
-              event.dataTransfer.setData("application/x-plotline-entry", String(item.id));
-              onItemDragStart({
-                entryId: item.id,
-                sourceListId,
-                title: item.title,
-                mode: "mouse",
-              });
-              event.currentTarget.classList.add("media-card-dragging");
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("application/x-plotline-entry", String(item.id));
+              onItemDragStart({ entryId: item.id, sourceListId, title: item.title, mode: "mouse" });
             }}
-            onDragEndCapture={(event: DragEvent<HTMLDivElement>) => {
-              event.currentTarget.classList.remove("media-card-dragging");
+            onDragEndCapture={() => {
               onItemDragEnd?.();
-              window.setTimeout(() => {
-                suppressClickRef.current = false;
-              }, 0);
+              setTimeout(() => { suppressClickRef.current = false; }, 0);
             }}
-            onDragOverCapture={(event: DragEvent<HTMLDivElement>) => {
+            onDragOverCapture={(e: DragEvent<HTMLDivElement>) => {
               if (activeDragEntryId === null) return;
-              event.preventDefault();
-              const rect = event.currentTarget.getBoundingClientRect();
-              const y = event.clientY - rect.top;
-              const x = event.clientX - rect.left;
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const y = e.clientY - rect.top;
+              const x = e.clientX - rect.left;
 
-              const isCenterY = y > rect.height * 0.25 && y < rect.height * 0.75;
-              const isCenterX = x > rect.width * 0.25 && x < rect.width * 0.75;
+              const isCenter = y > rect.height * 0.25 && y < rect.height * 0.75 && x > rect.width * 0.25 && x < rect.width * 0.75;
 
-              if (isCenterY && isCenterX && onItemDropOnItem) {
-                onItemDragOverPosition?.(null); // Clear indicator
-                event.currentTarget.classList.add("media-card-drop-target"); // Add a subtle visual cue if CSS exists
+              if (isCenter && onItemDropOnItem) {
+                onItemDragOverPosition?.(null);
+                e.currentTarget.classList.add("ring-2", "ring-blue-500", "ring-inset");
               } else if (onItemDragOverPosition) {
-                event.currentTarget.classList.remove("media-card-drop-target");
-                const position: "before" | "after" = y < rect.height / 2 ? "before" : "after";
+                e.currentTarget.classList.remove("ring-2", "ring-blue-500", "ring-inset");
                 onItemDragOverPosition({
                   targetEntryId: String(item.id),
-                  position,
-                  sourceListId,
+                  position: y < rect.height / 2 ? "before" : "after",
+                  sourceListId
                 });
               }
             }}
-            onDragLeaveCapture={(event: DragEvent<HTMLDivElement>) => {
-              event.currentTarget.classList.remove("media-card-drop-target");
+            onDragLeaveCapture={(e) => {
+              e.currentTarget.classList.remove("ring-2", "ring-blue-500", "ring-inset");
             }}
-            onDropCapture={(event: DragEvent<HTMLDivElement>) => {
+            onDropCapture={(e: DragEvent<HTMLDivElement>) => {
               if (activeDragEntryId === null) return;
-              event.preventDefault();
-              event.stopPropagation();
-              event.currentTarget.classList.remove("media-card-drop-target");
+              e.preventDefault();
+              e.stopPropagation();
+              e.currentTarget.classList.remove("ring-2", "ring-blue-500", "ring-inset");
 
-              const rect = event.currentTarget.getBoundingClientRect();
-              const y = event.clientY - rect.top;
-              const x = event.clientX - rect.left;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const y = e.clientY - rect.top;
+              const x = e.clientX - rect.left;
+              const isCenter = y > rect.height * 0.25 && y < rect.height * 0.75 && x > rect.width * 0.25 && x < rect.width * 0.75;
 
-              const isCenterY = y > rect.height * 0.25 && y < rect.height * 0.75;
-              const isCenterX = x > rect.width * 0.25 && x < rect.width * 0.75;
-
-              if (isCenterY && isCenterX && onItemDropOnItem) {
-                onItemDropOnItem({
-                  targetEntryId: String(item.id),
-                  sourceListId,
-                });
+              if (isCenter && onItemDropOnItem) {
+                onItemDropOnItem({ targetEntryId: String(item.id), sourceListId });
               } else if (onItemDropPosition) {
-                const position: "before" | "after" = y < rect.height / 2 ? "before" : "after";
                 onItemDropPosition({
                   targetEntryId: String(item.id),
-                  position,
-                  sourceListId,
+                  position: y < rect.height / 2 ? "before" : "after",
+                  sourceListId
                 });
               }
             }}
-            onTouchStart={() => {
-              if (!onItemDragStart) return;
-              onItemDragStart({
-                entryId: item.id,
-                sourceListId,
-                title: item.title,
-                mode: "touch",
-              });
-            }}
-            onKeyDown={(event) => {
-              if (!onItemDragStart) return;
-              if (event.key === " " || event.key === "Enter") {
-                event.preventDefault();
-                onItemDragStart({
-                  entryId: item.id,
-                  sourceListId,
-                  title: item.title,
-                  mode: "keyboard",
-                });
-              }
-            }}
-            aria-grabbed={isActiveDrag}
           >
             <MediaCard
               {...item}
@@ -208,20 +170,16 @@ export function MediaGrid({
                 if (suppressClickRef.current) return;
                 item.onClick?.();
               }}
-              onEdit={item.onEdit}
-              onDelete={item.onDelete}
-              showActions={item.showActions}
               showStatusControl={showStatusControl}
             />
-            {isDropIndicator ? (
+            {isDropIndicator && (
               <div
-                aria-hidden="true"
                 className={cn(
-                  "pointer-events-none absolute inset-y-3 z-20 w-0.5 rounded-full bg-blue-300 shadow-[0_0_12px_rgba(147,197,253,0.9)]",
-                  dropIndicatorPosition === "before" ? "-left-2" : "-right-2",
+                  "pointer-events-none absolute inset-y-0 w-1 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] z-30 rounded-full",
+                  dropIndicatorPosition === "before" ? "-left-3" : "-right-3"
                 )}
               />
-            ) : null}
+            )}
           </motion.div>
         );
       })}

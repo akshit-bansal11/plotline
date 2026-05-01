@@ -1,3 +1,7 @@
+// File: src/lib/animations/auth.ts
+// Purpose: Shared Framer Motion animation variants for authentication views
+
+// ─── Animation Variants
 export const slideLeft = {
   initial: { opacity: 0, x: -20 },
   animate: { opacity: 1, x: 0 },

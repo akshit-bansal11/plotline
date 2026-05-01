@@ -1,6 +1,13 @@
+// File: src/data/auth/auth-copy.ts
+// Purpose: Content strings for authentication views (headings and subtexts)
+
+// ─── Internal — types
 import type { AuthView } from "@/types/auth";
 
-export const AUTH_COPY: Record<AuthView, { heading: string; subtext: string }> = {
+/**
+ * Display text for various authentication views.
+ */
+export const AUTH_COPY: Readonly<Record<AuthView, { readonly heading: string; readonly subtext: string }>> = {
   login: {
     heading: "Welcome back",
     subtext: "Sign in to continue to Plotline",
@@ -13,4 +20,4 @@ export const AUTH_COPY: Record<AuthView, { heading: string; subtext: string }> =
     heading: "Reset your password",
     subtext: "Reset your account password",
   },
-};
+} as const;

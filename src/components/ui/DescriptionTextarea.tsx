@@ -1,8 +1,19 @@
+// File: src/components/ui/DescriptionTextarea.tsx
+// Purpose: Specialized textarea with character limit tracking and validation styling
+
 "use client";
 
+// ─── React
+import type React from "react";
+
+// ─── Third-party
 import { AlertTriangle } from "lucide-react";
+
+// ─── Internal — constants
+import { MAX_DESCRIPTION_LENGTH } from "@/constants/limits";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
-import { MAX_DESCRIPTION_LENGTH } from "@/utils/validation";
 
 interface DescriptionTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
@@ -11,12 +22,17 @@ interface DescriptionTextareaProps extends React.TextareaHTMLAttributes<HTMLText
   errorText?: string;
 }
 
+/**
+ * A stylized textarea component specifically for media descriptions.
+ * Handles character counting and limit validation.
+ */
 export function DescriptionTextarea({
   value,
   onValueChange,
   maxLengthLimit = MAX_DESCRIPTION_LENGTH,
   className,
   errorText,
+  rows = 3,
   ...props
 }: DescriptionTextareaProps) {
   const currentLength = value.length;

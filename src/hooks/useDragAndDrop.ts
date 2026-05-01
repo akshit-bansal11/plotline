@@ -1,10 +1,25 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+// File: src/hooks/useDragAndDrop.ts
+// Purpose: Drag and drop logic for list items, including reordering and relationship creation
+
+// ─── React
 import { useEffect, useState } from "react";
-import type { EntryDoc, EntryMediaType } from "@/context/DataContext";
+
+// ─── Firebase
+import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+
+// ─── Internal — services
 import { db } from "@/lib/firebase";
+
+// ─── Internal — types
+import type { EntryDoc, EntryMediaType } from "@/types/log-entry";
 import type { ListItemRow, ListRow } from "@/types/lists";
+
+// ─── Internal — utils
 import { entryMediaTypeLabels } from "@/utils";
 
+/**
+ * Manages drag and drop operations for entries between lists or to create relationships.
+ */
 export function useDragAndDrop({
   uid,
   entries,
@@ -35,6 +50,7 @@ export function useDragAndDrop({
   const [isRemoveTargetActive, setIsRemoveTargetActive] = useState(false);
   const [dragAnnouncement, setDragAnnouncement] = useState("");
 
+  // ─── Internal Actions
   const handleRelationDropInternal = (sourceId: string, targetId: string) => {
     if (sourceId === targetId) {
       handleItemDragEnd({ preserveAnnouncement: true });
@@ -56,6 +72,7 @@ export function useDragAndDrop({
     );
   };
 
+  // ─── Effect: Auto-scroll during drag
   useEffect(() => {
     if (!activeDrag) return;
 
@@ -104,6 +121,7 @@ export function useDragAndDrop({
     };
   }, [activeDrag]);
 
+  // ─── Actions: Drag Start
   const handleItemDragStart = (details: {
     entryId: string | number;
     sourceListId: string | null;
@@ -122,6 +140,7 @@ export function useDragAndDrop({
     setIsRemoveTargetActive(false);
   };
 
+  // ─── Actions: Drag End
   const handleItemDragEnd = (options?: { preserveAnnouncement?: boolean }) => {
     if (activeDrag && !options?.preserveAnnouncement) {
       setDragAnnouncement("Drag cancelled.");
@@ -132,6 +151,7 @@ export function useDragAndDrop({
     setIsRemoveTargetActive(false);
   };
 
+  // ─── Actions: Drop on List
   const handleDropOnList = async (targetListId: string | null) => {
     if (!uid || !activeDrag) return;
     const entry = entries.find((candidate) => candidate.id === activeDrag.entryId);
@@ -213,7 +233,8 @@ export function useDragAndDrop({
         const targetName = targetList ? targetList.name || "List" : "Other";
         setDragAnnouncement(`Moved ${entry.title} to ${targetName}.`);
       }
-    } catch {
+    } catch (err) {
+      console.error("Error moving item:", err);
       setDragAnnouncement("Failed to move item. Please try again.");
     } finally {
       handleItemDragEnd({ preserveAnnouncement: true });

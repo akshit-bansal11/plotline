@@ -1,3 +1,6 @@
+// File: src/states/auth/useAuthViewState.ts
+// Purpose: Custom hook for managing the active authentication view state
+
 import { useReducer } from "react";
 import type { AuthView } from "@/types/auth";
 import { authViewReducer } from "./auth-view.machine";

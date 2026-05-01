@@ -1,6 +1,13 @@
+// File: src/utils/auth.ts
+// Purpose: Authentication utility functions for error formatting and provider storage
+
+// ─── Internal — types
 import type { AuthProvider } from "@/types/auth";
 
-export function formatAuthError(code: string): string {
+/**
+ * Maps Firebase Auth error codes to user-friendly messages.
+ */
+export const formatAuthError = (code: string): string => {
   switch (code) {
     case "auth/user-not-found":
     case "auth/wrong-password":
@@ -19,21 +26,29 @@ export function formatAuthError(code: string): string {
     default:
       return "An unexpected error occurred. Please try again.";
   }
-}
+};
 
-export function saveLastUsedProvider(provider: AuthProvider) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("last_used_auth_provider", provider);
-  }
-}
+const PROVIDER_STORAGE_KEY = "last_used_auth_provider";
 
-export function getLastUsedProvider(): AuthProvider | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("last_used_auth_provider") as AuthProvider | null;
-  }
-  return null;
-}
+/**
+ * Saves the last used authentication provider to local storage.
+ */
+export const saveLastUsedProvider = (provider: AuthProvider): void => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PROVIDER_STORAGE_KEY, provider);
+};
 
-export function sanitizeInput(input: string): string {
+/**
+ * Retrieves the last used authentication provider from local storage.
+ */
+export const getLastUsedProvider = (): AuthProvider | null => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(PROVIDER_STORAGE_KEY) as AuthProvider | null;
+};
+
+/**
+ * Basic sanitization for user inputs to prevent simple injection.
+ */
+export const sanitizeInput = (input: string): string => {
   return input.trim().replace(/[<>]/g, "");
-}
+};

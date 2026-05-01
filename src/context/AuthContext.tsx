@@ -1,5 +1,13 @@
+// File: src/context/AuthContext.tsx
+// Purpose: Authentication state management and coordination with Firebase Auth
+
 "use client";
 
+// ─── React & Next
+import { createContext, useContext, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+
+// ─── Firebase
 import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -12,11 +20,14 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
-import { auth, db, googleProvider } from "@/lib/firebase";
-import { saveLastUsedProvider } from "@/utils/auth";
 
+// ─── Internal — services
+import { auth, db, googleProvider } from "@/lib/firebase";
+
+// ─── Internal — utils
+import { formatAuthError, saveLastUsedProvider } from "@/utils/auth";
+
+// ─── Types
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -34,6 +45,7 @@ export interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+// ─── Context Definition
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
@@ -46,7 +58,10 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-// Sync session cookie with server
+// ─── Helpers: Session Sync
+/**
+ * Synchronizes the client auth state with the server session cookie.
+ */
 const syncSession = async (user: User | null) => {
   if (user) {
     const idToken = await getIdToken(user);
@@ -59,28 +74,10 @@ const syncSession = async (user: User | null) => {
   }
 };
 
-const normalizeAuthError = (error: unknown) => {
-  if (!error || typeof error !== "object") return "Something went wrong. Please try again.";
-  const message = "message" in error ? String(error.message) : "";
-  const code = "code" in error ? String(error.code) : "";
-
-  if (code === "auth/invalid-credential" || message.includes("auth/invalid-credential"))
-    return "Invalid email or password.";
-  if (code === "auth/email-already-in-use" || message.includes("auth/email-already-in-use"))
-    return "Email already in use.";
-  if (code === "auth/weak-password" || message.includes("auth/weak-password"))
-    return "Password should be at least 6 characters.";
-  if (code === "auth/invalid-email" || message.includes("auth/invalid-email"))
-    return "Please enter a valid email.";
-  if (code === "auth/user-not-found" || message.includes("auth/user-not-found"))
-    return "No account found for this email.";
-  if (code === "auth/too-many-requests" || message.includes("auth/too-many-requests"))
-    return "Too many attempts. Try again later.";
-  if (message.includes("reCAPTCHA")) return message;
-
-  return "Something went wrong. Please try again.";
-};
-
+// ─── Helpers: Profile Management
+/**
+ * Builds a user profile object from Firebase User data.
+ */
 const buildProfile = (
   user: User,
   overrides?: { displayName?: string; photoURL?: string | null },
@@ -89,15 +86,11 @@ const buildProfile = (
   const email = user.email || "";
   const hasPhotoOverride = Boolean(overrides && Object.hasOwn(overrides, "photoURL"));
   const photoURL = hasPhotoOverride ? (overrides?.photoURL ?? null) : (user.photoURL ?? "");
-  if (!user.uid) {
-    throw new Error("Missing user id.");
-  }
-  if (!email?.includes("@")) {
-    throw new Error("Invalid email.");
-  }
-  if (displayName && displayName.length > 80) {
-    throw new Error("Display name is too long.");
-  }
+
+  if (!user.uid) throw new Error("Missing user id.");
+  if (!email?.includes("@")) throw new Error("Invalid email.");
+  if (displayName && displayName.length > 80) throw new Error("Display name is too long.");
+
   return {
     uid: user.uid,
     email,
@@ -106,6 +99,9 @@ const buildProfile = (
   };
 };
 
+/**
+ * Saves or updates a user's profile document in Firestore.
+ */
 const saveUserProfile = async (
   user: User,
   overrides?: { displayName?: string; photoURL?: string | null },
@@ -122,6 +118,7 @@ const saveUserProfile = async (
   );
 };
 
+// ─── Provider Component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // ─── Effect: Auth State Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authenticatedUser) => {
       setUser(authenticatedUser);
@@ -148,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  // ─── Helper: Captcha Verification
   const verifyCaptcha = async (token?: string) => {
     const isRecaptchaEnabled = Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
     if (!token) {
@@ -168,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  // ─── Action: Google Sign In
   const signInWithGoogle = async () => {
     setError(null);
     try {
@@ -179,12 +179,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (pathname === "/auth") router.push("/");
       }
     } catch (err) {
-      const message = normalizeAuthError(err);
+      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
       setError(message);
       throw new Error(message);
     }
   };
 
+  // ─── Action: Email Sign In
   const signInWithEmail = async (email: string, password: string, captchaToken?: string) => {
     setError(null);
     try {
@@ -194,12 +195,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       saveLastUsedProvider("password");
       if (pathname === "/auth") router.push("/");
     } catch (err) {
-      const message = normalizeAuthError(err);
+      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
       setError(message);
       throw new Error(message);
     }
   };
 
+  // ─── Action: Email Sign Up
   const signUpWithEmail = async (
     email: string,
     password: string,
@@ -220,16 +222,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (pathname === "/auth") router.push("/");
       }
     } catch (err) {
-      const message = normalizeAuthError(err);
+      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
       setError(message);
       throw new Error(message);
     }
   };
 
+  // ─── Action: Password Reset
   const sendPasswordReset = async (email: string) => {
     setError(null);
     try {
-      // Check rate limit via API first
       const ratelimitRes = await fetch("/api/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify({ email }),
@@ -242,12 +244,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await sendPasswordResetEmail(auth, email);
     } catch (err) {
-      const message = normalizeAuthError(err);
+      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
       setError(message);
       throw new Error(message);
     }
   };
 
+  // ─── Action: Update Profile
   const updateUserProfile = async (displayName: string, photoURL: string | null) => {
     setError(null);
     if (!auth.currentUser) throw new Error("No active account.");
@@ -259,19 +262,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await saveUserProfile(auth.currentUser, { displayName, photoURL });
       setUser(auth.currentUser);
     } catch (err) {
-      const message = normalizeAuthError(err);
+      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
       setError(message);
       throw new Error(message);
     }
   };
 
+  // ─── Action: Sign Out
   const signOut = async () => {
     setError(null);
     try {
       await firebaseSignOut(auth);
       await syncSession(null);
     } catch (err) {
-      const message = normalizeAuthError(err);
+      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
       setError(message);
       throw new Error(message);
     }
@@ -296,4 +300,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ─── Hook: useAuth
 export const useAuth = () => useContext(AuthContext);

@@ -1,6 +1,10 @@
-import type { EntryMediaType } from "@/context/DataContext";
+// File: src/types/lists.ts
+// Purpose: Type definitions for user lists and metrics
 
-export type ListItemRow = {
+// ─── Internal — types
+import type { EntryMediaType } from "./log-entry";
+
+export interface ListItemRow {
   id: string;
   title: string;
   mediaType: EntryMediaType;
@@ -9,16 +13,20 @@ export type ListItemRow = {
   year: string | null;
   sortOrder: number | null;
   addedAtMs: number | null;
-};
+}
 
-export type ListRow = {
+export interface ListRow {
   id: string;
   name: string;
   description: string;
   type: EntryMediaType;
   types: EntryMediaType[];
-};
+}
 
 export type ListModalType = EntryMediaType;
 
-export type MetricCounts = { month: number; year: number; total: number };
+export interface MetricCounts {
+  month: number;
+  year: number;
+  total: number;
+}

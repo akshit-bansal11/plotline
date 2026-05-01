@@ -1,0 +1,168 @@
+// File: src/hooks/useLogEntryHandlers.ts
+// Purpose: Orchestrates async actions for log entries: saving, deleting, and refetching metadata
+
+"use client";
+
+// ─── React
+import { useState, useCallback } from "react";
+
+// ─── Firebase
+import { Timestamp } from "firebase/firestore";
+
+// ─── Internal — services
+import { deleteLogEntry, saveLogEntry } from "@/services/log-entry";
+
+// ─── Internal — types
+import type { EntryDoc } from "@/context/DataContext";
+import { isCompletionStatus } from "@/types/log-entry";
+
+// ─── Internal — utils
+import { parseISODate } from "@/utils/log-entry";
+
+/**
+ * Hook to handle submission, deletion, and metadata refetching for log entries.
+ */
+export function useLogEntryHandlers() {
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [refetchError, setRefetchError] = useState<string | null>(null);
+
+  const handleSave = useCallback(async (options: any) => {
+    const {
+      uid, currentMode, normalizedInitial, title, mediaType, status,
+      userRating, image, completionUnknown, completionDate,
+      selectedListIds, initialListIds, relations, originalRelations,
+      currentEpisodes, episodeCount, currentSeasons, totalSeasons,
+      currentChapters, chapterCount, currentVolumes, volumeCount,
+      rewatchCount, startDate, playTime, platform,
+      description, releaseYear, director, producer, tags, imdbRating, cast, externalId,
+      onSuccess
+    } = options;
+
+    if (!uid) return;
+    setError(null);
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError("Title is required.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      let completedAt: Timestamp | null = null;
+      if (isCompletionStatus(status) && !completionUnknown) {
+        const parsed = parseISODate(completionDate);
+        if (parsed) completedAt = Timestamp.fromDate(parsed.date);
+      }
+
+      const relationPayload = relations.map((r: any) => ({
+        targetId: r.targetId,
+        type: r.type,
+        createdAtMs: r.createdAtMs || Date.now()
+      }));
+
+      await saveLogEntry({
+        uid,
+        isEditing: currentMode !== "create",
+        entryId: currentMode !== "create" ? String(normalizedInitial?.id) : null,
+        entryData: {
+          title: trimmedTitle,
+          mediaType,
+          status,
+          userRating: userRating ? Number(userRating) : null,
+          image,
+          completedAt,
+          completionDateUnknown: completionUnknown,
+          listIds: Array.from(selectedListIds),
+          relations: relationPayload,
+          currentEpisodes,
+          episodeCount: episodeCount ? Number(episodeCount) : null,
+          currentSeasons,
+          totalSeasons,
+          currentChapters,
+          chapterCount: chapterCount ? Number(chapterCount) : null,
+          currentVolumes,
+          volumeCount,
+          rewatchCount,
+          startDate,
+          playTime,
+          platform,
+          description,
+          releaseYear,
+          director,
+          producer,
+          genresThemes: tags,
+          imdbRating,
+          cast,
+          externalId: externalId || normalizedInitial?.externalId || null,
+          isMovie: options.isMovie || false,
+          playTime: options.playTime || "",
+          platform: options.platform || ""
+        },
+        trimmedTitle,
+        listMediaType: mediaType,
+        image,
+        releaseYearValue: releaseYear,
+        selectedListIds,
+        initialListIds,
+        originalRelations,
+        relationPayload
+      });
+
+      setInfo("Saved successfully.");
+      onSuccess();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save.");
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  const handleDeleteAction = useCallback(async (uid: string | null, entryId: string | undefined, entries: EntryDoc[], onSuccess: () => void) => {
+    if (!uid || !entryId) return;
+    setIsDeleting(true);
+    try {
+      await deleteLogEntry(uid, entryId, entries);
+      onSuccess();
+    } catch (err) {
+      setError("Failed to delete.");
+      setIsDeleting(false);
+    }
+  }, []);
+
+  const handleRefetchMetadata = useCallback(async (externalId: string | null, mediaType: string, title: string, applyMetadata: (data: any) => void) => {
+    if (!externalId) return;
+    setIsRefetching(true);
+    setRefetchError(null);
+    try {
+      const response = await fetch(`/api/metadata?type=${mediaType}&id=${externalId}&title=${encodeURIComponent(title)}`);
+      const payload = await response.json();
+      if (payload.data) {
+        applyMetadata(payload.data);
+        setInfo("Metadata updated.");
+        setTimeout(() => setInfo(null), 3000);
+      }
+    } catch (err) {
+      setRefetchError("Refetch failed.");
+    } finally {
+      setIsRefetching(false);
+    }
+  }, []);
+
+  return {
+    isSaving,
+    isDeleting,
+    isRefetching,
+    error, setError,
+    info, setInfo,
+    refetchError, setRefetchError,
+    handleSave,
+    handleDeleteAction,
+    handleRefetchMetadata,
+  };
+}

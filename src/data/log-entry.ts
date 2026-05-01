@@ -1,3 +1,7 @@
+// File: src/data/log-entry.ts
+// Purpose: Configuration data for log entries, including platforms and status options
+
+// ─── Third-party: Icons
 import {
   Disc,
   Gamepad2,
@@ -9,12 +13,15 @@ import {
   Tablet,
   Terminal,
 } from "lucide-react";
+
+// ─── Internal — types
 import {
   getStatusOptionsForMediaType,
   type EntryStatus,
   type EntryMediaType,
-} from "../types/log-entry";
+} from "@/types/log-entry";
 
+// ─── Constants: Platforms
 export const PLATFORM_OPTIONS = [
   { id: "Steam", label: "Steam", icon: Monitor },
   { id: "Epic Games", label: "Epic Games", icon: Hexagon },
@@ -41,13 +48,15 @@ export const PLATFORM_OPTIONS = [
   { id: "iOS", label: "iOS", icon: Smartphone },
   { id: "MacOS", label: "MacOS", icon: Laptop },
   { id: "Linux", label: "Linux", icon: Terminal },
-];
+] as const;
 
+// ─── Constants: Status Options
 export const MOVIE_STATUS_OPTIONS = getStatusOptionsForMediaType("movie");
 export const SERIES_ANIME_STATUS_OPTIONS = getStatusOptionsForMediaType("series");
 export const MANGA_STATUS_OPTIONS = getStatusOptionsForMediaType("manga");
 export const GAME_STATUS_OPTIONS = getStatusOptionsForMediaType("game");
 
+// ─── Helpers: Status Selection
 export const getLogEntryStatusOptions = (mediaType: EntryMediaType): readonly EntryStatus[] =>
   getStatusOptionsForMediaType(mediaType);
 

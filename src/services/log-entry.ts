@@ -1,3 +1,7 @@
+// File: src/services/log-entry.ts
+// Purpose: Firestore services for managing log entries, lists, and relationships
+
+// ─── Firebase
 import {
   addDoc,
   collection,
@@ -11,10 +15,15 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { updateBidirectionalRelations } from "@/services/relations";
+
+// ─── Internal — types
 import type { LogEntryData } from "../types/log-entry";
 
+// ─── Internal — services
+import { db } from "@/lib/firebase";
+import { updateBidirectionalRelations } from "@/services/relations";
+
+// ─── Types
 export type SaveEntryParams = {
   uid: string;
   isEditing: boolean;
@@ -30,6 +39,10 @@ export type SaveEntryParams = {
   relationPayload: { targetId: string; type: string; createdAtMs: number }[];
 };
 
+// ─── Services: Save Entry
+/**
+ * Saves a log entry to Firestore, updating associated lists and bidirectional relationships.
+ */
 export async function saveLogEntry({
   uid,
   isEditing,
@@ -118,6 +131,10 @@ export async function saveLogEntry({
   return finalEntryId;
 }
 
+// ─── Services: Delete Entry
+/**
+ * Deletes a log entry from Firestore, cleaning up all references in lists and relationships.
+ */
 export async function deleteLogEntry(
   uid: string,
   entryId: string,

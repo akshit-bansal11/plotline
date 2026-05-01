@@ -1,8 +1,13 @@
-"use client";
+// File: src/config/navigation.ts
+// Purpose: Centralized navigation configuration and section mapping
 
+// ─── Icons
 import { BookOpen, Film, Gamepad2, Home, Sparkles, Tv } from "lucide-react";
+
+// ─── Internal — types
 import type { SectionKey } from "@/context/SectionContext";
 
+// ─── Types
 export type SectionLink = {
   href: string;
   label: string;
@@ -10,6 +15,13 @@ export type SectionLink = {
   icon?: typeof Home;
 };
 
+export type SectionConfig = {
+  title: string;
+  mediaTypes: string[];
+  gridType: string;
+};
+
+// ─── Navigation Links
 export const homeSectionLink: SectionLink = {
   href: "/",
   label: "Home",
@@ -27,12 +39,7 @@ export const categorySectionLinks: SectionLink[] = [
 
 export const allSectionLinks: SectionLink[] = [homeSectionLink, ...categorySectionLinks];
 
-export type SectionConfig = {
-  title: string;
-  mediaTypes: string[];
-  gridType: string;
-};
-
+// ─── Section Configurations
 export const sectionConfigs: Record<Exclude<SectionKey, "home">, SectionConfig> = {
   movies: { title: "Movies", mediaTypes: ["movie"], gridType: "movie" },
   series: { title: "Series", mediaTypes: ["series"], gridType: "series" },

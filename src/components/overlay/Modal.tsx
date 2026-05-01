@@ -1,10 +1,20 @@
+// File: src/components/overlay/Modal.tsx
+// Purpose: Generic modal container with animations, z-index management, and accessibility features
+
 "use client";
 
+// ─── React
+import { useCallback, useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
+
+// ─── Third-party
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+
+// ─── Internal — components
 import { GlassCard } from "@/components/ui/GlassCard";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 import { acquireModalZIndex } from "./modalStack";
 
@@ -19,6 +29,10 @@ interface ModalProps {
   hideHeader?: boolean;
 }
 
+/**
+ * A reusable modal component that handles animations, z-index stacking,
+ * and keyboard interactions (Escape key, focus trapping).
+ */
 export function Modal({
   isOpen,
   onClose,
@@ -29,6 +43,10 @@ export function Modal({
   overlayClassName,
   hideHeader,
 }: ModalProps) {
+  const titleId = useId();
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
+  // ─── Handler: Keyboard
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -38,6 +56,7 @@ export function Modal({
     [onClose],
   );
 
+  // ─── Effect: Focus Trap & Scroll Lock
   useEffect(() => {
     if (!isOpen) return;
 
@@ -45,12 +64,21 @@ export function Modal({
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", handleKeyDown);
 
+    // Initial focus: find the first focusable element or focus the close button
+    const focusableElements = modalRef.current?.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusableElements && focusableElements.length > 0) {
+      (focusableElements[0] as HTMLElement).focus();
+    }
+
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = prevOverflow || "";
     };
   }, [isOpen, handleKeyDown]);
 
+  // ─── Internal: Z-Index Management
   const zIndexRef = useRef<number | null>(null);
   if (isOpen && zIndexRef.current === null) {
     zIndexRef.current = acquireModalZIndex();
@@ -70,6 +98,9 @@ export function Modal({
             overlayClassName,
           )}
           style={zIndexRef.current ? { zIndex: zIndexRef.current } : undefined}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
         >
           <motion.div
             initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
@@ -83,6 +114,7 @@ export function Modal({
 
           {/* Modal Content */}
           <motion.div
+            ref={modalRef}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -98,10 +130,13 @@ export function Modal({
               {/* Header */}
               {!hideHeader && (
                 <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
-                  <h3 className="text-lg font-semibold text-white">{title}</h3>
+                  <h3 id={titleId} className="text-lg font-semibold text-white">
+                    {title}
+                  </h3>
                   <button
                     type="button"
                     onClick={onClose}
+                    aria-label="Close modal"
                     className="rounded-full p-2 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
                   >
                     <X size={20} />

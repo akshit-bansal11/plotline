@@ -1,13 +1,23 @@
+// File: src/components/layout/MobileMenu.tsx
+// Purpose: Full-screen overlay menu for mobile navigation and actions
+
 "use client";
 
 import { LogIn, Menu, Search, Settings, Upload, UserCircle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import Link from "next/link";
+// ─── React
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { allSectionLinks } from "@/config/navigation";
+
+// ─── Internal — hooks
 import { useSection } from "@/context/SectionContext";
+import { useMobileMenu } from "@/hooks/useMobileMenu";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
+
+// ─── Internal — config
+import { allSectionLinks } from "@/config/navigation";
 
 interface MobileMenuProps {
   onAuthOpen: () => void;
@@ -26,32 +36,14 @@ export function MobileMenu({
   onSettingsOpen,
   userLabel,
 }: MobileMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, mounted, toggleMenu, closeMenu } = useMobileMenu();
   const { activeSection, setActiveSection } = useSection();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 0);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Prevent scrolling when menu is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
 
   return (
     <div className="md:hidden">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleMenu}
         className="relative z-70 p-2 text-neutral-400 transition-colors hover:text-white"
         aria-label="Toggle menu"
       >
@@ -83,7 +75,7 @@ export function MobileMenu({
                         scroll={false}
                         onClick={() => {
                           setActiveSection(link.section);
-                          setIsOpen(false);
+                          closeMenu();
                         }}
                         className={cn(
                           "text-2xl font-medium transition-colors",
@@ -102,7 +94,7 @@ export function MobileMenu({
                     type="button"
                     onClick={() => {
                       onSearchOpen();
-                      setIsOpen(false);
+                      closeMenu();
                     }}
                     className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
                   >
@@ -115,7 +107,7 @@ export function MobileMenu({
                         type="button"
                         onClick={() => {
                           onProfileOpen();
-                          setIsOpen(false);
+                          closeMenu();
                         }}
                         className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
                       >
@@ -126,7 +118,7 @@ export function MobileMenu({
                         type="button"
                         onClick={() => {
                           onImportExportOpen();
-                          setIsOpen(false);
+                          closeMenu();
                         }}
                         className="w-full flex items-center justify-center gap-2 rounded-full bg-white/5 text-neutral-200 py-3 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white"
                       >
@@ -137,7 +129,7 @@ export function MobileMenu({
                         type="button"
                         onClick={() => {
                           onSettingsOpen();
-                          setIsOpen(false);
+                          closeMenu();
                         }}
                         className="w-full flex items-center justify-center gap-2 rounded-full bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white"
                       >
@@ -150,7 +142,7 @@ export function MobileMenu({
                       type="button"
                       onClick={() => {
                         onAuthOpen();
-                        setIsOpen(false);
+                        closeMenu();
                       }}
                       className="w-full flex items-center justify-center gap-2 rounded-full bg-neutral-800/50 border border-white/5 py-3 text-neutral-300 font-medium transition-colors hover:bg-neutral-800 hover:text-white"
                     >

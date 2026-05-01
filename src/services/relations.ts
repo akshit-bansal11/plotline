@@ -1,6 +1,13 @@
+// File: src/services/relations.ts
+// Purpose: Bidirectional relationship management services with transitive reconciliation
+
+// ─── Firebase
 import { collection, doc, getDoc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
+
+// ─── Internal — services
 import { db } from "@/lib/firebase";
 
+// ─── Types
 export type RelationType =
   | "Prequel"
   | "Direct Prequel"
@@ -32,6 +39,7 @@ type RelationInput = {
   inferred?: unknown;
 };
 
+// ─── Constants: Relation Mappings
 export const inverseRelationMap: Record<RelationType, RelationType> = {
   Prequel: "Sequel",
   "Direct Prequel": "Direct Sequel",
@@ -69,13 +77,13 @@ const relationFamilyMap: Record<RelationType, RelationType> = {
   Parody: "Parody",
   Original: "Original",
   "Side-Story": "Side-Story",
-  "Main Story": "Main Story",
+  "Main Story": "Side-Story",
   Compilation: "Compilation",
-  "Full Series": "Full Series",
+  "Full Series": "Compilation",
   Summary: "Summary",
-  "Full Story": "Full Story",
+  "Full Story": "Summary",
   "Spin-off": "Spin-off",
-  "Parent Story": "Parent Story",
+  "Parent Story": "Spin-off",
 };
 
 const transitiveFamilies: RelationType[] = [
@@ -83,18 +91,14 @@ const transitiveFamilies: RelationType[] = [
   "Prequel",
   "Spin-off",
   "Side-Story",
-  "Main Story",
   "Parody",
-  "Original",
   "Compilation",
-  "Full Series",
   "Summary",
-  "Full Story",
-  "Parent Story",
 ];
 
 const relationTypeSet = new Set<RelationType>(Object.keys(inverseRelationMap) as RelationType[]);
 
+// ─── Utils: Transformation
 const toMillis = (value: unknown): number | null => {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (
@@ -114,6 +118,7 @@ const asRelationType = (value: string): RelationType | null =>
 
 const toRelationKey = (relation: { targetId: string; type: string }) =>
   `${relation.targetId}::${relation.type}`;
+
 const toRelationStateKey = (relation: RelationRecord) =>
   `${relation.targetId}::${relation.type}::${relation.inferred ? "1" : "0"}`;
 
@@ -138,6 +143,7 @@ const normalizeRelations = (relations: RelationInput[]): RelationRecord[] => {
   return Array.from(deduped.values());
 };
 
+// ─── Utils: Graph traversal
 const buildReachability = (
   adjacency: Map<string, Set<string>>,
   sourceId: string,
@@ -180,6 +186,14 @@ const relationSetSignature = (relations: RelationRecord[]) =>
     .sort()
     .join("|");
 
+// ─── Core Logic: Transitive Reconciliation
+/**
+ * Reconciles transitive relations across the entire entry collection.
+ * 
+ * Transitive reconciliation ensures that if A is a prequel to B, and B is a prequel to C,
+ * then A is automatically marked as an 'inferred' prequel to C.
+ * This function reads ALL entries for the user to build the complete relationship graph.
+ */
 const reconcileTransitiveRelations = async (uid: string) => {
   const entriesSnapshot = await getDocs(collection(db, "users", uid, "entries"));
   const entryIds = entriesSnapshot.docs.map((entryDoc) => entryDoc.id);
@@ -327,6 +341,14 @@ const reconcileTransitiveRelations = async (uid: string) => {
   await Promise.all(updates);
 };
 
+// ─── Core Logic: Bidirectional Sync
+/**
+ * Updates bidirectional relationships between a source entry and its targets.
+ * 
+ * 'Bidirectional' means that if A is marked as a prequel to B, B is automatically
+ * marked as a sequel to A. This function manages adding and removing these
+ * inverse entries on the target documents.
+ */
 export const updateBidirectionalRelations = async (
   uid: string,
   sourceId: string,

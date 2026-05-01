@@ -1,7 +1,15 @@
+// File: src/components/overlay/AvailabilityInfographic.tsx
+// Purpose: Informational badge encouraging users to select a region for streaming availability
+
 "use client";
 
-import { Globe } from "lucide-react";
+// ─── React
 import { AnimatePresence, motion } from "motion/react";
+
+// ─── Third-party
+import { Globe } from "lucide-react";
+
+// ─── Internal — context
 import { useData } from "@/context/DataContext";
 
 export function AvailabilityInfographic() {

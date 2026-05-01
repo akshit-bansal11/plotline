@@ -1,7 +1,18 @@
+// File: src/components/library/MediaSection.tsx
+// Purpose: Orchestrates filtering and animated visibility for media item groups
+
 "use client";
 
-import { motion, useInView } from "motion/react";
+// ─── React
 import { useMemo, useRef, useState } from "react";
+
+// ─── Third-party: Framer Motion
+import { motion, useInView } from "motion/react";
+
+// ─── Internal — hooks
+import { useFilteredItems } from "@/hooks/useFilteredItems";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
 interface MediaSectionProps<TItem> {
@@ -17,81 +28,54 @@ interface MediaSectionProps<TItem> {
   showFilterInput?: boolean;
 }
 
+/**
+ * Provides a filtered subset of items to its children and handles intersection animations.
+ */
 export function MediaSection<TItem>({
   items,
   getGenresThemes,
   getFilterValues,
   children,
   className,
-  filterRaw,
+  filterRaw: externalFilterRaw,
   onFilterRawChange,
   showFilterInput = true,
 }: MediaSectionProps<TItem>) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const [uncontrolledFilterRaw, setUncontrolledFilterRaw] = useState("");
-  const resolvedFilterRaw = typeof filterRaw === "string" ? filterRaw : uncontrolledFilterRaw;
-  const setResolvedFilterRaw = onFilterRawChange || setUncontrolledFilterRaw;
-
-  const filterAccepted = useMemo(
-    () => resolvedFilterRaw.replace(/[^A-Za-z0-9_,.\s]/g, ""),
-    [resolvedFilterRaw],
-  );
-  const filterRejected = useMemo(() => {
-    const rejected = new Set<string>();
-    for (const ch of resolvedFilterRaw) {
-      if (!/[A-Za-z0-9_,.\s]/.test(ch)) rejected.add(ch);
-    }
-    return Array.from(rejected);
-  }, [resolvedFilterRaw]);
-
-  const filterTokens = useMemo(() => {
-    if (filterRejected.length > 0) return [];
-    return filterAccepted
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .map((part) => part.toLowerCase())
-      .filter((part, index, arr) => arr.indexOf(part) === index);
-  }, [filterAccepted, filterRejected.length]);
-
-  const filteredItems = useMemo(() => {
-    if (filterTokens.length === 0) return items;
-    return items.filter((item) => {
-      const tags = (getGenresThemes(item) || []).map((t) => t.toLowerCase());
-      const extraValues = (getFilterValues?.(item) || [])
-        .filter(
-          (value): value is string | number =>
-            typeof value === "string" || typeof value === "number",
-        )
-        .map((value) => String(value).toLowerCase());
-      const combined = new Set([...tags, ...extraValues]);
-      return filterTokens.some((token) => combined.has(token));
-    });
-  }, [filterTokens, getFilterValues, getGenresThemes, items]);
+  
+  const { filterRaw, setFilterRaw, filteredItems } = useFilteredItems({
+    items,
+    getGenresThemes,
+    getFilterValues,
+    externalFilterRaw,
+    onFilterRawChange,
+  });
 
   return (
-    <section ref={ref} className={cn("py-8 md:py-12 space-y-6", className)}>
-      {showFilterInput ? (
-        <div className="w-full px-4 md:px-8 flex flex-col gap-4">
-          <div className="space-y-2">
+    <section ref={ref} className={cn("py-8 space-y-8", className)}>
+      {showFilterInput && (
+        <div className="w-full px-4 md:px-8 max-w-2xl">
+          <div className="relative group">
             <input
-              value={resolvedFilterRaw}
-              onChange={(e) => setResolvedFilterRaw(e.target.value)}
-              placeholder="e.g. dark_fantasy, 2024, 7.8"
-              className="w-full rounded-xl bg-neutral-800/50 border border-white/5 py-3 px-4 text-white placeholder-neutral-500 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
+              value={filterRaw}
+              onChange={(e) => setFilterRaw(e.target.value)}
+              placeholder="Filter by tags, year, or rating (e.g. action, 2024, 8.5)..."
+              className="w-full rounded-2xl bg-zinc-900/50 border border-zinc-800 px-5 py-4 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all shadow-inner"
             />
           </div>
         </div>
-      ) : null}
+      )}
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        className="relative"
+        initial={{ opacity: 0, y: 30 }}
+        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="w-full"
       >
-        <div className="w-full px-4 md:px-8">{children(filteredItems)}</div>
+        <div className="px-4 md:px-8">
+          {children(filteredItems)}
+        </div>
       </motion.div>
     </section>
   );

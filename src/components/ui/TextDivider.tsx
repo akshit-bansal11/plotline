@@ -1,3 +1,6 @@
+// File: src/components/ui/TextDivider.tsx
+// Purpose: Horizontal divider with optional centered text label
+
 export function TextDivider({ label }: { label?: string }) {
   if (!label) {
     return <div className="w-full border-t border-white/5 my-8"></div>;

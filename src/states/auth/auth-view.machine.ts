@@ -1,3 +1,6 @@
+// File: src/states/auth/auth-view.machine.ts
+// Purpose: State transition logic and content mapping for authentication views
+
 import type { AuthView } from "@/types/auth";
 import { AUTH_COPY } from "../../data/auth/auth-copy";
 

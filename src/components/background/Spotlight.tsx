@@ -1,7 +1,13 @@
+// File: src/components/background/Spotlight.tsx
+// Purpose: Interactive spotlight overlay effect for containers that follows the mouse cursor
+
 "use client";
 
+// ─── React
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
 interface SpotlightProps extends React.HTMLAttributes<HTMLDivElement> {

@@ -1,8 +1,30 @@
-import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { useEffect, useRef, useState } from "react";
-import { db } from "@/lib/firebase";
-import type { ListMediaType } from "../types/log-entry";
+// File: src/hooks/use-log-entry.ts
+// Purpose: Hooks for log entry modal logic, including scroll locking, keyboard handling, and list management
 
+// ─── React
+import { useEffect, useRef, useState } from "react";
+
+// ─── Firebase
+import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+
+// ─── Internal — services
+import { db } from "@/lib/firebase";
+
+// ─── Internal — types
+import type { EntryMediaType } from "@/types/log-entry";
+
+// ─── Types
+interface ListOption {
+  id: string;
+  name: string;
+  type: EntryMediaType;
+  types: EntryMediaType[];
+}
+
+// ─── Hook: useBodyScrollLock
+/**
+ * Locks the body scroll when the modal is active.
+ */
 export function useBodyScrollLock(active: boolean) {
   useEffect(() => {
     if (!active) return;
@@ -14,6 +36,10 @@ export function useBodyScrollLock(active: boolean) {
   }, [active]);
 }
 
+// ─── Hook: useEscapeKey
+/**
+ * Triggers a callback when the Escape key is pressed.
+ */
 export function useEscapeKey(active: boolean, onClose: () => void) {
   useEffect(() => {
     if (!active) return;
@@ -25,10 +51,12 @@ export function useEscapeKey(active: boolean, onClose: () => void) {
   }, [active, onClose]);
 }
 
+// ─── Hook: useLists
+/**
+ * Subscribes to the user's lists and provides them as options.
+ */
 export function useLists(uid: string | null, isOpen: boolean) {
-  const [lists, setLists] = useState<
-    { id: string; name: string; type: ListMediaType; types: ListMediaType[] }[]
-  >([]);
+  const [lists, setLists] = useState<ListOption[]>([]);
 
   useEffect(() => {
     if (!uid || !isOpen) {
@@ -44,14 +72,14 @@ export function useLists(uid: string | null, isOpen: boolean) {
             ["movie", "series", "anime", "manga", "game"].includes(data.type ?? "")
               ? data.type
               : "movie"
-          ) as ListMediaType;
+          ) as EntryMediaType;
           const types = (
             Array.isArray(data.types)
-              ? data.types.filter((t): t is ListMediaType =>
+              ? data.types.filter((t): t is EntryMediaType =>
                   ["movie", "series", "anime", "manga", "game"].includes(t),
                 )
               : [singleType]
-          ) as ListMediaType[];
+          ) as EntryMediaType[];
           return { id: d.id, name: data.name || "Untitled List", type: singleType, types };
         }),
       );
@@ -61,6 +89,10 @@ export function useLists(uid: string | null, isOpen: boolean) {
   return lists;
 }
 
+// ─── Hook: useInitialListIds
+/**
+ * Synchronizes the selected list IDs for an entry being edited.
+ */
 export function useInitialListIds(
   uid: string | null,
   isOpen: boolean,

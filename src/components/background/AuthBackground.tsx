@@ -1,3 +1,6 @@
+// File: src/components/background/AuthBackground.tsx
+// Purpose: Ambient background gradients for authentication pages
+
 export function AuthBackground() {
   return (
     <>

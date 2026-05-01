@@ -20,11 +20,11 @@ import { Modal } from "@/components/overlay/Modal";
 import { DescriptionErrorWrapper } from "@/components/ui/DescriptionErrorWrapper";
 import { DescriptionTextarea } from "@/components/ui/DescriptionTextarea";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { MAX_DESCRIPTION_LENGTH } from "@/constants/limits";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import type { LoggableMedia } from "@/types/log-entry";
 import { cn } from "@/utils";
-import { MAX_DESCRIPTION_LENGTH } from "@/utils/validation";
 
 type EntryMediaType = "movie" | "series" | "anime" | "manga" | "game";
 

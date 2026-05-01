@@ -1,6 +1,12 @@
+// File: src/components/ui/ExpandableText.tsx
+// Purpose: Collapsible text component with "Show more" functionality for long descriptions
+
 "use client";
 
+// ─── React
 import { useState } from "react";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
 export function ExpandableText({ text, className }: { text: string; className?: string }) {

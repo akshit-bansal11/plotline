@@ -1,10 +1,25 @@
+// File: src/components/layout/Navbar.tsx
+// Purpose: Main navigation bar with global search, profile menu, and modal orchestrations
+
 "use client";
 
-import { Download, LogIn, LogOut, Settings, Upload, UserCircle } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import Image from "next/image";
+// ─── React & Next
+	import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+// ─── Third-party
+import { Download, LogIn, LogOut, Settings, Upload, UserCircle } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+
+// ─── Internal — types
+import type { LoggableMedia } from "@/types/log-entry";
+
+// ─── Internal — hooks
+import { useNavbarModals } from "@/hooks/useNavbarModals";
+import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+
+// ─── Internal — components
 import { AuthModal } from "@/components/auth/AuthModal";
 import { ProfileModal } from "@/components/auth/ProfileModal";
 import { SettingsModal } from "@/components/auth/SettingsModal";
@@ -15,10 +30,11 @@ import { NavLinks } from "@/components/layout/NavLinks";
 import { ImportExportModal } from "@/components/library/ImportExportModal";
 import { LinkDropZone } from "@/components/log-entry/LinkDropZone";
 import { LogEntryModal } from "@/components/log-entry/LogEntryModal";
-import { GlobalSearch } from "@/components/search/GlobalSearch";
+import { GlobalSearch, type GlobalSearchHandle } from "@/components/search/GlobalSearch";
+
+// ─── Internal — context
 import { useAuth } from "@/context/AuthContext";
 import { useSection } from "@/context/SectionContext";
-import type { LoggableMedia } from "@/types/log-entry";
 
 export function Navbar() {
   const { setActiveSection } = useSection();
@@ -26,31 +42,53 @@ export function Navbar() {
   const userLabel = user?.displayName || user?.email;
   const avatarUrl = user?.photoURL || null;
 
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isLogOpen, setIsLogOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  // ─── Hooks: Modals
+  const {
+    isAuthOpen, openAuth, closeAuth,
+    isLogOpen, openLog, closeLog,
+    isProfileOpen, openProfile, closeProfile,
+    isImportExportOpen, openImportExport, closeImportExport,
+    isSettingsOpen, openSettings, closeSettings,
+    isProfileMenuOpen, toggleProfileMenu, closeProfileMenu,
+  } = useNavbarModals();
+
+  // ─── State: Pending
   const [pendingItem, setPendingItem] = useState<LoggableMedia | null>(null);
 
+  // ─── Refs
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchRef = useRef<GlobalSearchHandle | null>(null);
   const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
+  // ─── Hooks: Shortcuts
+  useGlobalShortcuts({
+    onSearchOpen: () => searchRef.current?.focus(),
+    onModalClose: () => {
+      // Logic to close top-most modal if any
+      if (isProfileMenuOpen) closeProfileMenu();
+      else if (isLogOpen) closeLog();
+      else if (isAuthOpen) closeAuth();
+      else if (isProfileOpen) closeProfile();
+      else if (isImportExportOpen) closeImportExport();
+      else if (isSettingsOpen) closeSettings();
+    },
+  });
+
+  // ─── Handlers
   const handleSignOut = async () => {
     await signOut();
-    setIsSettingsOpen(false);
-    setIsProfileMenuOpen(false);
+    closeSettings();
+    closeProfileMenu();
   };
 
   const handleGlobalSearchSelect = (item: LoggableMedia) => {
     if (!user) {
-      setIsAuthOpen(true);
+      openAuth();
       return;
     }
     setPendingItem(item);
-    setIsLogOpen(true);
+    openLog();
   };
 
   const handleLinkDropResolved = (media: {
@@ -82,76 +120,80 @@ export function Navbar() {
       genresThemes: media.genresThemes,
     };
     setPendingItem(item);
-    setIsLogOpen(true);
+    openLog();
   };
 
+  // ─── Memo: Menu Items
   const menuItems = useMemo(
     () => [
       {
         label: "Profile",
         icon: UserCircle,
         onClick: () => {
-          setIsProfileOpen(true);
-          setIsProfileMenuOpen(false);
+          openProfile();
+          closeProfileMenu();
         },
       },
       {
         label: "Import",
         icon: Upload,
         onClick: () => {
-          setIsImportExportOpen(true);
-          setIsProfileMenuOpen(false);
+          openImportExport();
+          closeProfileMenu();
         },
       },
       {
         label: "Export",
         icon: Download,
         onClick: () => {
-          setIsImportExportOpen(true);
-          setIsProfileMenuOpen(false);
+          openImportExport();
+          closeProfileMenu();
         },
       },
       {
         label: "Settings",
         icon: Settings,
         onClick: () => {
-          setIsSettingsOpen(true);
-          setIsProfileMenuOpen(false);
+          openSettings();
+          closeProfileMenu();
         },
       },
     ],
-    [],
+    [openProfile, openImportExport, openSettings, closeProfileMenu],
   );
 
+  // ─── Effect: Click Outside
   useEffect(() => {
     if (!isProfileMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
-      setIsProfileMenuOpen(false);
+      closeProfileMenu();
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isProfileMenuOpen]);
+  }, [isProfileMenuOpen, closeProfileMenu]);
 
+  // ─── Effect: Focus Management
   useEffect(() => {
     if (!isProfileMenuOpen) return;
     const first = menuItemRefs.current[0];
     if (first) first.focus();
   }, [isProfileMenuOpen]);
 
+  // ─── Keyboard Handlers
   const handleTriggerKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setIsProfileMenuOpen(true);
+      toggleProfileMenu();
       return;
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      setIsProfileMenuOpen((prev) => !prev);
+      toggleProfileMenu();
     }
     if (event.key === "Escape") {
-      setIsProfileMenuOpen(false);
+      closeProfileMenu();
     }
   };
 
@@ -179,7 +221,7 @@ export function Navbar() {
     }
     if (event.key === "Escape") {
       event.preventDefault();
-      setIsProfileMenuOpen(false);
+      closeProfileMenu();
       triggerRef.current?.focus();
     }
   };
@@ -199,9 +241,10 @@ export function Navbar() {
         <div className="hidden min-w-0 items-center justify-end gap-3 md:flex">
           <NavLinks className="shrink-0" />
           <GlobalSearch
+            ref={searchRef}
             className="hidden w-[200px] max-w-none focus-within:w-[480px] md:block"
             onSelectMedia={handleGlobalSearchSelect}
-            onRequireAuth={() => setIsAuthOpen(true)}
+            onRequireAuth={openAuth}
             disabled={!user}
           />
 
@@ -210,7 +253,7 @@ export function Navbar() {
               <button
                 ref={triggerRef}
                 type="button"
-                onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                onClick={toggleProfileMenu}
                 onKeyDown={handleTriggerKeyDown}
                 aria-haspopup="menu"
                 aria-expanded={isProfileMenuOpen}
@@ -285,7 +328,7 @@ export function Navbar() {
           ) : (
             <button
               type="button"
-              onClick={() => setIsAuthOpen(true)}
+              onClick={openAuth}
               className="hidden items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/10 hover:text-white md:flex"
             >
               <LogIn size={16} suppressHydrationWarning />
@@ -295,39 +338,41 @@ export function Navbar() {
         </div>
 
         <MobileMenu
-          onAuthOpen={() => setIsAuthOpen(true)}
+          onAuthOpen={openAuth}
           onSearchOpen={() => {
             setPendingItem(null);
-            setIsLogOpen(true);
+            openLog();
           }}
-          onProfileOpen={() => setIsProfileOpen(true)}
-          onImportExportOpen={() => setIsImportExportOpen(true)}
-          onSettingsOpen={() => setIsSettingsOpen(true)}
+          onProfileOpen={openProfile}
+          onImportExportOpen={openImportExport}
+          onSettingsOpen={openSettings}
           userLabel={userLabel}
         />
       </header>
 
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <AuthModal isOpen={isAuthOpen} onClose={closeAuth} />
       <LogEntryModal
         isOpen={isLogOpen}
         onClose={() => {
-          setIsLogOpen(false);
+          closeLog();
           setPendingItem(null);
         }}
         initialMedia={pendingItem}
       />
-      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-      <ImportExportModal isOpen={isImportExportOpen} onClose={() => setIsImportExportOpen(false)} />
+      <ProfileModal isOpen={isProfileOpen} onClose={closeProfile} />
+      <ImportExportModal isOpen={isImportExportOpen} onClose={closeImportExport} />
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={closeSettings}
         onSignOut={handleSignOut}
       />
       <LinkDropZone
         onResolved={handleLinkDropResolved}
         disabled={!user}
-        onRequireAuth={() => setIsAuthOpen(true)}
+        onRequireAuth={openAuth}
       />
     </>
+  );
+}
   );
 }

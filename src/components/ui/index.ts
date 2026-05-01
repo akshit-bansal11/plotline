@@ -1,3 +1,6 @@
+// File: src/components/ui/index.ts
+// Purpose: Public API for UI components
+
 export { Spotlight } from "@/components/background/Spotlight";
 export { Drawer } from "@/components/overlay/Drawer";
 export { InfographicToast } from "@/components/overlay/InfographicToast";

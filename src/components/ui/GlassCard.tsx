@@ -1,4 +1,10 @@
+// File: src/components/ui/GlassCard.tsx
+// Purpose: Reusable glass-morphism card container with optional spotlight hover effect
+
+// ─── Internal — components
 import { Spotlight } from "@/components/background/Spotlight";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {

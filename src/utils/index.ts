@@ -1,11 +1,19 @@
+// File: src/utils/index.ts
+// Purpose: Core utilities and shared display labels for the application
+
+// ─── Third-party
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export function cn(...inputs: ClassValue[]) {
+/**
+ * Merges Tailwind classes with clsx for conditional styles.
+ */
+export const cn = (...inputs: ClassValue[]): string => {
   return twMerge(clsx(inputs));
-}
+};
 
-export const entryStatusLabels = {
+// ─── Constants: Status Labels
+export const entryStatusLabels: Readonly<Record<string, string>> = {
   watching: "Watching",
   rewatching: "Rewatching",
   completed: "Completed",
@@ -27,13 +35,14 @@ export const entryStatusLabels = {
   wishlist: "Wishlist",
   not_committed: "Playing",
   committed: "Committed",
-};
+} as const;
 
-export const entryMediaTypeLabels = {
+// ─── Constants: Media Type Labels
+export const entryMediaTypeLabels: Readonly<Record<string, string>> = {
   movie: "Movie",
   series: "Series",
   anime: "Anime",
   anime_movie: "Anime movie",
   manga: "Manga",
   game: "Game",
-};
+} as const;

@@ -1,8 +1,14 @@
+// File: src/components/overlay/InfographicToast.tsx
+// Purpose: Temporary toast notification for displaying alerts and simulated availability messages
+
 "use client";
 
+// ─── React
+import { useEffect } from "react";
+
+// ─── Third-party
 import { AlertTriangle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect } from "react";
 
 export function InfographicToast({
   isOpen,

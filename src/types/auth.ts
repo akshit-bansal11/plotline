@@ -1,4 +1,9 @@
+// File: src/types/auth.ts
+// Purpose: Type definitions for authentication and user profiles
+
 export type AuthProvider = "google" | "password";
+
+export type AuthView = "login" | "signup" | "forgot-password";
 
 export interface UserProfile {
   uid: string;
@@ -20,5 +25,3 @@ export interface SessionData {
   email: string | null;
   lastUsedProvider: AuthProvider;
 }
-
-export type AuthView = "login" | "signup" | "forgot-password";

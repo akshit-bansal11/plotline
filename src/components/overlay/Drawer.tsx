@@ -1,9 +1,17 @@
+// File: src/components/overlay/Drawer.tsx
+// Purpose: Side-sliding drawer container for mobile menus and detailed views
+
 "use client";
 
+// ─── React
+import { useCallback, useEffect, useId } from "react";
+import { createPortal } from "react-dom";
+
+// ─── Third-party
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect } from "react";
-import { createPortal } from "react-dom";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
 interface DrawerProps {
@@ -68,6 +76,8 @@ export function Drawer({ isOpen, onClose, children, side = "right", className }:
             initial="initial"
             animate="animate"
             exit="exit"
+            role="dialog"
+            aria-modal="true"
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className={cn(
               "relative h-full bg-neutral-900 border-l border-white/5 shadow-2xl overflow-y-auto",

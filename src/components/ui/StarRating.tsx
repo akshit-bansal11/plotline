@@ -1,8 +1,18 @@
+// File: src/components/ui/StarRating.tsx
+// Purpose: Interactive 10-star rating picker with half-star precision and keyboard support
+
 "use client";
 
+// ─── React
 import { useState } from "react";
+
+// ─── Internal — utils
 import { cn } from "@/utils";
 
+/**
+ * A star rating component allowing selection from 0 to 10 with 0.5 increments.
+ * Supports mouse hover, click, and keyboard navigation.
+ */
 export function StarRating({
   value,
   onChange,
@@ -17,9 +27,10 @@ export function StarRating({
   const [hoverValue, setHoverValue] = useState<number | null>(null);
   const numericValue = parseFloat(value) || 0;
 
-  // Calculate what to display
+  // ─── Internal: Display Calculation
   const displayValue = hoverValue !== null ? hoverValue : numericValue;
 
+  // ─── Handlers
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (readOnly) return;
 
@@ -28,11 +39,9 @@ export function StarRating({
     const x = e.clientX - rect.left;
     const starWidth = rect.width / 10;
 
-    // Calculate index (0 to 9)
     const starIndex = Math.floor(x / starWidth);
     const starRelativeX = x % starWidth;
 
-    // Determine if it's left half or right half
     const isHalf = starRelativeX < starWidth / 2;
     const newValue = starIndex + (isHalf ? 0.5 : 1.0);
 
@@ -46,8 +55,18 @@ export function StarRating({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (readOnly) return;
+
     if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
       handleClick();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const next = Math.max(0, numericValue - 0.5);
+      onChange(next.toFixed(1));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const next = Math.min(10, numericValue + 0.5);
+      onChange(next.toFixed(1));
     }
   };
 
@@ -61,13 +80,16 @@ export function StarRating({
         onMouseLeave={() => setHoverValue(null)}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        aria-label="Star rating"
+        role="slider"
+        aria-label="Rating"
+        aria-valuemin={0}
+        aria-valuemax={10}
+        aria-valuenow={numericValue}
+        aria-valuetext={`${numericValue} out of 10 stars`}
       >
         {Array.from({ length: 10 }, (_, i) => {
           const n = i + 1;
-          // filled if displayValue is at least n
           const isFull = displayValue >= n;
-          // half-filled if displayValue is n-0.5
           const isHalf = displayValue === n - 0.5;
 
           return (
@@ -79,7 +101,7 @@ export function StarRating({
               )}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" className="overflow-visible">
-                <title>Rating Star</title>
+                <title>Rating Star {n}</title>
                 <defs>
                   <linearGradient id={`star-grad-${n}`}>
                     <stop offset="50%" stopColor={isFull || isHalf ? "#eab308" : "transparent"} />

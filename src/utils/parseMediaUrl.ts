@@ -1,5 +1,11 @@
+// File: src/utils/parseMediaUrl.ts
+// Purpose: Utilities for parsing media-platform URLs and extracting IDs and metadata
+
+// ─── Internal — types
+export type ParsedMediaSource = "imdb" | "tmdb" | "mal" | "netflix" | "prime" | "unknown";
+
 export type ParsedMediaUrl = {
-  source: "imdb" | "tmdb" | "mal" | "netflix" | "prime" | "unknown";
+  source: ParsedMediaSource;
   id: string | null;
   title: string | null;
   mediaType: "movie" | "series" | "anime" | "manga" | null;
@@ -12,7 +18,7 @@ export type ParsedMediaUrl = {
  * Parse a media-platform URL and extract as much structured info as possible.
  * Returns null if the URL doesn't match any known pattern.
  */
-export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
+export const parseMediaUrl = (rawUrl: string): ParsedMediaUrl | null => {
   const trimmed = rawUrl.trim();
   if (!trimmed) return null;
 
@@ -20,7 +26,7 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
   try {
     url = new URL(trimmed);
   } catch {
-    // Try with https:// prefix
+    // Try with https:// prefix if protocol is missing
     try {
       url = new URL(`https://${trimmed}`);
     } catch {
@@ -31,7 +37,7 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
   const path = url.pathname;
 
-  // ------ IMDb ------
+  // ─── IMDb
   // https://www.imdb.com/title/tt1234567/
   if (host === "imdb.com" || host.endsWith(".imdb.com")) {
     const match = path.match(/\/title\/(tt\d+)/i);
@@ -40,16 +46,14 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
         source: "imdb",
         id: match[1],
         title: null,
-        mediaType: null, // OMDB will resolve this
+        mediaType: null,
         originalUrl: trimmed,
       };
     }
   }
 
-  // ------ TMDB ------
+  // ─── TMDB
   // https://www.themoviedb.org/movie/12345
-  // https://www.themoviedb.org/movie/12345-some-slug  → strip slug, use ID only
-  // https://www.themoviedb.org/tv/12345-some-slug
   if (host === "themoviedb.org" || host.endsWith(".themoviedb.org")) {
     const movieMatch = path.match(/\/movie\/(\d+)/);
     if (movieMatch) {
@@ -61,6 +65,7 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
         originalUrl: trimmed,
       };
     }
+    
     const tvMatch = path.match(/\/tv\/(\d+)/);
     if (tvMatch) {
       return {
@@ -73,9 +78,8 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
     }
   }
 
-  // ------ MyAnimeList ------
-  // https://myanimelist.net/anime/59062/Gachiakuta  → ID is 59062, strip trailing /slug
-  // https://myanimelist.net/manga/12345/Slug
+  // ─── MyAnimeList
+  // https://myanimelist.net/anime/59062/Slug
   if (host === "myanimelist.net" || host.endsWith(".myanimelist.net")) {
     const animeMatch = path.match(/\/anime\/(\d+)/);
     if (animeMatch) {
@@ -87,6 +91,7 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
         originalUrl: trimmed,
       };
     }
+    
     const mangaMatch = path.match(/\/manga\/(\d+)/);
     if (mangaMatch) {
       return {
@@ -99,12 +104,9 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
     }
   }
 
-  // ------ Netflix ------
+  // ─── Netflix
   // https://www.netflix.com/title/81450827
-  // https://www.netflix.com/in/title/80100172  (country code prefix)
-  // https://www.netflix.com/browse?jbv=81450827  (browse modal format)
   if (host === "netflix.com" || host.endsWith(".netflix.com")) {
-    // Standard /title/<id> format
     const pathMatch = path.match(/\/title\/(\d+)/);
     if (pathMatch) {
       return {
@@ -116,7 +118,7 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
         cleanUrl: `https://www.netflix.com/title/${pathMatch[1]}`,
       };
     }
-    // Browse modal format: ?jbv=<id>
+    
     const jbv = url.searchParams.get("jbv");
     if (jbv && /^\d+$/.test(jbv)) {
       return {
@@ -130,29 +132,24 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
     }
   }
 
-  // ------ Amazon Prime Video ------
-  // https://www.primevideo.com/detail/ASIN/ref=...?jic=...  → clean to /detail/ASIN/
-  // https://www.amazon.com/gp/video/detail/ASIN/...
-  // https://www.amazon.com/dp/ASIN
-  if (
-    host === "primevideo.com" ||
-    host.endsWith(".primevideo.com") ||
-    host === "amazon.com" ||
-    host.endsWith(".amazon.com") ||
-    host.endsWith(".amazon.co.uk") ||
-    host.endsWith(".amazon.in")
-  ) {
+  // ─── Amazon Prime Video
+  // https://www.primevideo.com/detail/ASIN/
+  const isAmazon = host === "primevideo.com" || 
+                  host.endsWith(".primevideo.com") || 
+                  host === "amazon.com" || 
+                  host.match(/amazon\.(com|co\.uk|in|de|fr|es|it|co\.jp|ca|com\.br|com\.mx|com\.au)$/);
+
+  if (isAmazon) {
     const detailMatch = path.match(/\/detail\/([A-Z0-9]+)/i);
     const dpMatch = path.match(/\/dp\/([A-Z0-9]+)/i);
     const videoDetailMatch = path.match(/\/gp\/video\/detail\/([A-Z0-9]+)/i);
     const id = detailMatch?.[1] || dpMatch?.[1] || videoDetailMatch?.[1] || null;
+    
     if (id) {
-      // Build a clean base URL: strip query params, fragments, and trailing ref segments
-      const cleanUrl = detailMatch
-        ? `https://${url.hostname}/detail/${id}/`
-        : videoDetailMatch
-          ? `https://${url.hostname}/gp/video/detail/${id}/`
-          : `https://${url.hostname}/dp/${id}`;
+      let cleanUrl = `https://${url.hostname}/dp/${id}`;
+      if (detailMatch) cleanUrl = `https://${url.hostname}/detail/${id}/`;
+      else if (videoDetailMatch) cleanUrl = `https://${url.hostname}/gp/video/detail/${id}/`;
+      
       return {
         source: "prime",
         id,
@@ -165,17 +162,15 @@ export function parseMediaUrl(rawUrl: string): ParsedMediaUrl | null {
   }
 
   return null;
-}
+};
 
 /**
  * Extract a URL from drag-and-drop data transfer.
- * Tries text/uri-list first, then text/plain.
+ * Tries text/uri-list first (canonical for links), then text/plain as fallback.
  */
-export function extractUrlFromDragEvent(dataTransfer: DataTransfer): string | null {
-  // Try text/uri-list first (standard for dragged links)
+export const extractUrlFromDragEvent = (dataTransfer: DataTransfer): string | null => {
   const uriList = dataTransfer.getData("text/uri-list");
   if (uriList) {
-    // text/uri-list can contain multiple URLs and comments
     const urls = uriList.split("\n").filter((line) => line.trim() && !line.startsWith("#"));
     const first = urls[0]?.trim();
     if (first && (first.startsWith("http://") || first.startsWith("https://"))) {
@@ -183,16 +178,13 @@ export function extractUrlFromDragEvent(dataTransfer: DataTransfer): string | nu
     }
   }
 
-  // Try text/plain (e.g. dragging text that happens to be a URL)
   const text = dataTransfer.getData("text/plain")?.trim();
-  if (
-    text &&
-    (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("www."))
-  ) {
-    // Take only the first line if multi-line
+  if (text) {
     const firstLine = text.split("\n")[0]?.trim();
-    if (firstLine) return firstLine;
+    if (firstLine && (firstLine.startsWith("http://") || firstLine.startsWith("https://") || firstLine.startsWith("www."))) {
+      return firstLine;
+    }
   }
 
   return null;
-}
+};

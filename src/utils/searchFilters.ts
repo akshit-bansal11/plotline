@@ -1,17 +1,22 @@
-﻿export type ApiBaseType = "movie" | "series" | "anime" | "manga" | "game";
+// File: src/utils/searchFilters.ts
+// Purpose: Types, constants, and normalization helpers for global search filters
+
+// ─── Internal — types
+export type ApiBaseType = "movie" | "series" | "anime" | "manga" | "game";
 export type ApiSearchType = ApiBaseType | "anime_movie";
 export type ApiSearchStatus = "finished" | "airing" | "tba" | "not_yet_aired";
 
-export type YearFilterOption = {
+export interface YearFilterOption {
   id: string;
   label: string;
   min: number;
   max: number;
-};
+}
 
-export const GLOBAL_SEARCH_TYPE_OPTIONS: Array<{
-  value: ApiSearchType;
-  label: string;
+// ─── Constants: Options
+export const GLOBAL_SEARCH_TYPE_OPTIONS: ReadonlyArray<{
+  readonly value: ApiSearchType;
+  readonly label: string;
 }> = [
   { value: "movie", label: "Movie" },
   { value: "series", label: "Series" },
@@ -19,10 +24,10 @@ export const GLOBAL_SEARCH_TYPE_OPTIONS: Array<{
   { value: "anime_movie", label: "Anime Movie" },
   { value: "manga", label: "Manga" },
   { value: "game", label: "Game" },
-];
+] as const;
 
-export const GLOBAL_SEARCH_SUBTYPE_OPTIONS: Partial<
-  Record<ApiSearchType, Array<{ value: string; label: string }>>
+export const GLOBAL_SEARCH_SUBTYPE_OPTIONS: Readonly<
+  Partial<Record<ApiSearchType, ReadonlyArray<{ readonly value: string; readonly label: string }>>>
 > = {
   movie: [{ value: "short_movie", label: "Short Movie" }],
   anime: [
@@ -38,7 +43,7 @@ export const GLOBAL_SEARCH_SUBTYPE_OPTIONS: Partial<
     { value: "novel", label: "Novel" },
     { value: "doujinshi", label: "Doujinshi" },
   ],
-};
+} as const;
 
 export const SHARED_GENRE_OPTIONS = [
   "Action",
@@ -53,7 +58,18 @@ export const SHARED_GENRE_OPTIONS = [
   "Thriller",
 ] as const;
 
-const GENRE_ALIASES: Record<string, (typeof SHARED_GENRE_OPTIONS)[number]> = {
+export const SEARCH_STATUS_OPTIONS: ReadonlyArray<{
+  readonly value: ApiSearchStatus;
+  readonly label: string;
+}> = [
+  { value: "finished", label: "Finished" },
+  { value: "airing", label: "Airing" },
+  { value: "tba", label: "TBA" },
+  { value: "not_yet_aired", label: "Not Yet Aired" },
+] as const;
+
+// ─── Normalization: Genres
+const GENRE_ALIASES: Readonly<Record<string, (typeof SHARED_GENRE_OPTIONS)[number]>> = {
   action: "Action",
   adventure: "Adventure",
   comedy: "Comedy",
@@ -67,25 +83,16 @@ const GENRE_ALIASES: Record<string, (typeof SHARED_GENRE_OPTIONS)[number]> = {
   "sci fi": "Sci-Fi",
   sci_fi: "Sci-Fi",
   thriller: "Thriller",
-};
+} as const;
 
-export const normalizeGenreName = (value: string | null | undefined) => {
+export const normalizeGenreName = (value: string | null | undefined): string | null => {
   if (!value) return null;
   const key = value.trim().toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
   return GENRE_ALIASES[key] || null;
 };
 
-export const SEARCH_STATUS_OPTIONS: Array<{
-  value: ApiSearchStatus;
-  label: string;
-}> = [
-  { value: "finished", label: "Finished" },
-  { value: "airing", label: "Airing" },
-  { value: "tba", label: "TBA" },
-  { value: "not_yet_aired", label: "Not Yet Aired" },
-];
-
-const STATUS_ALIASES: Array<{ pattern: RegExp; value: ApiSearchStatus }> = [
+// ─── Normalization: Status
+const STATUS_ALIASES: ReadonlyArray<{ readonly pattern: RegExp; readonly value: ApiSearchStatus }> = [
   {
     pattern: /(finished|ended|complete|released|finished airing|finished publishing)/i,
     value: "finished",
@@ -100,7 +107,7 @@ const STATUS_ALIASES: Array<{ pattern: RegExp; value: ApiSearchStatus }> = [
     pattern: /(planned|announced|tba|to be announced|upcoming)/i,
     value: "tba",
   },
-];
+] as const;
 
 export const normalizeStatusName = (value: string | null | undefined): ApiSearchStatus | null => {
   if (!value) return null;
@@ -110,6 +117,7 @@ export const normalizeStatusName = (value: string | null | undefined): ApiSearch
   return null;
 };
 
+// ─── Normalization: Anime Studios
 export const ANIME_STUDIO_OPTIONS = [
   "MAPPA",
   "Bones",
@@ -129,7 +137,7 @@ export const ANIME_STUDIO_OPTIONS = [
   "P.A. Works",
 ] as const;
 
-const STUDIO_ALIASES: Record<string, (typeof ANIME_STUDIO_OPTIONS)[number]> = {
+const STUDIO_ALIASES: Readonly<Record<string, (typeof ANIME_STUDIO_OPTIONS)[number]>> = {
   "a-1 pictures": "A-1 Pictures",
   aniplex: "Aniplex",
   "bandai namco": "Bandai Namco",
@@ -150,14 +158,15 @@ const STUDIO_ALIASES: Record<string, (typeof ANIME_STUDIO_OPTIONS)[number]> = {
   "toei animation": "Toei Animation",
   ufotable: "Ufotable",
   "wit studio": "Wit Studio",
-};
+} as const;
 
-export const normalizeStudioName = (value: string | null | undefined) => {
+export const normalizeStudioName = (value: string | null | undefined): string | null => {
   if (!value) return null;
   const key = value.trim().toLowerCase().replace(/\s+/g, " ");
   return STUDIO_ALIASES[key] || null;
 };
 
+// ─── Normalization: Game Platforms
 export const GAME_PLATFORM_OPTIONS = [
   "Steam",
   "Epic",
@@ -168,9 +177,9 @@ export const GAME_PLATFORM_OPTIONS = [
   "GOG",
 ] as const;
 
-const PLATFORM_ALIASES: Array<{
-  pattern: RegExp;
-  value: (typeof GAME_PLATFORM_OPTIONS)[number];
+const PLATFORM_ALIASES: ReadonlyArray<{
+  readonly pattern: RegExp;
+  readonly value: (typeof GAME_PLATFORM_OPTIONS)[number];
 }> = [
   { pattern: /steam/i, value: "Steam" },
   { pattern: /(epic|epic games)/i, value: "Epic" },
@@ -179,9 +188,9 @@ const PLATFORM_ALIASES: Array<{
   { pattern: /xbox/i, value: "Xbox" },
   { pattern: /gog/i, value: "GOG" },
   { pattern: /(pc|windows|mac|linux)/i, value: "PC" },
-];
+] as const;
 
-export const normalizeGamePlatform = (value: string | null | undefined) => {
+export const normalizeGamePlatform = (value: string | null | undefined): string | null => {
   if (!value) return null;
   for (const entry of PLATFORM_ALIASES) {
     if (entry.pattern.test(value)) return entry.value;
@@ -189,24 +198,28 @@ export const normalizeGamePlatform = (value: string | null | undefined) => {
   return null;
 };
 
+// ─── Normalization: Manga Serialization
 export const MANGA_SERIALIZATION_OPTIONS = ["Shonen Jump", "KakaoPage", "Naver Webtoon"] as const;
 
-const SERIALIZATION_ALIASES: Record<string, (typeof MANGA_SERIALIZATION_OPTIONS)[number]> = {
+const SERIALIZATION_ALIASES: Readonly<Record<string, (typeof MANGA_SERIALIZATION_OPTIONS)[number]>> = {
   "shonen jump": "Shonen Jump",
   "weekly shonen jump": "Shonen Jump",
   kakaopage: "KakaoPage",
   "naver webtoon": "Naver Webtoon",
   webtoon: "Naver Webtoon",
-};
+} as const;
 
-export const normalizeSerializationName = (value: string | null | undefined) => {
+export const normalizeSerializationName = (value: string | null | undefined): string | null => {
   if (!value) return null;
   const key = value.trim().toLowerCase().replace(/\s+/g, " ");
   return SERIALIZATION_ALIASES[key] || null;
 };
 
-export const getYearFilterOptions = () => {
+// ─── Helpers: Filter Generation
+export const getYearFilterOptions = (): YearFilterOption[] => {
   const ranges: YearFilterOption[] = [];
+  
+  // Decades
   for (let start = 1900; start <= 1990; start += 10) {
     ranges.push({
       id: `decade_${start}`,
@@ -215,7 +228,10 @@ export const getYearFilterOptions = () => {
       max: start + 9,
     });
   }
-  for (let year = 2001; year <= 2026; year += 1) {
+  
+  // Specific Years
+  const currentYear = new Date().getFullYear();
+  for (let year = 2001; year <= currentYear + 2; year += 1) {
     ranges.push({
       id: `year_${year}`,
       label: String(year),
@@ -223,18 +239,20 @@ export const getYearFilterOptions = () => {
       max: year,
     });
   }
+  
   return ranges;
 };
 
-const MAL_ANIME_SUBTYPE_ALIASES: Record<string, string> = {
+// ─── Normalization: Subtypes
+const MAL_ANIME_SUBTYPE_ALIASES: Readonly<Record<string, string>> = {
   tv: "tv",
   movie: "movie",
   ova: "ova",
   ona: "ona",
   special: "special",
-};
+} as const;
 
-const MAL_MANGA_SUBTYPE_ALIASES: Record<string, string> = {
+const MAL_MANGA_SUBTYPE_ALIASES: Readonly<Record<string, string>> = {
   manga: "manga",
   manhwa: "manhwa",
   manhua: "manhua",
@@ -244,10 +262,11 @@ const MAL_MANGA_SUBTYPE_ALIASES: Record<string, string> = {
   light_novel: "light_novel",
   novel: "novel",
   doujinshi: "doujinshi",
-};
+} as const;
 
-export const normalizeSubtype = (type: ApiBaseType, value: string | null | undefined) => {
+export const normalizeSubtype = (type: ApiBaseType, value: string | null | undefined): string | null => {
   if (!value) return null;
+  
   const normalized = value
     .trim()
     .toLowerCase()
@@ -268,6 +287,9 @@ export const normalizeSubtype = (type: ApiBaseType, value: string | null | undef
   return null;
 };
 
+/**
+ * Returns the primary base type from a combined search type (e.g., anime_movie -> anime).
+ */
 export const getBaseTypeFromSearchType = (type: ApiSearchType | null): ApiBaseType | null => {
   if (!type) return null;
   if (type === "anime_movie") return "anime";

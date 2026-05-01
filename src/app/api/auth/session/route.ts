@@ -1,12 +1,23 @@
+// File: src/app/api/auth/session/route.ts
+// Purpose: Server-side session management using Firebase Admin SDK and cookies
+
+// ─── Imports: Third-party
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+// ─── Internal — services
 import { adminAuth } from "@/lib/firebaseAdmin";
 
+// ─── Validation
 const sessionSchema = z.object({
   idToken: z.string().min(1, "Token is required"),
 });
 
+// ─── Route Handlers
+/**
+ * Creates a server-side session cookie based on a client-provided ID token.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -45,6 +56,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Deletes the server-side session cookie (logout).
+ */
 export async function DELETE() {
   const cookieStore = await cookies();
   cookieStore.delete("session");
