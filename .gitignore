@@ -46,4 +46,7 @@ auth-fix-context.md
 /temp
 
 # boneyard — auto-generated bone layouts (keep registry stub committed)
-/src/bones/*.bones.json
+/src/bones/*.bones.json
+
+# prompt
+/prompts
