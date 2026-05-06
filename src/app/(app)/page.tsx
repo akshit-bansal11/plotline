@@ -3,11 +3,10 @@
 
 "use client";
 
-// ─── React
-import { useCallback, useMemo, useState } from "react";
-
 // ─── Third-party
 import { AnimatePresence, motion } from "motion/react";
+// ─── React
+import { useCallback, useMemo, useState } from "react";
 
 // ─── Internal — components
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
@@ -23,12 +22,10 @@ import { sectionConfigs } from "@/config/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
 import { type SectionKey, useSection } from "@/context/SectionContext";
-
-// ─── Internal — types
-import type { ListModalType } from "@/types/lists";
-
 // ─── Internal — hooks
 import { useHomePageHandlers } from "@/hooks/useHomePageHandlers";
+// ─── Internal — types
+import type { ListModalType } from "@/types/lists";
 
 export default function Home() {
   // ─── Hooks: Context
@@ -39,9 +36,24 @@ export default function Home() {
 
   // ─── Hooks: Handlers
   const {
-    isEditingEntry, viewingEntry, handleEditEntry, handleViewEntry, handleDeleteEntry, closeEntryModal,
-    isListsModalOpen, isNewListOpen, newListDefaultType, listsModalListId, listsModalType, listsModalMode,
-    handleEditList, handleDeleteList, handleViewList, handleOpenNewList, closeListsModal, closeNewListModal,
+    isEditingEntry,
+    viewingEntry,
+    handleEditEntry,
+    handleViewEntry,
+    handleDeleteEntry,
+    closeEntryModal,
+    isListsModalOpen,
+    isNewListOpen,
+    newListDefaultType,
+    listsModalListId,
+    listsModalType,
+    listsModalMode,
+    handleEditList,
+    handleDeleteList,
+    handleViewList,
+    handleOpenNewList,
+    closeListsModal,
+    closeNewListModal,
   } = useHomePageHandlers(uid, entries);
 
   // ─── State: UI Local
@@ -204,7 +216,5 @@ export default function Home() {
         defaultType={newListDefaultType}
       />
     </>
-  );
-}
   );
 }

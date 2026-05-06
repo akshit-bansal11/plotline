@@ -17,8 +17,16 @@ export const logEntryInputSchema = z.object({
   status: z.string(),
   userRating: z.number().min(0.5).max(10).nullable().optional(),
   imdbRating: z.number().min(0).max(10).nullable().optional(),
-  releaseYear: z.string().regex(/^\d{4}$/).nullable().optional(),
-  year: z.string().regex(/^\d{4}$/).nullable().optional(),
+  releaseYear: z
+    .string()
+    .regex(/^\d{4}$/)
+    .nullable()
+    .optional(),
+  year: z
+    .string()
+    .regex(/^\d{4}$/)
+    .nullable()
+    .optional(),
   lengthMinutes: z.number().int().nonnegative().nullable().optional(),
   episodeCount: z.number().int().nonnegative().nullable().optional(),
   chapterCount: z.number().int().nonnegative().nullable().optional(),
@@ -42,12 +50,16 @@ export const logEntryInputSchema = z.object({
   currentSeasons: z.number().int().nonnegative().optional(),
   currentChapters: z.number().int().nonnegative().optional(),
   rewatchCount: z.number().int().nonnegative().optional(),
-  relations: z.array(z.object({
-    targetId: z.string(),
-    type: z.string(),
-    createdAtMs: z.number().optional(),
-    inferred: z.boolean().optional(),
-  })).optional(),
+  relations: z
+    .array(
+      z.object({
+        targetId: z.string(),
+        type: z.string(),
+        createdAtMs: z.number().optional(),
+        inferred: z.boolean().optional(),
+      }),
+    )
+    .optional(),
 });
 
 // ─── Schema: Search Params
@@ -57,7 +69,10 @@ export const logEntryInputSchema = z.object({
 export const searchParamsSchema = z.object({
   q: z.string().min(1, "Search query is required"),
   type: mediaTypeSchema.optional(),
-  year: z.string().regex(/^\d{4}$/).optional(),
+  year: z
+    .string()
+    .regex(/^\d{4}$/)
+    .optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(30),
 });
 
@@ -65,15 +80,20 @@ export const searchParamsSchema = z.object({
 /**
  * Schema for validating query parameters in the /api/metadata route.
  */
-export const metadataParamsSchema = z.object({
-  type: mediaTypeSchema,
-  id: z.string().optional(),
-  title: z.string().optional(),
-  year: z.string().regex(/^\d{4}$/).optional(),
-}).refine(data => data.id || data.title, {
-  message: "Either id or title must be provided",
-  path: ["id", "title"],
-});
+export const metadataParamsSchema = z
+  .object({
+    type: mediaTypeSchema,
+    id: z.string().optional(),
+    title: z.string().optional(),
+    year: z
+      .string()
+      .regex(/^\d{4}$/)
+      .optional(),
+  })
+  .refine((data) => data.id || data.title, {
+    message: "Either id or title must be provided",
+    path: ["id", "title"],
+  });
 
 // ─── Inferred Types
 export type LogEntryInput = z.infer<typeof logEntryInputSchema>;

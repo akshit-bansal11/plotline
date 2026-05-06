@@ -16,12 +16,12 @@ import PrimeVideoLogo from "@/assets/images/ott/prime-video-dark.svg";
 import { NetflixLogo, PlayStationLogo, XboxLogo } from "@/data/logoSources";
 
 export type OTTProvider = {
-  name: string;
-  logo: string;
+  readonly name: string;
+  readonly logo: string;
 };
 
 // ─── Streaming Providers
-export const STREAMING_PROVIDERS: OTTProvider[] = [
+export const STREAMING_PROVIDERS: readonly OTTProvider[] = [
   { name: "Netflix", logo: NetflixLogo },
   { name: "Prime Video", logo: PrimeVideoLogo },
   { name: "Disney+", logo: DisneyPlusLogo },
@@ -33,13 +33,13 @@ export const STREAMING_PROVIDERS: OTTProvider[] = [
 ] as const;
 
 // ─── Anime Providers
-export const ANIME_PROVIDERS: OTTProvider[] = [
+export const ANIME_PROVIDERS: readonly OTTProvider[] = [
   ...STREAMING_PROVIDERS,
   { name: "Crunchyroll", logo: CrunchyrollLogo },
 ] as const;
 
 // ─── Game Platforms
-export const GAME_PROVIDERS: OTTProvider[] = [
+export const GAME_PROVIDERS: readonly OTTProvider[] = [
   { name: "Steam", logo: SteamLogo },
   { name: "GOG", logo: GOGLogo },
   { name: "Epic Games", logo: EpicLogo },

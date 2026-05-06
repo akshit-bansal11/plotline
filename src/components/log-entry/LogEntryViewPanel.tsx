@@ -3,20 +3,20 @@
 
 "use client";
 
-// ─── React
-import React from "react";
-
 // ─── Icons
-import { Calendar, Clock, Film, Gamepad2, Layers, BookOpen, User, Star } from "lucide-react";
-
-// ─── Internal — types
+import { BookOpen, Film, Gamepad2, Star } from "lucide-react";
+import Image from "next/image";
+// ─── React
+import type React from "react";
 import type { EntryDoc } from "@/context/DataContext";
+// ─── Internal — types
+import type { EntryStatus } from "@/types/log-entry";
 
 // ─── Internal — utils
 import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/utils";
 import { formatISODate } from "@/utils/log-entry";
 
-import { LogEntryForm, getStatusBadgeClass } from "./LogEntryForm";
+import { getStatusBadgeClass } from "./LogEntryForm";
 
 interface LogEntryViewPanelProps {
   entry: EntryDoc;
@@ -35,10 +35,12 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
       <div className="flex gap-6">
         {entry.image && (
           <div className="flex-shrink-0 w-32 h-48 rounded-lg overflow-hidden border border-zinc-800 shadow-xl">
-            <img 
-              src={entry.image} 
-              alt={entry.title} 
-              className="w-full h-full object-cover" 
+            <Image
+              src={entry.image}
+              alt={entry.title}
+              width={128}
+              height={192}
+              className="w-full h-full object-cover"
             />
           </div>
         )}
@@ -50,20 +52,31 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
                 <span
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full border backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider shrink-0",
-                    getStatusBadgeClass(entry.status as any),
+                    getStatusBadgeClass(entry.status as EntryStatus),
                   )}
                 >
-                  {entryStatusLabels[entry.status as any] ?? entry.status}
+                  {entryStatusLabels[entry.status as EntryStatus] ?? entry.status}
                 </span>
                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  {entry.mediaType === "movie" || entry.mediaType === "series" || entry.mediaType === "anime" ? <Film className="w-3 h-3" /> : entry.mediaType === "game" ? <Gamepad2 className="w-3 h-3" /> : <BookOpen className="w-3 h-3" />}
+                  {entry.mediaType === "movie" ||
+                  entry.mediaType === "series" ||
+                  entry.mediaType === "anime" ? (
+                    <Film className="w-3 h-3" />
+                  ) : entry.mediaType === "game" ? (
+                    <Gamepad2 className="w-3 h-3" />
+                  ) : (
+                    <BookOpen className="w-3 h-3" />
+                  )}
                   {entryMediaTypeLabels[entry.mediaType]}
                   {entry.isMovie && " (Movie)"}
-                  {entry.releaseYear && <span className="ml-1 text-zinc-600">• {entry.releaseYear}</span>}
+                  {entry.releaseYear && (
+                    <span className="ml-1 text-zinc-600">• {entry.releaseYear}</span>
+                  )}
                 </span>
               </div>
             </div>
             <button
+              type="button"
               onClick={onEdit}
               className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-md transition-colors border border-zinc-700"
             >
@@ -73,18 +86,16 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
 
           {/* Description */}
           {entry.description && (
-            <p className="mt-4 text-zinc-300 text-sm leading-relaxed">
-              {entry.description}
-            </p>
+            <p className="mt-4 text-zinc-300 text-sm leading-relaxed">{entry.description}</p>
           )}
 
           {/* Stats Bar */}
           <div className="flex flex-wrap gap-4 mt-6">
             {entry.userRating && (
-              <StatItem 
-                icon={<Star className="w-4 h-4 text-yellow-500 fill-yellow-500/20" />} 
-                label="Rating" 
-                value={`${entry.userRating}/10`} 
+              <StatItem
+                icon={<Star className="w-4 h-4 text-yellow-500 fill-yellow-500/20" />}
+                label="Rating"
+                value={`${entry.userRating}/10`}
               />
             )}
           </div>
@@ -96,10 +107,34 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
         <div className="space-y-4">
           <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Metadata</h3>
           <dl className="space-y-3">
-            {entry.director && <InfoRow label={entry.mediaType === "manga" ? "Writer" : entry.mediaType === "game" ? "Developer" : "Director"} value={entry.director} />}
-            {entry.producer && <InfoRow label={entry.mediaType === "anime" || entry.mediaType === "series" ? "Studio" : entry.mediaType === "game" ? "Publisher" : "Producer"} value={entry.producer} />}
+            {entry.director && (
+              <InfoRow
+                label={
+                  entry.mediaType === "manga"
+                    ? "Writer"
+                    : entry.mediaType === "game"
+                      ? "Developer"
+                      : "Director"
+                }
+                value={entry.director}
+              />
+            )}
+            {entry.producer && (
+              <InfoRow
+                label={
+                  entry.mediaType === "anime" || entry.mediaType === "series"
+                    ? "Studio"
+                    : entry.mediaType === "game"
+                      ? "Publisher"
+                      : "Producer"
+                }
+                value={entry.producer}
+              />
+            )}
             {entry.lengthMinutes && <InfoRow label="Duration" value={`${entry.lengthMinutes}m`} />}
-            {entry.episodeCount && !isMovie && <InfoRow label="Total Episodes" value={entry.episodeCount} />}
+            {entry.episodeCount && !isMovie && (
+              <InfoRow label="Total Episodes" value={entry.episodeCount} />
+            )}
             {entry.chapterCount && <InfoRow label="Total Chapters" value={entry.chapterCount} />}
             {entry.imdbRating && <InfoRow label="IMDb Rating" value={entry.imdbRating} />}
           </dl>
@@ -107,22 +142,38 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
 
         {/* Right: Progress & Dates */}
         <div className="space-y-4">
-          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Your Progress</h3>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+            Your Progress
+          </h3>
           <dl className="space-y-3">
-            {entry.currentEpisodes > 0 && <InfoRow label="Episodes" value={`${entry.currentEpisodes} / ${entry.episodeCount || "?"}`} />}
-            {entry.currentChapters > 0 && <InfoRow label="Chapters" value={`${entry.currentChapters} / ${entry.chapterCount || "?"}`} />}
+            {entry.currentEpisodes > 0 && (
+              <InfoRow
+                label="Episodes"
+                value={`${entry.currentEpisodes} / ${entry.episodeCount || "?"}`}
+              />
+            )}
+            {entry.currentChapters > 0 && (
+              <InfoRow
+                label="Chapters"
+                value={`${entry.currentChapters} / ${entry.chapterCount || "?"}`}
+              />
+            )}
             {entry.playTime && <InfoRow label="Play Time" value={entry.playTime} />}
             {entry.platform && <InfoRow label="Platform" value={entry.platform} />}
             {entry.startDate && <InfoRow label="Started" value={formatISODate(entry.startDate)} />}
-            {entry.completedAt && <InfoRow label="Completed" value={formatISODate(entry.completedAt)} />}
+            {entry.completedAtMs && (
+              <InfoRow label="Completed" value={formatISODate(entry.completedAtMs)} />
+            )}
             {entry.rewatchCount > 0 && (
-              <InfoRow 
+              <InfoRow
                 label={
-                  entry.mediaType === "manga" ? "Rereads" :
-                  entry.mediaType === "game" ? "Replays" :
-                  "Rewatches"
-                } 
-                value={entry.rewatchCount} 
+                  entry.mediaType === "manga"
+                    ? "Rereads"
+                    : entry.mediaType === "game"
+                      ? "Replays"
+                      : "Rewatches"
+                }
+                value={entry.rewatchCount}
               />
             )}
           </dl>
@@ -130,15 +181,18 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
       </div>
 
       {/* Tags & Cast */}
-      {((entry.genresThemes && entry.genresThemes.length > 0) || (entry.tags && entry.tags.length > 0) || (entry.cast && entry.cast.length > 0)) && (
+      {((entry.genresThemes && entry.genresThemes.length > 0) ||
+        (entry.cast && entry.cast.length > 0)) && (
         <div className="grid grid-cols-2 gap-8 pt-6 border-t border-zinc-800">
-          {(entry.genresThemes || entry.tags) && (entry.genresThemes?.length || entry.tags?.length) > 0 && (
+          {entry.genresThemes && entry.genresThemes.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Genres & Themes</h3>
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                Genres & Themes
+              </h3>
               <div className="flex flex-wrap gap-2">
-                {(entry.genresThemes || entry.tags || []).map((tag: string) => (
-                  <span 
-                    key={tag} 
+                {entry.genresThemes.map((tag: string) => (
+                  <span
+                    key={tag}
                     className="px-2.5 py-1 bg-zinc-900 text-zinc-400 text-[11px] font-medium rounded-full border border-zinc-800"
                   >
                     {tag}
@@ -150,11 +204,13 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
 
           {entry.cast && entry.cast.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Cast & Characters</h3>
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                Cast & Characters
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {(entry.cast || []).map((person: string) => (
-                  <span 
-                    key={person} 
+                  <span
+                    key={person}
                     className="px-2.5 py-1 bg-zinc-900 text-zinc-400 text-[11px] font-medium rounded-full border border-zinc-800"
                   >
                     {person}
@@ -170,10 +226,22 @@ export function LogEntryViewPanel({ entry, onEdit }: LogEntryViewPanelProps) {
 }
 
 // ─── Sub-components
-function StatItem({ icon, label, value, className }: { icon?: React.ReactNode; label: string; value: React.ReactNode; className?: string }) {
+function StatItem({
+  icon,
+  label,
+  value,
+  className,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div className="flex flex-col">
-      <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight mb-0.5">{label}</span>
+      <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight mb-0.5">
+        {label}
+      </span>
       <div className={cn("flex items-center gap-1.5 text-zinc-200 font-semibold", className)}>
         {icon}
         {value}

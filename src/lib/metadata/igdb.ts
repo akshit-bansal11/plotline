@@ -1,12 +1,12 @@
 // File: src/lib/metadata/igdb.ts
 // Purpose: IGDB API fetch functions for game metadata
 
-// ─── Internal — types
-import type { MetadataResult } from "./tmdb";
+import { getIgdbAccessToken } from "../igdbAuth";
 
 // ─── Internal — utils/lib
 import { safeFetchJson } from "../safeFetch";
-import { getIgdbAccessToken } from "../igdbAuth";
+// ─── Internal — types
+import type { MetadataResult } from "./tmdb";
 
 // ─── Constants & Helpers
 const formatIgdbCoverUrl = (url?: string) => {
@@ -41,27 +41,29 @@ export const fetchIgdbMetadata = async (
       : title
         ? `search "${title.replace(/"/g, "")}";`
         : "";
-  
+
   if (!resolvedQuery) return null;
 
   const body = `${resolvedQuery} fields id,name,summary,first_release_date,cover.url,genres.name,aggregated_rating,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher; limit 1;`;
-  
-  const response = await safeFetchJson<Array<{
-    id?: number;
-    name?: string;
-    summary?: string;
-    first_release_date?: number;
-    cover?: { url?: string };
-    genres?: Array<{ name?: string }>;
-    aggregated_rating?: number;
-    rating?: number;
-    involved_companies?: Array<{
-      company: { name: string };
-      developer: boolean;
-      publisher: boolean;
-    }>;
-    characters?: Array<{ name?: string }>;
-  }>>("https://api.igdb.com/v4/games", {
+
+  const response = await safeFetchJson<
+    Array<{
+      id?: number;
+      name?: string;
+      summary?: string;
+      first_release_date?: number;
+      cover?: { url?: string };
+      genres?: Array<{ name?: string }>;
+      aggregated_rating?: number;
+      rating?: number;
+      involved_companies?: Array<{
+        company: { name: string };
+        developer: boolean;
+        publisher: boolean;
+      }>;
+      characters?: Array<{ name?: string }>;
+    }>
+  >("https://api.igdb.com/v4/games", {
     method: "POST",
     headers: {
       "Client-ID": clientId,
@@ -70,7 +72,7 @@ export const fetchIgdbMetadata = async (
     },
     body,
   });
-  
+
   if (!response.ok) return null;
 
   const payload = response.data;
@@ -80,7 +82,7 @@ export const fetchIgdbMetadata = async (
   const year = data.first_release_date
     ? String(new Date(data.first_release_date * 1000).getUTCFullYear())
     : undefined;
-  
+
   const ratingValue = normalizeIgdbRating(data.aggregated_rating ?? data.rating);
 
   return {

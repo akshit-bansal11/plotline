@@ -4,11 +4,10 @@
 "use client";
 
 // ─── React
-import { useState } from "react";
-import Image from "next/image";
 
 // ─── Icons
 import { Star } from "lucide-react";
+import Image from "next/image";
 
 // ─── Internal — utils
 import { cn } from "@/utils";
@@ -31,7 +30,7 @@ export function MediaCardImage({ image, title, imageLoaded, onLoad }: MediaCardI
           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
           className={cn(
             "object-cover transition-transform duration-700 group-hover:scale-110",
-            imageLoaded ? "opacity-100" : "opacity-0"
+            imageLoaded ? "opacity-100" : "opacity-0",
           )}
           onLoad={onLoad}
         />

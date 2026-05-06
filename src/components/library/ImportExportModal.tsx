@@ -3,20 +3,18 @@
 
 "use client";
 
-// ─── React
-import { useEffect, useState } from "react";
-
 // ─── Firebase
-import {
-  collection,
-  doc,
-  serverTimestamp,
-  writeBatch,
-} from "firebase/firestore";
-
+import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 // ─── Icons
 import { Download, Upload } from "lucide-react";
+// ─── React
+import { useEffect, useState } from "react";
+// ─── Internal — components
+import { InfographicToast } from "@/components/overlay/InfographicToast";
+import { Modal } from "@/components/overlay/Modal";
 
+// ─── Internal — hooks/context
+import { useAuth } from "@/context/AuthContext";
 // ─── Internal — services
 import { db } from "@/lib/firebase";
 import {
@@ -27,17 +25,7 @@ import {
   mapImdbType,
   normalizeHeader,
   parseCsv,
-  parseRatingValue,
-  parseYearValue,
-  type EntryExportRow,
 } from "@/services/import-export";
-
-// ─── Internal — hooks/context
-import { useAuth } from "@/context/AuthContext";
-
-// ─── Internal — components
-import { InfographicToast } from "@/components/overlay/InfographicToast";
-import { Modal } from "@/components/overlay/Modal";
 
 // ─── Internal — types
 import type {
@@ -47,6 +35,23 @@ import type {
 
 // ─── Internal — utils
 import { cn } from "@/utils";
+
+const parseYearValue = (value?: string | null): string | null => {
+  if (!value) return null;
+  const match = value.match(/\d{4}/);
+  return match ? match[0] : null;
+};
+
+const parseRatingValue = (
+  value: string | null | undefined,
+  min: number,
+  max: number,
+): number | null => {
+  if (!value) return null;
+  const parsed = Number.parseFloat(value);
+  if (Number.isNaN(parsed)) return null;
+  return Math.min(Math.max(parsed, min), max);
+};
 
 type EntryMediaType = BaseEntryMediaType | "anime_movie";
 

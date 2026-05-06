@@ -5,16 +5,10 @@
 
 // ─── React
 import { useCallback, useEffect, useRef, useState } from "react";
-
-// ─── Internal — utils/search
-import {
-  type ApiBaseType,
-  type ApiSearchStatus,
-  type ApiSearchType,
-} from "@/utils/searchFilters";
-
 // ─── Internal — types
 import type { LoggableMedia } from "@/types/log-entry";
+// ─── Internal — utils/search
+import type { ApiBaseType, ApiSearchStatus, ApiSearchType } from "@/utils/searchFilters";
 
 // ─── Types
 export type SearchResult = {
@@ -102,8 +96,8 @@ export function useSearchHandlers() {
       if (filters.yearMin) params.set("yearMin", String(filters.yearMin));
 
       const cacheKey = params.toString();
-      if (cacheRef.current.has(cacheKey)) {
-        const cached = cacheRef.current.get(cacheKey)!;
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached) {
         setResults(cached.results);
         setIsLoading(false);
         return;
@@ -120,7 +114,7 @@ export function useSearchHandlers() {
         cacheRef.current.set(cacheKey, data);
         setResults(data.results || []);
       } catch (err) {
-        if ((err as Error).name !== "AbortError") {
+        if (err instanceof Error && err.name !== "AbortError") {
           console.error("Search failed:", err);
         }
       } finally {
@@ -167,7 +161,7 @@ export function useSearchHandlers() {
             type: result.type,
             image: result.image,
             year: result.year,
-          } as any);
+          } as LoggableMedia);
         }
         setIsOpen(false);
         setQuery("");

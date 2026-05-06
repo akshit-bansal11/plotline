@@ -3,10 +3,6 @@
 
 "use client";
 
-// ─── React & Next
-import { createContext, useContext, useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-
 // ─── Firebase
 import {
   createUserWithEmailAndPassword,
@@ -20,6 +16,9 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { usePathname, useRouter } from "next/navigation";
+// ─── React & Next
+import { createContext, useContext, useEffect, useState } from "react";
 
 // ─── Internal — services
 import { auth, db, googleProvider } from "@/lib/firebase";
@@ -179,7 +178,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (pathname === "/auth") router.push("/");
       }
     } catch (err) {
-      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
+      const message = formatAuthError(
+        err && typeof err === "object" && "code" in err ? String(err.code) : "",
+      );
       setError(message);
       throw new Error(message);
     }
@@ -195,7 +196,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       saveLastUsedProvider("password");
       if (pathname === "/auth") router.push("/");
     } catch (err) {
-      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
+      const message = formatAuthError(
+        err && typeof err === "object" && "code" in err ? String(err.code) : "",
+      );
       setError(message);
       throw new Error(message);
     }
@@ -222,7 +225,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (pathname === "/auth") router.push("/");
       }
     } catch (err) {
-      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
+      const message = formatAuthError(
+        err && typeof err === "object" && "code" in err ? String(err.code) : "",
+      );
       setError(message);
       throw new Error(message);
     }
@@ -244,7 +249,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await sendPasswordResetEmail(auth, email);
     } catch (err) {
-      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
+      const message = formatAuthError(
+        err && typeof err === "object" && "code" in err ? String(err.code) : "",
+      );
       setError(message);
       throw new Error(message);
     }
@@ -262,7 +269,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await saveUserProfile(auth.currentUser, { displayName, photoURL });
       setUser(auth.currentUser);
     } catch (err) {
-      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
+      const message = formatAuthError(
+        err && typeof err === "object" && "code" in err ? String(err.code) : "",
+      );
       setError(message);
       throw new Error(message);
     }
@@ -275,7 +284,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await firebaseSignOut(auth);
       await syncSession(null);
     } catch (err) {
-      const message = formatAuthError(err && typeof err === 'object' && 'code' in err ? String(err.code) : "");
+      const message = formatAuthError(
+        err && typeof err === "object" && "code" in err ? String(err.code) : "",
+      );
       setError(message);
       throw new Error(message);
     }

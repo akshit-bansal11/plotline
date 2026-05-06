@@ -15,13 +15,11 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-
-// ─── Internal — types
-import type { LogEntryData } from "../types/log-entry";
-
 // ─── Internal — services
 import { db } from "@/lib/firebase";
 import { updateBidirectionalRelations } from "@/services/relations";
+// ─── Internal — types
+import type { LogEntryData } from "../types/log-entry";
 
 // ─── Types
 export type SaveEntryParams = {
@@ -60,7 +58,7 @@ export async function saveLogEntry({
   let finalEntryId = entryId;
 
   if (isEditing && entryId) {
-    await updateDoc(doc(db, "users", uid, "entries", entryId), entryData);
+    await updateDoc(doc(db, "users", uid, "entries", entryId), { ...entryData });
   } else {
     const ref = await addDoc(collection(db, "users", uid, "entries"), {
       ...entryData,

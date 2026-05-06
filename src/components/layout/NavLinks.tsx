@@ -14,7 +14,7 @@ import { useSectionLinks } from "@/hooks/useSectionLinks";
 import { cn } from "@/utils";
 
 export function NavLinks({ className }: { className?: string }) {
-  const { links, activeSection, setActiveSection } = useSectionLinks();
+  const { links, setActiveSection } = useSectionLinks();
 
   return (
     <nav className={cn("relative flex items-center gap-1 overflow-hidden", className)}>

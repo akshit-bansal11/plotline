@@ -20,11 +20,11 @@ export const coerceListType = (value: unknown): EntryMediaType => {
  */
 export const toMillis = (value: unknown): number | null => {
   if (!value) return null;
-  
+
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : null;
   }
-  
+
   if (
     typeof value === "object" &&
     value !== null &&
@@ -34,6 +34,6 @@ export const toMillis = (value: unknown): number | null => {
     const millis = (value as { toMillis: () => number }).toMillis();
     return Number.isFinite(millis) ? millis : null;
   }
-  
+
   return null;
 };

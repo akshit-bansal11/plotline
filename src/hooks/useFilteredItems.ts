@@ -25,7 +25,8 @@ export function useFilteredItems<TItem>({
   onFilterRawChange,
 }: FilterOptions<TItem>) {
   const [uncontrolledFilterRaw, setUncontrolledFilterRaw] = useState("");
-  const resolvedFilterRaw = typeof externalFilterRaw === "string" ? externalFilterRaw : uncontrolledFilterRaw;
+  const resolvedFilterRaw =
+    typeof externalFilterRaw === "string" ? externalFilterRaw : uncontrolledFilterRaw;
   const setResolvedFilterRaw = onFilterRawChange || setUncontrolledFilterRaw;
 
   // ─── Tokenization Logic
@@ -46,7 +47,7 @@ export function useFilteredItems<TItem>({
       const extraValues = (getFilterValues?.(item) || [])
         .filter((v): v is string | number => typeof v === "string" || typeof v === "number")
         .map((v) => String(v).toLowerCase());
-      
+
       const combined = new Set([...tags, ...extraValues]);
       return filterTokens.some((token) => combined.has(token));
     });

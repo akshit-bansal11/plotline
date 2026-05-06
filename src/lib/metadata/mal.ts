@@ -3,10 +3,9 @@
 
 // ─── Internal — types
 import type { EntryMediaType } from "@/types/log-entry";
-import type { MetadataResult } from "./tmdb";
-
 // ─── Internal — utils/lib
 import { safeFetchJson } from "../safeFetch";
+import type { MetadataResult } from "./tmdb";
 
 // ─── Constants & Helpers
 const parseYear = (value?: string | null) => (value ? value.split("-")[0] : undefined);
@@ -29,9 +28,9 @@ export const fetchMalMetadata = async (
     mediaType === "anime"
       ? "title,main_picture,start_date,mean,synopsis,num_episodes,average_episode_duration,genres,studios"
       : "title,main_picture,start_date,mean,synopsis,num_chapters,genres,authors{first_name,last_name},serialization";
-  
+
   const url = `https://api.myanimelist.net/v2/${mediaType}/${encodeURIComponent(id)}?fields=${fields}`;
-  
+
   const response = await safeFetchJson<{
     title?: string;
     synopsis?: string;
@@ -72,7 +71,7 @@ export const fetchMalMetadata = async (
       const staffRes = await safeFetchJson<{
         data?: Array<{ person: { name: string }; positions: string[] }>;
       }>(`https://api.jikan.moe/v4/anime/${encodeURIComponent(id)}/staff`);
-      
+
       if (staffRes.ok && staffRes.data.data) {
         data.staff = staffRes.data.data.map((s) => ({
           node: { first_name: s.person.name, last_name: "" },

@@ -12,10 +12,7 @@ export interface SafeFetchOptions extends RequestInit {
 /**
  * A wrapper around fetch that adds timeout and simple retry logic.
  */
-export async function safeFetch(
-  url: string,
-  options: SafeFetchOptions = {}
-): Promise<Response> {
+export async function safeFetch(url: string, options: SafeFetchOptions = {}): Promise<Response> {
   const { timeoutMs = 8000, retries = 2, ...fetchOptions } = options;
 
   let lastError: Error | null = null;
@@ -35,12 +32,11 @@ export async function safeFetch(
     } catch (err) {
       clearTimeout(id);
       lastError = err instanceof Error ? err : new Error(String(err));
-      
+
       // Don't retry on abort (timeout) if we've exhausted retries
       if (attempt < retries) {
         // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 500));
-        continue;
+        await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 500));
       }
     }
   }

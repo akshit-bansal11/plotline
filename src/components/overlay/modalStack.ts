@@ -3,7 +3,7 @@
 
 /**
  * Global z-index tracker for modals to ensure proper stacking of nested overlays.
- * Module-level state is used here intentionally to maintain a consistent stack 
+ * Module-level state is used here intentionally to maintain a consistent stack
  * across different React component trees and portal instances without needing
  * a shared context, which simplifies deep nesting.
  */

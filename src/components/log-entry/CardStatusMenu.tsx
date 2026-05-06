@@ -3,13 +3,10 @@
 
 "use client";
 
-// ─── React
-import React from "react";
-
 // ─── Internal — types
 import type { EntryStatus } from "@/context/DataContext";
-import { getStatusOptionsForMediaType } from "@/types/log-entry";
 import type { EntryMediaType } from "@/types/log-entry";
+import { getStatusOptionsForMediaType } from "@/types/log-entry";
 
 // ─── Internal — utils
 import { cn, entryStatusLabels } from "@/utils";
@@ -32,16 +29,19 @@ export function CardStatusMenu({
   const statusOptions = getStatusOptionsForMediaType(mediaType);
 
   return (
-    <div 
+    <div
+      role="menu"
       className={cn(
         "absolute top-full left-0 mt-1 w-32 bg-zinc-900 border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden py-1",
-        className
+        className,
       )}
       onClick={(e) => e.stopPropagation()}
     >
       {statusOptions.map((option) => (
         <button
           key={option}
+          type="button"
+          role="menuitem"
           onClick={() => {
             onStatusChange(option);
             onClose();
@@ -50,7 +50,7 @@ export function CardStatusMenu({
             "w-full text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors",
             currentStatus === option
               ? "bg-blue-600/10 text-blue-400"
-              : "text-zinc-400 hover:bg-white/5 hover:text-white"
+              : "text-zinc-400 hover:bg-white/5 hover:text-white",
           )}
         >
           {entryStatusLabels[option]}

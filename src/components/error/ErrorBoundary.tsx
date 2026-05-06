@@ -4,7 +4,7 @@
 "use client";
 
 // ─── React
-import React, { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 // ─── Internal — components
 import { ErrorFallback } from "./ErrorFallback";

@@ -22,7 +22,7 @@ export interface ResolvedMedia {
 }
 
 // ─── Internal — utils/lib
-import { safeFetchJson, safeFetchHtml } from "../safeFetch";
+import { safeFetchHtml, safeFetchJson } from "../safeFetch";
 
 // ─── Helpers
 const decodeHtmlEntities = (s: string) =>
@@ -35,13 +35,18 @@ const decodeHtmlEntities = (s: string) =>
 
 const stripServiceSuffix = (s: string) =>
   s
-    .replace(/^(Netflix|Amazon|Prime Video|Apple TV\+?|Disney\+?|Hulu|HBO Max|Peacock|Paramount\+?|Crunchyroll)\s*[:|]\s*/i, "")
+    .replace(
+      /^(Netflix|Amazon|Prime Video|Apple TV\+?|Disney\+?|Hulu|HBO Max|Peacock|Paramount\+?|Crunchyroll)\s*[:|]\s*/i,
+      "",
+    )
     .replace(/\s*[-–—|:]\s*(Netflix|Amazon|Prime Video|Watch|Stream|IMDb).*$/i, "")
     .replace(/\s*\(\d{4}\).*$/, "")
     .trim();
 
 const extractTitleFromHtml = (html: string): string | null => {
-  const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  const jsonLdMatches = html.matchAll(
+    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  );
   for (const m of jsonLdMatches) {
     try {
       const obj = JSON.parse(m[1]) as Record<string, unknown>;
@@ -49,7 +54,9 @@ const extractTitleFromHtml = (html: string): string | null => {
       if (typeof name === "string" && name.length > 0 && name.length < 200) {
         return decodeHtmlEntities(stripServiceSuffix(name));
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const ogMatch =
@@ -104,7 +111,9 @@ export const resolveByTitleSearch = async (
     }>(searchUrl, { headers });
 
     if (response.ok) {
-      const match = (response.data.results || []).find(item => item.media_type === "movie" || item.media_type === "tv");
+      const match = (response.data.results || []).find(
+        (item) => item.media_type === "movie" || item.media_type === "tv",
+      );
       if (match) {
         const type: ResolvedMediaType = match.media_type === "tv" ? "series" : "movie";
         return {
@@ -137,10 +146,11 @@ export const resolveByTitleSearch = async (
       const data = response.data;
       const type: ResolvedMediaType = data.Type === "series" ? "series" : "movie";
       const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
-      const ratingRounded = typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
+      const ratingRounded =
+        typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
       return {
         id: data.imdbID || title,
-        title: data.Title,
+        title: data.Title || title,
         image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
         year: data.Year?.match(/\d{4}/)?.[0],
         type: preferredType || type,
@@ -179,11 +189,19 @@ export const resolveImdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
   const data = response.data;
   const type: ResolvedMediaType = data.Type === "series" ? "series" : "movie";
   const rawRating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
-  const rating = typeof rawRating === "number" && Number.isFinite(rawRating) ? round1(rawRating) : null;
-  const genres = data.Genre && data.Genre !== "N/A" ? data.Genre.split(",").map(g => g.trim()).filter(Boolean) : [];
+  const rating =
+    typeof rawRating === "number" && Number.isFinite(rawRating) ? round1(rawRating) : null;
+  const genres =
+    data.Genre && data.Genre !== "N/A"
+      ? data.Genre.split(",")
+          .map((g) => g.trim())
+          .filter(Boolean)
+      : [];
   const runtimeMatch = data.Runtime?.match(/(\d+)/);
   const lengthMinutes = runtimeMatch ? Number(runtimeMatch[1]) : null;
-  const isAnimeGenre = genres.some(g => g.toLowerCase() === "animation" || g.toLowerCase() === "anime");
+  const isAnimeGenre = genres.some(
+    (g) => g.toLowerCase() === "animation" || g.toLowerCase() === "anime",
+  );
 
   // Try TMDB find endpoint for better image and rating
   const bearerToken = process.env.TMDB_BEARER_TOKEN;
@@ -199,8 +217,10 @@ export const resolveImdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
     }>(findUrl, { headers });
 
     if (findRes.ok) {
-      const posterPath = findRes.data.movie_results?.[0]?.poster_path || findRes.data.tv_results?.[0]?.poster_path;
-      const tmdbRating = findRes.data.movie_results?.[0]?.vote_average || findRes.data.tv_results?.[0]?.vote_average;
+      const posterPath =
+        findRes.data.movie_results?.[0]?.poster_path || findRes.data.tv_results?.[0]?.poster_path;
+      const tmdbRating =
+        findRes.data.movie_results?.[0]?.vote_average || findRes.data.tv_results?.[0]?.vote_average;
       if (posterPath) {
         return {
           id: parsed.id,
@@ -262,7 +282,9 @@ export const resolveTmdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
 
   if (!response.ok) return null;
   const data = response.data;
-  const genres = Array.isArray(data.genres) ? data.genres.map(g => g.name).filter((v): v is string => Boolean(v)) : [];
+  const genres = Array.isArray(data.genres)
+    ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v))
+    : [];
 
   let imdbRating: number | null = null;
   if (data.imdb_id) {
@@ -271,7 +293,12 @@ export const resolveTmdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
       const omdbRes = await safeFetchJson<{ imdbRating?: string; Response?: string }>(
         `https://www.omdbapi.com/?apikey=${omdbApiKey}&i=${data.imdb_id}&plot=short`,
       );
-      if (omdbRes.ok && omdbRes.data.Response !== "False" && omdbRes.data.imdbRating && omdbRes.data.imdbRating !== "N/A") {
+      if (
+        omdbRes.ok &&
+        omdbRes.data.Response !== "False" &&
+        omdbRes.data.imdbRating &&
+        omdbRes.data.imdbRating !== "N/A"
+      ) {
         imdbRating = round1(Number(omdbRes.data.imdbRating));
         if (!Number.isFinite(imdbRating)) imdbRating = null;
       }
@@ -287,8 +314,12 @@ export const resolveTmdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
     description: data.overview || undefined,
     rating: typeof data.vote_average === "number" ? round1(data.vote_average) : null,
     imdbRating,
-    lengthMinutes: parsed.mediaType === "movie" && typeof data.runtime === "number" ? data.runtime : null,
-    episodeCount: parsed.mediaType === "series" && typeof data.number_of_episodes === "number" ? data.number_of_episodes : null,
+    lengthMinutes:
+      parsed.mediaType === "movie" && typeof data.runtime === "number" ? data.runtime : null,
+    episodeCount:
+      parsed.mediaType === "series" && typeof data.number_of_episodes === "number"
+        ? data.number_of_episodes
+        : null,
     genresThemes: genres,
   };
 };
@@ -302,10 +333,11 @@ export const resolveMal = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia 
   if (!clientId) return null;
 
   const malType = parsed.mediaType === "manga" ? "manga" : "anime";
-  const fields = malType === "anime"
-    ? "title,main_picture,start_date,mean,synopsis,num_episodes,average_episode_duration,genres"
-    : "title,main_picture,start_date,mean,synopsis,num_chapters,genres";
-  
+  const fields =
+    malType === "anime"
+      ? "title,main_picture,start_date,mean,synopsis,num_episodes,average_episode_duration,genres"
+      : "title,main_picture,start_date,mean,synopsis,num_chapters,genres";
+
   const url = `https://api.myanimelist.net/v2/${malType}/${parsed.id}?fields=${fields}`;
   const response = await safeFetchJson<{
     title?: string;
@@ -321,7 +353,9 @@ export const resolveMal = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia 
 
   if (!response.ok) return null;
   const data = response.data;
-  const genres = Array.isArray(data.genres) ? data.genres.map(g => g.name).filter((v): v is string => Boolean(v)) : [];
+  const genres = Array.isArray(data.genres)
+    ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v))
+    : [];
 
   return {
     id: parsed.id,
@@ -331,9 +365,14 @@ export const resolveMal = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia 
     type: parsed.mediaType as ResolvedMediaType,
     description: data.synopsis || undefined,
     rating: typeof data.mean === "number" ? round1(data.mean) : null,
-    lengthMinutes: malType === "anime" && typeof data.average_episode_duration === "number" ? Math.round(data.average_episode_duration / 60) : null,
-    episodeCount: malType === "anime" && typeof data.num_episodes === "number" ? data.num_episodes : null,
-    chapterCount: malType === "manga" && typeof data.num_chapters === "number" ? data.num_chapters : null,
+    lengthMinutes:
+      malType === "anime" && typeof data.average_episode_duration === "number"
+        ? Math.round(data.average_episode_duration / 60)
+        : null,
+    episodeCount:
+      malType === "anime" && typeof data.num_episodes === "number" ? data.num_episodes : null,
+    chapterCount:
+      malType === "manga" && typeof data.num_chapters === "number" ? data.num_chapters : null,
     genresThemes: genres,
   };
 };
@@ -341,7 +380,9 @@ export const resolveMal = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia 
 /**
  * Resolve metadata from Netflix or Prime Video by scraping the page and searching by title
  */
-export const resolveNetflixOrPrime = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia | null> => {
+export const resolveNetflixOrPrime = async (
+  parsed: ParsedMediaUrl,
+): Promise<ResolvedMedia | null> => {
   const scrapeUrl = parsed.cleanUrl ?? parsed.originalUrl;
   const extraHeaders: Record<string, string> | undefined =
     parsed.source === "netflix"

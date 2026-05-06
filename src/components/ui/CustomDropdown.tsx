@@ -3,11 +3,10 @@
 
 "use client";
 
-// ─── React
-import { useEffect, useId, useRef, useState } from "react";
-
 // ─── Third-party
 import { ChevronDown } from "lucide-react";
+// ─── React
+import { useEffect, useId, useRef, useState } from "react";
 
 // ─── Internal — utils
 import { cn } from "@/utils";
@@ -109,16 +108,17 @@ export function CustomDropdown({
       </button>
 
       {open && (
-        <ul
+        <div
           id={listboxId}
           role="listbox"
           className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-[100] max-h-48 overflow-y-auto"
         >
           {options.map((opt, index) => (
-            <li
+            <div
               key={opt}
               role="option"
               aria-selected={opt === value}
+              tabIndex={-1}
               className={cn(
                 "w-full text-left px-4 py-2.5 text-[13px] cursor-pointer transition-colors outline-none",
                 opt === value
@@ -133,9 +133,9 @@ export function CustomDropdown({
               }}
             >
               {opt}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

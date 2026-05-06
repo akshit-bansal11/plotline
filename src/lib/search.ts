@@ -1,20 +1,20 @@
 // File: src/lib/search.ts
 // Purpose: Centralized orchestration for multi-provider media search
 
-// ─── Internal — services
-import { searchTMDB, type SearchResult } from "@/lib/search/tmdbSearch";
-import { searchOMDB } from "@/lib/search/omdbSearch";
-import { searchMALAnime, searchMALManga } from "@/lib/search/malSearch";
 import { searchIGDBGames } from "@/lib/search/igdbSearch";
-import { 
-  mergeMovieSeriesResults, 
-  sanitizeResult, 
+import { searchMALAnime, searchMALManga } from "@/lib/search/malSearch";
+import {
   applyFilters,
-  type SearchFilters 
+  mergeMovieSeriesResults,
+  type SearchFilters,
+  sanitizeResult,
 } from "@/lib/search/mergeResults";
+import { searchOMDB } from "@/lib/search/omdbSearch";
+// ─── Internal — services
+import { type SearchResult, searchTMDB } from "@/lib/search/tmdbSearch";
 
 // ─── Internal — types
-export type { SearchResult, SearchFilters };
+export type { SearchFilters, SearchResult };
 
 // ─── Core Service: Multi-Provider Search
 /**
@@ -23,7 +23,7 @@ export type { SearchResult, SearchFilters };
  */
 export async function performMultiProviderSearch(
   query: string,
-  filters: SearchFilters
+  filters: SearchFilters,
 ): Promise<{ results: SearchResult[]; errors: string[] }> {
   const errors: string[] = [];
   let results: SearchResult[] = [];
@@ -33,13 +33,13 @@ export async function performMultiProviderSearch(
       if (filters.baseType === "movie" || filters.baseType === "series") {
         const [tmdb, omdb] = await Promise.all([
           searchTMDB(query),
-          searchOMDB(query, filters.baseType as "movie" | "series")
+          searchOMDB(query, filters.baseType as "movie" | "series"),
         ]);
         if (tmdb.error) errors.push(tmdb.error);
         if (omdb.error) errors.push(omdb.error);
         results = mergeMovieSeriesResults(
-          tmdb.results.filter(r => r.type === filters.baseType),
-          omdb.results.filter(r => r.type === filters.baseType)
+          tmdb.results.filter((r) => r.type === filters.baseType),
+          omdb.results.filter((r) => r.type === filters.baseType),
         );
       } else if (filters.baseType === "anime") {
         const res = await searchMALAnime(query);
@@ -60,20 +60,22 @@ export async function performMultiProviderSearch(
         searchOMDB(query),
         searchMALAnime(query),
         searchMALManga(query),
-        searchIGDBGames(query)
+        searchIGDBGames(query),
       ]);
-      [tmdb, omdb, anime, manga, games].forEach(r => r.error && errors.push(r.error));
+      [tmdb, omdb, anime, manga, games].forEach((r) => {
+        if (r.error) errors.push(r.error);
+      });
       results = [
-        ...mergeMovieSeriesResults(tmdb.results, omdb.results), 
-        ...anime.results, 
-        ...manga.results, 
-        ...games.results
+        ...mergeMovieSeriesResults(tmdb.results, omdb.results),
+        ...anime.results,
+        ...manga.results,
+        ...games.results,
       ];
     }
 
     const uniqueErrors = Array.from(new Set(errors));
     const filtered = applyFilters(results.map(sanitizeResult), filters);
-    
+
     return { results: filtered, errors: uniqueErrors };
   } catch (err) {
     console.error("[search] service error:", err);

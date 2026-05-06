@@ -6,7 +6,10 @@ import type { MetricCounts } from "@/types/lists";
 import type { EntryMediaType } from "@/types/log-entry";
 
 // ─── Constants: Labels
-export const metricLabels: ReadonlyArray<{ readonly key: keyof MetricCounts; readonly label: string }> = [
+export const metricLabels: ReadonlyArray<{
+  readonly key: keyof MetricCounts;
+  readonly label: string;
+}> = [
   { key: "month", label: "This month" },
   { key: "year", label: "This year" },
   { key: "total", label: "All time" },

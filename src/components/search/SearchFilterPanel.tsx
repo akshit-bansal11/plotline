@@ -1,42 +1,35 @@
 // File: src/components/search/SearchFilterPanel.tsx
 // Purpose: UI panel for configuring search filters (media type, status, year, genres, etc.)
 
-// ─── React
-import React from "react";
-
 // ─── Icons
-import { Filter, X, ChevronDown, Check } from "lucide-react";
-
-// ─── Internal — utils/search
-import {
-  GLOBAL_SEARCH_TYPE_OPTIONS,
-  GLOBAL_SEARCH_SUBTYPE_OPTIONS,
-  SHARED_GENRE_OPTIONS,
-  SEARCH_STATUS_OPTIONS,
-  ANIME_STUDIO_OPTIONS,
-  GAME_PLATFORM_OPTIONS,
-  MANGA_SERIALIZATION_OPTIONS,
-  getYearFilterOptions,
-  type ApiSearchType,
-  type ApiSearchStatus
-} from "@/utils/searchFilters";
-
+import { Check, Filter, X } from "lucide-react";
 // ─── Internal — utils
 import { cn } from "@/utils";
+// ─── Internal — utils/search
+import {
+  type ApiSearchStatus,
+  type ApiSearchType,
+  GLOBAL_SEARCH_TYPE_OPTIONS,
+  getYearFilterOptions,
+  SEARCH_STATUS_OPTIONS,
+  SHARED_GENRE_OPTIONS,
+} from "@/utils/searchFilters";
+
+export interface SearchFilters {
+  type: ApiSearchType | null;
+  status: ApiSearchStatus | null;
+  genres: string[];
+  yearMin: number | null;
+  yearMax: number | null;
+  platform: string | null;
+  studio: string | null;
+}
 
 interface SearchFilterPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  filters: {
-    type: ApiSearchType | null;
-    status: ApiSearchStatus | null;
-    genres: string[];
-    yearMin: number | null;
-    yearMax: number | null;
-    platform: string | null;
-    studio: string | null;
-  };
-  setFilters: (filters: any) => void;
+  filters: SearchFilters;
+  setFilters: (filters: SearchFilters | ((prev: SearchFilters) => SearchFilters)) => void;
   onApply: () => void;
   onReset: () => void;
 }
@@ -50,12 +43,12 @@ export function SearchFilterPanel({
   filters,
   setFilters,
   onApply,
-  onReset
+  onReset,
 }: SearchFilterPanelProps) {
   if (!isOpen) return null;
 
-  const updateFilter = (key: string, value: any) => {
-    setFilters((prev: any) => ({ ...prev, [key]: value }));
+  const updateFilter = <K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) => {
+    setFilters((prev: SearchFilters) => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -65,7 +58,7 @@ export function SearchFilterPanel({
           <Filter className="w-4 h-4 text-zinc-500" />
           <span className="text-sm font-bold uppercase tracking-widest">Filters</span>
         </div>
-        <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
+        <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -73,7 +66,9 @@ export function SearchFilterPanel({
       <div className="space-y-5 overflow-y-auto max-h-[60vh] pr-2 scrollbar-thin scrollbar-thumb-zinc-800">
         {/* Media Type */}
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Media Type</label>
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1 block">
+            Media Type
+          </span>
           <div className="grid grid-cols-2 gap-2">
             {GLOBAL_SEARCH_TYPE_OPTIONS.map((opt) => (
               <FilterButton
@@ -88,14 +83,18 @@ export function SearchFilterPanel({
 
         {/* Status */}
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Status</label>
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1 block">
+            Status
+          </span>
           <div className="grid grid-cols-2 gap-2">
             {SEARCH_STATUS_OPTIONS.map((opt) => (
               <FilterButton
                 key={opt.value}
                 label={opt.label}
                 active={filters.status === opt.value}
-                onClick={() => updateFilter("status", filters.status === opt.value ? null : opt.value)}
+                onClick={() =>
+                  updateFilter("status", filters.status === opt.value ? null : opt.value)
+                }
               />
             ))}
           </div>
@@ -103,8 +102,14 @@ export function SearchFilterPanel({
 
         {/* Year Range */}
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Year</label>
-          <select 
+          <label
+            htmlFor="year-filter"
+            className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+          >
+            Year
+          </label>
+          <select
+            id="year-filter"
             value={filters.yearMin || ""}
             onChange={(e) => {
               const val = e.target.value ? Number(e.target.value) : null;
@@ -114,22 +119,29 @@ export function SearchFilterPanel({
             className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
           >
             <option value="">Any Year</option>
-            {getYearFilterOptions().reverse().map(opt => (
-              <option key={opt.id} value={opt.min}>{opt.label}</option>
-            ))}
+            {getYearFilterOptions()
+              .reverse()
+              .map((opt) => (
+                <option key={opt.id} value={opt.min}>
+                  {opt.label}
+                </option>
+              ))}
           </select>
         </div>
 
         {/* Genres */}
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Genres</label>
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1 block">
+            Genres
+          </span>
           <div className="flex flex-wrap gap-2">
             {SHARED_GENRE_OPTIONS.map((genre) => (
               <button
+                type="button"
                 key={genre}
                 onClick={() => {
                   const next = filters.genres.includes(genre)
-                    ? filters.genres.filter(g => g !== genre)
+                    ? filters.genres.filter((g) => g !== genre)
                     : [...filters.genres, genre];
                   updateFilter("genres", next);
                 }}
@@ -137,7 +149,7 @@ export function SearchFilterPanel({
                   "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-all border",
                   filters.genres.includes(genre)
                     ? "bg-blue-600/10 border-blue-500/50 text-blue-400"
-                    : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700"
+                    : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700",
                 )}
               >
                 {genre}
@@ -148,13 +160,15 @@ export function SearchFilterPanel({
       </div>
 
       <div className="flex gap-3 pt-4 border-t border-zinc-800">
-        <button 
+        <button
+          type="button"
           onClick={onReset}
           className="flex-1 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-300 transition-colors"
         >
           Reset
         </button>
-        <button 
+        <button
+          type="button"
           onClick={onApply}
           className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-blue-900/20"
         >
@@ -166,15 +180,24 @@ export function SearchFilterPanel({
 }
 
 // ─── Sub-components
-function FilterButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function FilterButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border flex items-center justify-between",
-        active 
-          ? "bg-zinc-800 border-zinc-600 text-zinc-100" 
-          : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400"
+        active
+          ? "bg-zinc-800 border-zinc-600 text-zinc-100"
+          : "bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400",
       )}
     >
       {label}

@@ -7,7 +7,9 @@ import type { AuthView } from "@/types/auth";
 /**
  * Display text for various authentication views.
  */
-export const AUTH_COPY: Readonly<Record<AuthView, { readonly heading: string; readonly subtext: string }>> = {
+export const AUTH_COPY: Readonly<
+  Record<AuthView, { readonly heading: string; readonly subtext: string }>
+> = {
   login: {
     heading: "Welcome back",
     subtext: "Sign in to continue to Plotline",

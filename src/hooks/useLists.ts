@@ -1,21 +1,19 @@
 // File: src/hooks/useLists.ts
 // Purpose: Subscription to user lists and their associated items with auto-sorting
 
+// ─── Firebase
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 // ─── React
 import { useEffect, useRef, useState } from "react";
 
-// ─── Firebase
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
-
 // ─── Internal — services
 import { db } from "@/lib/firebase";
-
-// ─── Internal — utils
-import { coerceListType, toMillis } from "@/utils/lists";
+import type { ListItemRow, ListRow } from "@/types/lists";
 
 // ─── Internal — types
 import type { EntryMediaType } from "@/types/log-entry";
-import type { ListItemRow, ListRow } from "@/types/lists";
+// ─── Internal — utils
+import { coerceListType, toMillis } from "@/utils/lists";
 
 /**
  * Hook to manage subscriptions to user lists and their items.
@@ -50,7 +48,9 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
         const types = Array.isArray(data.types) ? (data.types as EntryMediaType[]) : [singleType];
 
         // Normalize types for filtering: if it has anime or anime_movie, it counts for both
-        const normalizedTypes = types.map((t) => ((t as string) === "anime_movie" ? ("anime" as EntryMediaType) : t));
+        const normalizedTypes = types.map((t) =>
+          (t as string) === "anime_movie" ? ("anime" as EntryMediaType) : t,
+        );
 
         return {
           id: snap.id,
@@ -85,7 +85,7 @@ export function useLists(uid: string | null, mediaTypes: string[]) {
     }
 
     const activeListIdSet = new Set(lists.map((l) => l.id));
-    
+
     // Clean up unsubscribers for lists that are no longer present
     unsubscribersRef.current.forEach((unsub, id) => {
       if (!activeListIdSet.has(id)) {

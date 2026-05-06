@@ -3,10 +3,9 @@
 
 // ─── Internal — types
 import type { EntryMediaType } from "@/types/log-entry";
-import type { MetadataResult } from "./tmdb";
-
 // ─── Internal — utils/lib
 import { safeFetchJson } from "../safeFetch";
+import type { MetadataResult } from "./tmdb";
 
 // ─── Constants & Helpers
 const parseOmdbYear = (value?: string | null) => {
@@ -52,7 +51,7 @@ export const fetchOmdbMetadataById = async (
     Writer?: string;
   }>(url);
   if (!response.ok) return null;
-  
+
   const data = response.data;
   if (data.Response === "False") return null;
 
@@ -103,7 +102,7 @@ export const fetchOmdbMetadataByTitle = async (
   const typeParam = mediaType === "movie" || mediaType === "series" ? `&type=${mediaType}` : "";
   const yearParam = year ? `&y=${encodeURIComponent(year)}` : "";
   const url = `https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}&plot=full${typeParam}${yearParam}`;
-  
+
   const response = await safeFetchJson<{
     Response?: string;
     Title?: string;
@@ -119,7 +118,7 @@ export const fetchOmdbMetadataByTitle = async (
     Writer?: string;
   }>(url);
   if (!response.ok) return null;
-  
+
   const data = response.data;
   if (data.Response === "False") return null;
 

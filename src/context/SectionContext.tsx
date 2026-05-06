@@ -4,10 +4,12 @@
 "use client";
 
 // ─── React
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 
 // ─── Internal — hooks
-import { useSectionState, type SectionKey } from "@/hooks/useSectionState";
+import { type SectionKey, useSectionState } from "@/hooks/useSectionState";
+
+export type { SectionKey };
 
 interface SectionContextType {
   activeSection: SectionKey;

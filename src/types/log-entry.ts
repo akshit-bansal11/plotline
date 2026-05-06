@@ -79,11 +79,23 @@ export const getStatusOptionsForMediaType = (mediaType: EntryMediaType): readonl
  */
 export const normalizeEntryStatus = (value: unknown): EntryStatusValue => {
   if (typeof value !== "string") return "unspecified";
-  
+
   const validStatuses: EntryStatusValue[] = [
-    "completed", "watching", "rewatching", "plan_to_watch", "dropped",
-    "on_hold", "reading", "rereading", "plan_to_read", "fully_completed",
-    "playing", "replaying", "plan_to_play", "backlogged", "unspecified"
+    "completed",
+    "watching",
+    "rewatching",
+    "plan_to_watch",
+    "dropped",
+    "on_hold",
+    "reading",
+    "rereading",
+    "plan_to_read",
+    "fully_completed",
+    "playing",
+    "replaying",
+    "plan_to_play",
+    "backlogged",
+    "unspecified",
   ];
 
   if (validStatuses.includes(value as EntryStatusValue)) {
@@ -96,7 +108,7 @@ export const normalizeEntryStatus = (value: unknown): EntryStatusValue => {
   if (value === "wishlist") return "plan_to_play";
   if (value === "own") return "backlogged";
   if (value === "bored") return "dropped";
-  
+
   return "unspecified";
 };
 
@@ -107,6 +119,7 @@ export interface EditableRelation {
   title: string;
   image: string | null;
   mediaType: string;
+  createdAtMs?: number;
 }
 
 export interface EntryRelation {
@@ -164,6 +177,7 @@ export type LoggableMedia = Partial<EntryDoc> & {
   title: string;
   image: string | null;
   type: EntryMediaType | "anime_movie";
+  rating?: string | number | null;
 };
 
 export interface LogEntryData {

@@ -11,7 +11,7 @@ import {
 } from "@/constants/limits";
 // ─── Internal — utils/lib
 import { createInMemoryRateLimit } from "@/lib/rateLimit";
-import { performMultiProviderSearch, type SearchFilters } from "@/lib/search";
+import { performMultiProviderSearch, type SearchFilters, type SearchResult } from "@/lib/search";
 import { sanitizeResult } from "@/lib/search/mergeResults";
 
 // ─── Internal — schemas
@@ -29,7 +29,7 @@ import {
 } from "@/utils/searchFilters";
 
 // ─── State: Caches & Limiter
-const cache = new Map<string, { timestamp: number; results: any[]; errors: string[] }>();
+const cache = new Map<string, { timestamp: number; results: SearchResult[]; errors: string[] }>();
 const limiter = createInMemoryRateLimit(RATE_LIMIT_WINDOW_MS, SEARCH_RATE_LIMIT_MAX);
 
 /**

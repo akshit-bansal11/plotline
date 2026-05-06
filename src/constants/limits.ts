@@ -29,7 +29,7 @@ export const METADATA_RATE_LIMIT_MAX = 60;
 export const SEARCH_RATE_LIMIT_MAX = 60;
 export const RESOLVE_RATE_LIMIT_MAX = 30;
 export const FORGOT_PASSWORD_RATE_LIMIT = 3;
-export const FORGOT_PASSWORD_WINDOW = '1 h';
+export const FORGOT_PASSWORD_WINDOW = "1 h";
 
 /**
  * ─── Caching

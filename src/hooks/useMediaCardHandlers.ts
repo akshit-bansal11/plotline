@@ -3,17 +3,14 @@
 
 "use client";
 
-// ─── React
-import { useCallback, useState } from "react";
-
 // ─── Firebase
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
-
-// ─── Internal — services
-import { db } from "@/lib/firebase";
-
+// ─── React
+import { useCallback, useState } from "react";
 // ─── Internal — types
 import type { EntryStatus } from "@/context/DataContext";
+// ─── Internal — services
+import { db } from "@/lib/firebase";
 
 interface MediaCardHandlerOptions {
   uid: string | null;
@@ -24,11 +21,7 @@ interface MediaCardHandlerOptions {
 /**
  * Hook to manage media card interaction state and Firestore updates.
  */
-export function useMediaCardHandlers({
-  uid,
-  id,
-  currentStatus,
-}: MediaCardHandlerOptions) {
+export function useMediaCardHandlers({ uid, id, currentStatus }: MediaCardHandlerOptions) {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);

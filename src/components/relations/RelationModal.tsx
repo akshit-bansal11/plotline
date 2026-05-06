@@ -3,12 +3,14 @@
 
 "use client";
 
-// ─── React
-import { useState } from "react";
-
 // ─── Firebase
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
-
+// ─── React
+import { useState } from "react";
+// ─── Internal — components
+import { Modal } from "@/components/overlay/Modal";
+// ─── Internal — types
+import type { EntryDoc } from "@/context/DataContext";
 // ─── Internal — services
 import { db } from "@/lib/firebase";
 import {
@@ -17,12 +19,6 @@ import {
   type RelationType,
   updateBidirectionalRelations,
 } from "@/services/relations";
-
-// ─── Internal — components
-import { Modal } from "@/components/overlay/Modal";
-
-// ─── Internal — types
-import type { EntryDoc } from "@/context/DataContext";
 
 // ─── Types
 export type RelationModalData = {
@@ -63,16 +59,16 @@ export function RelationModal({
 
   const handleSave = async () => {
     if (!uid || !data || isSaving) return;
-    
-    const sourceDoc = entries.find(e => String(e.id) === data.sourceId);
+
+    const sourceDoc = entries.find((e) => String(e.id) === data.sourceId);
     if (!sourceDoc) return;
 
     const oldRelations = Array.isArray(sourceDoc.relations)
-      ? sourceDoc.relations.filter(r => r.targetId && r.type && !r.inferred)
+      ? sourceDoc.relations.filter((r) => r.targetId && r.type && !r.inferred)
       : [];
-    
+
     const sourceRelationType = inverseRelationMap[localType] || localType;
-    const existing = oldRelations.find(r => r.targetId === data.targetId);
+    const existing = oldRelations.find((r) => r.targetId === data.targetId);
 
     if (existing?.type === sourceRelationType) {
       setError("This relationship already exists.");
@@ -90,7 +86,7 @@ export function RelationModal({
       };
 
       const newRelations = [
-        ...oldRelations.filter(r => r.targetId !== data.targetId),
+        ...oldRelations.filter((r) => r.targetId !== data.targetId),
         updatedRelation,
       ];
 
@@ -107,7 +103,7 @@ export function RelationModal({
 
       onSuccess(announcement);
       onClose();
-    } catch (err) {
+    } catch {
       setError("Failed to save relationship.");
     } finally {
       setIsSaving(false);
@@ -124,13 +120,21 @@ export function RelationModal({
       <div className="space-y-6">
         <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
           <p className="text-sm text-zinc-300 leading-relaxed">
-            Establishing a link between <span className="text-zinc-100 font-bold">{data.sourceTitle}</span> and <span className="text-zinc-100 font-bold">{data.targetTitle}</span>.
+            Establishing a link between{" "}
+            <span className="text-zinc-100 font-bold">{data.sourceTitle}</span> and{" "}
+            <span className="text-zinc-100 font-bold">{data.targetTitle}</span>.
           </p>
         </div>
 
         <div className="space-y-3">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Relationship Type</label>
+          <label
+            htmlFor="relation-type-select"
+            className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+          >
+            Relationship Type
+          </label>
           <select
+            id="relation-type-select"
             value={localType}
             onChange={(e) => {
               setError(null);
@@ -139,7 +143,9 @@ export function RelationModal({
             className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
           >
             {RELATION_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
             ))}
           </select>
           <p className="text-[11px] text-zinc-500 px-1 italic">
@@ -151,6 +157,7 @@ export function RelationModal({
 
         <div className="flex gap-3 justify-end pt-4 border-t border-zinc-800">
           <button
+            type="button"
             onClick={onClose}
             disabled={isSaving}
             className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-300 disabled:opacity-50"
@@ -158,6 +165,7 @@ export function RelationModal({
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={isSaving}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"

@@ -5,19 +5,15 @@
 
 import { LogIn, Menu, Search, Settings, Upload, UserCircle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-// ─── React
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
-
+// ─── Internal — config
+import { allSectionLinks } from "@/config/navigation";
 // ─── Internal — hooks
 import { useSection } from "@/context/SectionContext";
 import { useMobileMenu } from "@/hooks/useMobileMenu";
-
 // ─── Internal — utils
 import { cn } from "@/utils";
-
-// ─── Internal — config
-import { allSectionLinks } from "@/config/navigation";
 
 interface MobileMenuProps {
   onAuthOpen: () => void;

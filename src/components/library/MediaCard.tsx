@@ -3,32 +3,25 @@
 
 "use client";
 
-// ─── React
-import { useCallback, useRef, useState } from "react";
-
-// ─── Firebase
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
-
 // ─── Icons
 import { Link } from "lucide-react";
-
 // ─── Third-party
 import { motion } from "motion/react";
-
+// ─── React
+import { useCallback } from "react";
+import { CardRatingMenu } from "@/components/log-entry/CardRatingMenu";
+import { CardStatusMenu } from "@/components/log-entry/CardStatusMenu";
+import { MediaCardFooter } from "@/components/log-entry/MediaCardFooter";
+import { MediaCardHeader } from "@/components/log-entry/MediaCardHeader";
+import { MediaCardImage } from "@/components/log-entry/MediaCardImage";
 // ─── Internal — components
 import { GlassCard } from "@/components/ui/GlassCard";
-import { MediaCardHeader } from "@/components/log-entry/MediaCardHeader";
-import { MediaCardFooter } from "@/components/log-entry/MediaCardFooter";
-import { MediaCardImage } from "@/components/log-entry/MediaCardImage";
-import { CardStatusMenu } from "@/components/log-entry/CardStatusMenu";
-import { CardRatingMenu } from "@/components/log-entry/CardRatingMenu";
 
 // ─── Internal — hooks/context
 import { useAuth } from "@/context/AuthContext";
-import { useMediaCardHandlers } from "@/hooks/useMediaCardHandlers";
-
 // ─── Internal — types
 import type { EntryMediaType, EntryStatus } from "@/context/DataContext";
+import { useMediaCardHandlers } from "@/hooks/useMediaCardHandlers";
 
 // ─── Internal — utils
 import { cn } from "@/utils";
@@ -90,15 +83,21 @@ export function MediaCard({
   } = useMediaCardHandlers({ uid, id, currentStatus: status });
 
   // ─── Handlers: Actions
-  const handleEdit = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit?.();
-  }, [onEdit]);
+  const handleEdit = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onEdit?.();
+    },
+    [onEdit],
+  );
 
-  const handleDelete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete?.();
-  }, [onDelete]);
+  const handleDelete = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDelete?.();
+    },
+    [onDelete],
+  );
 
   return (
     <motion.div
@@ -106,56 +105,52 @@ export function MediaCard({
       className={cn("group relative", className)}
       onClick={onClick}
     >
-      <GlassCard 
+      <GlassCard
         className={cn(
           "overflow-hidden p-0 border-white/5 bg-zinc-900/40 relative",
-          aspectRatio === "poster" ? "aspect-[2/3]" : "aspect-video"
+          aspectRatio === "poster" ? "aspect-[2/3]" : "aspect-video",
         )}
         hoverEffect
       >
-        <MediaCardImage 
-          image={image} 
-          title={title} 
-          imageLoaded={imageLoaded} 
-          onLoad={() => setImageLoaded(true)} 
+        <MediaCardImage
+          image={image}
+          title={title}
+          imageLoaded={imageLoaded}
+          onLoad={() => setImageLoaded(true)}
         />
 
-        <MediaCardHeader 
-          userRating={userRating} 
-          status={status} 
-          showStatusControl={showStatusControl} 
-        <MediaCardHeader 
-          userRating={userRating} 
-          status={status} 
-          showStatusControl={showStatusControl} 
+        <MediaCardHeader
+          userRating={userRating}
+          status={status}
+          showStatusControl={showStatusControl}
           onStatusClick={toggleStatus}
           onRatingClick={toggleRating}
         />
- 
+
         {isStatusOpen && (
-          <CardStatusMenu 
-            currentStatus={status || "unspecified"} 
-            mediaType={(type as EntryMediaType) || "movie"} 
-            onStatusChange={handleStatusChange} 
+          <CardStatusMenu
+            currentStatus={status || "unspecified"}
+            mediaType={(type as EntryMediaType) || "movie"}
+            onStatusChange={handleStatusChange}
             onClose={closeStatus}
           />
         )}
- 
+
         {isRatingOpen && (
-          <CardRatingMenu 
-            currentRating={userRating} 
-            onRatingChange={handleRatingChange} 
+          <CardRatingMenu
+            currentRating={userRating}
+            onRatingChange={handleRatingChange}
             onClose={closeRating}
           />
         )}
 
-        <MediaCardFooter 
-          title={title} 
-          year={year} 
-          type={type} 
-          showActions={showActions} 
-          onEdit={handleEdit} 
-          onDelete={handleDelete} 
+        <MediaCardFooter
+          title={title}
+          year={year}
+          type={type}
+          showActions={showActions}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
         />
 
         {/* Relations Icon */}

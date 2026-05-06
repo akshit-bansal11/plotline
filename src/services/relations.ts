@@ -189,7 +189,7 @@ const relationSetSignature = (relations: RelationRecord[]) =>
 // ─── Core Logic: Transitive Reconciliation
 /**
  * Reconciles transitive relations across the entire entry collection.
- * 
+ *
  * Transitive reconciliation ensures that if A is a prequel to B, and B is a prequel to C,
  * then A is automatically marked as an 'inferred' prequel to C.
  * This function reads ALL entries for the user to build the complete relationship graph.
@@ -344,7 +344,7 @@ const reconcileTransitiveRelations = async (uid: string) => {
 // ─── Core Logic: Bidirectional Sync
 /**
  * Updates bidirectional relationships between a source entry and its targets.
- * 
+ *
  * 'Bidirectional' means that if A is marked as a prequel to B, B is automatically
  * marked as a sequel to A. This function manages adding and removing these
  * inverse entries on the target documents.

@@ -3,11 +3,10 @@
 
 "use client";
 
-// ─── React
-import { type DragEvent, useRef } from "react";
-
 // ─── Third-party: Framer Motion
 import { motion } from "motion/react";
+// ─── React
+import { type DragEvent, useRef } from "react";
 
 // ─── Internal — components
 import { MediaCard } from "@/components/library/MediaCard";
@@ -45,8 +44,18 @@ interface MediaGridProps {
   activeDragEntryId?: string | null;
   onItemDragStart?: (details: DragStartDetails) => void;
   onItemDragEnd?: () => void;
-  onItemDragOverPosition?: (details: { targetEntryId: string; position: "before" | "after"; sourceListId: string | null } | null) => void;
-  onItemDropPosition?: (details: { targetEntryId: string; position: "before" | "after"; sourceListId: string | null }) => void;
+  onItemDragOverPosition?: (
+    details: {
+      targetEntryId: string;
+      position: "before" | "after";
+      sourceListId: string | null;
+    } | null,
+  ) => void;
+  onItemDropPosition?: (details: {
+    targetEntryId: string;
+    position: "before" | "after";
+    sourceListId: string | null;
+  }) => void;
   onItemDropOnItem?: (details: { targetEntryId: string; sourceListId: string | null }) => void;
   dropIndicatorEntryId?: string | null;
   dropIndicatorPosition?: "before" | "after" | null;
@@ -57,13 +66,13 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.05 }
-  }
+    transition: { staggerChildren: 0.05 },
+  },
 };
 
 const itemVariants = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } }
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,12 +103,16 @@ export function MediaGrid({
       animate="visible"
       className={cn(
         "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6",
-        className
+        className,
       )}
     >
       {items.map((item) => {
-        const isActiveDrag = activeDragEntryId !== null && String(activeDragEntryId) === String(item.id);
-        const isDropIndicator = dropIndicatorEntryId !== null && String(dropIndicatorEntryId) === String(item.id) && Boolean(dropIndicatorPosition);
+        const isActiveDrag =
+          activeDragEntryId !== null && String(activeDragEntryId) === String(item.id);
+        const isDropIndicator =
+          dropIndicatorEntryId !== null &&
+          String(dropIndicatorEntryId) === String(item.id) &&
+          Boolean(dropIndicatorPosition);
 
         return (
           <motion.div
@@ -116,7 +129,9 @@ export function MediaGrid({
             }}
             onDragEndCapture={() => {
               onItemDragEnd?.();
-              setTimeout(() => { suppressClickRef.current = false; }, 0);
+              setTimeout(() => {
+                suppressClickRef.current = false;
+              }, 0);
             }}
             onDragOverCapture={(e: DragEvent<HTMLDivElement>) => {
               if (activeDragEntryId === null) return;
@@ -125,7 +140,11 @@ export function MediaGrid({
               const y = e.clientY - rect.top;
               const x = e.clientX - rect.left;
 
-              const isCenter = y > rect.height * 0.25 && y < rect.height * 0.75 && x > rect.width * 0.25 && x < rect.width * 0.75;
+              const isCenter =
+                y > rect.height * 0.25 &&
+                y < rect.height * 0.75 &&
+                x > rect.width * 0.25 &&
+                x < rect.width * 0.75;
 
               if (isCenter && onItemDropOnItem) {
                 onItemDragOverPosition?.(null);
@@ -135,7 +154,7 @@ export function MediaGrid({
                 onItemDragOverPosition({
                   targetEntryId: String(item.id),
                   position: y < rect.height / 2 ? "before" : "after",
-                  sourceListId
+                  sourceListId,
                 });
               }
             }}
@@ -151,7 +170,11 @@ export function MediaGrid({
               const rect = e.currentTarget.getBoundingClientRect();
               const y = e.clientY - rect.top;
               const x = e.clientX - rect.left;
-              const isCenter = y > rect.height * 0.25 && y < rect.height * 0.75 && x > rect.width * 0.25 && x < rect.width * 0.75;
+              const isCenter =
+                y > rect.height * 0.25 &&
+                y < rect.height * 0.75 &&
+                x > rect.width * 0.25 &&
+                x < rect.width * 0.75;
 
               if (isCenter && onItemDropOnItem) {
                 onItemDropOnItem({ targetEntryId: String(item.id), sourceListId });
@@ -159,7 +182,7 @@ export function MediaGrid({
                 onItemDropPosition({
                   targetEntryId: String(item.id),
                   position: y < rect.height / 2 ? "before" : "after",
-                  sourceListId
+                  sourceListId,
                 });
               }
             }}
@@ -176,7 +199,7 @@ export function MediaGrid({
               <div
                 className={cn(
                   "pointer-events-none absolute inset-y-0 w-1 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] z-30 rounded-full",
-                  dropIndicatorPosition === "before" ? "-left-3" : "-right-3"
+                  dropIndicatorPosition === "before" ? "-left-3" : "-right-3",
                 )}
               />
             )}

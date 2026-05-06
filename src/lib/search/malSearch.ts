@@ -24,15 +24,15 @@ export interface MalItem {
   node: MalNode;
 }
 
+import {
+  normalizeGenreName,
+  normalizeSerializationName,
+  normalizeStatusName,
+  normalizeStudioName,
+  normalizeSubtype,
+} from "@/utils/searchFilters";
 // ─── Internal — utils/lib
 import { safeFetchJson } from "../safeFetch";
-import { 
-  normalizeGenreName, 
-  normalizeSerializationName, 
-  normalizeStatusName, 
-  normalizeStudioName, 
-  normalizeSubtype 
-} from "@/utils/searchFilters";
 
 // ─── Constants & Helpers
 const normalizeGenres = (genres: Array<string | null | undefined>) => {
@@ -50,7 +50,8 @@ const extractMalSerialization = (value: MalNode["serialization"]) => {
   for (const entry of value) {
     if (entry && typeof entry === "object") {
       const directName = "name" in entry ? (entry as { name?: string }).name : null;
-      const nestedName = "node" in entry ? (entry as { node?: { name?: string } }).node?.name : null;
+      const nestedName =
+        "node" in entry ? (entry as { node?: { name?: string } }).node?.name : null;
       const normalized = normalizeSerializationName(directName || nestedName || null);
       if (normalized) return normalized;
     }
@@ -72,13 +73,14 @@ export const searchMALAnime = async (
     return { results: [], error: "Anime data provider is not configured." };
   }
 
-  const fields = "title,main_picture,start_date,mean,synopsis,media_type,status,num_episodes,genres,studios";
+  const fields =
+    "title,main_picture,start_date,mean,synopsis,media_type,status,num_episodes,genres,studios";
   const url = `https://api.myanimelist.net/v2/anime?q=${encodeURIComponent(queryValue)}&limit=12&fields=${fields}`;
-  
+
   const response = await safeFetchJson<{ data?: MalItem[] }>(url, {
     headers: { "X-MAL-CLIENT-ID": clientId },
   });
-  
+
   if (!response.ok) return { results: [], error: response.error };
 
   const rawResults = response.data.data || [];
@@ -121,13 +123,14 @@ export const searchMALManga = async (
     return { results: [], error: "Manga data provider is not configured." };
   }
 
-  const fields = "title,main_picture,start_date,mean,synopsis,media_type,status,num_chapters,genres,serialization";
+  const fields =
+    "title,main_picture,start_date,mean,synopsis,media_type,status,num_chapters,genres,serialization";
   const url = `https://api.myanimelist.net/v2/manga?q=${encodeURIComponent(queryValue)}&limit=12&fields=${fields}`;
-  
+
   const response = await safeFetchJson<{ data?: MalItem[] }>(url, {
     headers: { "X-MAL-CLIENT-ID": clientId },
   });
-  
+
   if (!response.ok) return { results: [], error: response.error };
 
   const rawResults = response.data.data || [];

@@ -65,7 +65,7 @@ export const parseMediaUrl = (rawUrl: string): ParsedMediaUrl | null => {
         originalUrl: trimmed,
       };
     }
-    
+
     const tvMatch = path.match(/\/tv\/(\d+)/);
     if (tvMatch) {
       return {
@@ -91,7 +91,7 @@ export const parseMediaUrl = (rawUrl: string): ParsedMediaUrl | null => {
         originalUrl: trimmed,
       };
     }
-    
+
     const mangaMatch = path.match(/\/manga\/(\d+)/);
     if (mangaMatch) {
       return {
@@ -118,7 +118,7 @@ export const parseMediaUrl = (rawUrl: string): ParsedMediaUrl | null => {
         cleanUrl: `https://www.netflix.com/title/${pathMatch[1]}`,
       };
     }
-    
+
     const jbv = url.searchParams.get("jbv");
     if (jbv && /^\d+$/.test(jbv)) {
       return {
@@ -134,22 +134,23 @@ export const parseMediaUrl = (rawUrl: string): ParsedMediaUrl | null => {
 
   // ─── Amazon Prime Video
   // https://www.primevideo.com/detail/ASIN/
-  const isAmazon = host === "primevideo.com" || 
-                  host.endsWith(".primevideo.com") || 
-                  host === "amazon.com" || 
-                  host.match(/amazon\.(com|co\.uk|in|de|fr|es|it|co\.jp|ca|com\.br|com\.mx|com\.au)$/);
+  const isAmazon =
+    host === "primevideo.com" ||
+    host.endsWith(".primevideo.com") ||
+    host === "amazon.com" ||
+    host.match(/amazon\.(com|co\.uk|in|de|fr|es|it|co\.jp|ca|com\.br|com\.mx|com\.au)$/);
 
   if (isAmazon) {
     const detailMatch = path.match(/\/detail\/([A-Z0-9]+)/i);
     const dpMatch = path.match(/\/dp\/([A-Z0-9]+)/i);
     const videoDetailMatch = path.match(/\/gp\/video\/detail\/([A-Z0-9]+)/i);
     const id = detailMatch?.[1] || dpMatch?.[1] || videoDetailMatch?.[1] || null;
-    
+
     if (id) {
       let cleanUrl = `https://${url.hostname}/dp/${id}`;
       if (detailMatch) cleanUrl = `https://${url.hostname}/detail/${id}/`;
       else if (videoDetailMatch) cleanUrl = `https://${url.hostname}/gp/video/detail/${id}/`;
-      
+
       return {
         source: "prime",
         id,
@@ -181,7 +182,12 @@ export const extractUrlFromDragEvent = (dataTransfer: DataTransfer): string | nu
   const text = dataTransfer.getData("text/plain")?.trim();
   if (text) {
     const firstLine = text.split("\n")[0]?.trim();
-    if (firstLine && (firstLine.startsWith("http://") || firstLine.startsWith("https://") || firstLine.startsWith("www."))) {
+    if (
+      firstLine &&
+      (firstLine.startsWith("http://") ||
+        firstLine.startsWith("https://") ||
+        firstLine.startsWith("www."))
+    ) {
       return firstLine;
     }
   }

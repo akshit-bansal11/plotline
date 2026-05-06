@@ -1,16 +1,15 @@
 // File: src/lib/metadata.ts
 // Purpose: Centralized orchestration for fetching and merging media metadata from various providers
 
+import { fetchIgdbMetadata } from "@/lib/metadata/igdb";
+import { fetchMalMetadata } from "@/lib/metadata/mal";
+import { logMissingFields, mergeMetadata } from "@/lib/metadata/merge";
+import { fetchOmdbMetadata } from "@/lib/metadata/omdb";
+import type { MetadataResult } from "@/lib/metadata/tmdb";
 // ─── Internal — services
 import { fetchTmdbMetadata } from "@/lib/metadata/tmdb";
-import { fetchOmdbMetadata } from "@/lib/metadata/omdb";
-import { fetchMalMetadata } from "@/lib/metadata/mal";
-import { fetchIgdbMetadata } from "@/lib/metadata/igdb";
-import { mergeMetadata, logMissingFields } from "@/lib/metadata/merge";
-
 // ─── Internal — types
 import type { EntryMediaType } from "@/types/log-entry";
-import type { MetadataResult } from "@/lib/metadata/tmdb";
 
 // ─── Types
 export type { MetadataResult };
@@ -33,7 +32,7 @@ export async function getEnrichedMetadata({
   type,
   id,
   title,
-  year
+  year,
 }: MetadataQueryParams): Promise<MetadataResult | null> {
   const mediaType = type as EntryMediaType;
 
@@ -42,17 +41,17 @@ export async function getEnrichedMetadata({
       fetchTmdbMetadata(id ?? null, title ?? null, mediaType, year),
       fetchOmdbMetadata(id ?? null, title ?? null, mediaType, year),
     ]);
-    
+
     logMissingFields("tmdb", tmdb, mediaType, { id, title, year });
     logMissingFields("omdb", omdb, mediaType, { id, title, year });
-    
+
     return mergeMetadata(tmdb, omdb);
-  } 
-  
+  }
+
   if (mediaType === "anime" || mediaType === "manga") {
     return id ? await fetchMalMetadata(id, mediaType) : null;
-  } 
-  
+  }
+
   if (mediaType === "game") {
     return await fetchIgdbMetadata(id ?? null, title ?? null);
   }

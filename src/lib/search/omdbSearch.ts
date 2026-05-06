@@ -19,9 +19,9 @@ export interface OmdbDetail {
   Runtime?: string;
 }
 
+import { normalizeGenreName } from "@/utils/searchFilters";
 // ─── Internal — utils/lib
 import { safeFetchJson } from "../safeFetch";
-import { normalizeGenreName } from "@/utils/searchFilters";
 
 // ─── Constants & Helpers
 const normalizeGenres = (genres: Array<string | null | undefined>) => {
@@ -42,7 +42,11 @@ const parseRuntimeMinutes = (value?: string | null) => {
   return parsed;
 };
 
-const resolveSubtype = (type: ApiBaseType, subtype: string | null, lengthMinutes: number | null) => {
+const resolveSubtype = (
+  type: ApiBaseType,
+  subtype: string | null,
+  lengthMinutes: number | null,
+) => {
   if (type === "movie") {
     if (subtype) return subtype;
     if (typeof lengthMinutes === "number" && lengthMinutes > 0 && lengthMinutes <= 45)
@@ -56,7 +60,10 @@ const resolveSubtype = (type: ApiBaseType, subtype: string | null, lengthMinutes
 /**
  * Fetch detailed OMDB data for a specific entry
  */
-export const fetchOmdbDetails = async (imdbID: string, apiKey: string): Promise<OmdbDetail | null> => {
+export const fetchOmdbDetails = async (
+  imdbID: string,
+  apiKey: string,
+): Promise<OmdbDetail | null> => {
   const response = await safeFetchJson<OmdbDetail & { Response?: string }>(
     `https://www.omdbapi.com/?apikey=${apiKey}&i=${encodeURIComponent(imdbID)}&plot=short`,
   );
@@ -80,7 +87,7 @@ export const searchOMDB = async (
 
   const typeParam = type ? `&type=${type}` : "";
   const url = `https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(queryValue)}${typeParam}`;
-  
+
   const response = await safeFetchJson<{ Response?: string; Search?: OmdbResult[] }>(url);
   if (!response.ok) return { results: [], error: response.error };
 
@@ -91,12 +98,15 @@ export const searchOMDB = async (
     .filter((item) => item.Type === "movie" || item.Type === "series")
     .slice(0, 12);
 
-  const details = await Promise.all(rawResults.map((item) => fetchOmdbDetails(item.imdbID, apiKey)));
+  const details = await Promise.all(
+    rawResults.map((item) => fetchOmdbDetails(item.imdbID, apiKey)),
+  );
 
   const results: SearchResult[] = rawResults.map((item, index) => {
     const resultType: ApiBaseType = item.Type === "series" ? "series" : "movie";
     const detail = details[index];
-    const rating = detail?.imdbRating && detail.imdbRating !== "N/A" ? Number(detail.imdbRating) : null;
+    const rating =
+      detail?.imdbRating && detail.imdbRating !== "N/A" ? Number(detail.imdbRating) : null;
     const lengthMinutes = parseRuntimeMinutes(detail?.Runtime || null);
     const genres = normalizeGenres((detail?.Genre || "").split(",").map((part) => part.trim()));
 

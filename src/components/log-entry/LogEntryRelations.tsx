@@ -3,10 +3,10 @@
 
 import { Search, X } from "lucide-react";
 import Image from "next/image";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import type { EntryDoc } from "@/context/DataContext";
 import { RELATION_OPTIONS, type RelationType } from "@/services/relations";
 import type { EditableRelation } from "../../types/log-entry";
-import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { SectionHeader } from "./SectionHeader";
 
 interface LogEntryRelationsProps {
@@ -30,7 +30,6 @@ interface LogEntryRelationsProps {
 
 export function LogEntryRelations({
   relations,
-  setRelations,
   relationQuery,
   onRelationQueryChange,
   selectedRelationDoc,
@@ -42,7 +41,6 @@ export function LogEntryRelations({
   relatedTargetIdSet,
   onAddRelation,
   onRemoveRelation,
-  error,
   onError,
   isViewMode,
 }: LogEntryRelationsProps) {

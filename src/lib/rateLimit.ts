@@ -14,7 +14,7 @@ export interface RateLimiter {
 /**
  * Creates an in-memory rate limiter scoped to the returned object.
  * Each call to this factory creates a fresh instance with its own state.
- * 
+ *
  * @param windowMs The time window in milliseconds
  * @param max The maximum number of requests allowed within the window
  */

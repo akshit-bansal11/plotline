@@ -92,22 +92,23 @@ export const normalizeGenreName = (value: string | null | undefined): string | n
 };
 
 // ─── Normalization: Status
-const STATUS_ALIASES: ReadonlyArray<{ readonly pattern: RegExp; readonly value: ApiSearchStatus }> = [
-  {
-    pattern: /(finished|ended|complete|released|finished airing|finished publishing)/i,
-    value: "finished",
-  },
-  {
-    pattern:
-      /(airing|publishing|currently airing|currently publishing|returning|in production|ongoing)/i,
-    value: "airing",
-  },
-  { pattern: /(not yet aired|not yet published)/i, value: "not_yet_aired" },
-  {
-    pattern: /(planned|announced|tba|to be announced|upcoming)/i,
-    value: "tba",
-  },
-] as const;
+const STATUS_ALIASES: ReadonlyArray<{ readonly pattern: RegExp; readonly value: ApiSearchStatus }> =
+  [
+    {
+      pattern: /(finished|ended|complete|released|finished airing|finished publishing)/i,
+      value: "finished",
+    },
+    {
+      pattern:
+        /(airing|publishing|currently airing|currently publishing|returning|in production|ongoing)/i,
+      value: "airing",
+    },
+    { pattern: /(not yet aired|not yet published)/i, value: "not_yet_aired" },
+    {
+      pattern: /(planned|announced|tba|to be announced|upcoming)/i,
+      value: "tba",
+    },
+  ] as const;
 
 export const normalizeStatusName = (value: string | null | undefined): ApiSearchStatus | null => {
   if (!value) return null;
@@ -201,7 +202,9 @@ export const normalizeGamePlatform = (value: string | null | undefined): string 
 // ─── Normalization: Manga Serialization
 export const MANGA_SERIALIZATION_OPTIONS = ["Shonen Jump", "KakaoPage", "Naver Webtoon"] as const;
 
-const SERIALIZATION_ALIASES: Readonly<Record<string, (typeof MANGA_SERIALIZATION_OPTIONS)[number]>> = {
+const SERIALIZATION_ALIASES: Readonly<
+  Record<string, (typeof MANGA_SERIALIZATION_OPTIONS)[number]>
+> = {
   "shonen jump": "Shonen Jump",
   "weekly shonen jump": "Shonen Jump",
   kakaopage: "KakaoPage",
@@ -218,7 +221,7 @@ export const normalizeSerializationName = (value: string | null | undefined): st
 // ─── Helpers: Filter Generation
 export const getYearFilterOptions = (): YearFilterOption[] => {
   const ranges: YearFilterOption[] = [];
-  
+
   // Decades
   for (let start = 1900; start <= 1990; start += 10) {
     ranges.push({
@@ -228,7 +231,7 @@ export const getYearFilterOptions = (): YearFilterOption[] => {
       max: start + 9,
     });
   }
-  
+
   // Specific Years
   const currentYear = new Date().getFullYear();
   for (let year = 2001; year <= currentYear + 2; year += 1) {
@@ -239,7 +242,7 @@ export const getYearFilterOptions = (): YearFilterOption[] => {
       max: year,
     });
   }
-  
+
   return ranges;
 };
 
@@ -264,9 +267,12 @@ const MAL_MANGA_SUBTYPE_ALIASES: Readonly<Record<string, string>> = {
   doujinshi: "doujinshi",
 } as const;
 
-export const normalizeSubtype = (type: ApiBaseType, value: string | null | undefined): string | null => {
+export const normalizeSubtype = (
+  type: ApiBaseType,
+  value: string | null | undefined,
+): string | null => {
   if (!value) return null;
-  
+
   const normalized = value
     .trim()
     .toLowerCase()

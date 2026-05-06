@@ -1,12 +1,11 @@
 // File: src/lib/resolve/tmdbResolver.ts
 // Purpose: TMDB URL to media metadata resolver
 
-// ─── Internal — types
-import type { ParsedMediaUrl } from "@/utils/parseMediaUrl";
 import type { ResolvedMedia, ResolvedMediaType } from "@/lib/resolve/types";
-
 // ─── Internal — utils/lib
 import { safeFetchJson } from "@/lib/safeFetch";
+// ─── Internal — types
+import type { ParsedMediaUrl } from "@/utils/parseMediaUrl";
 
 // ─── Constants & Helpers
 const parseYear = (value?: string | null) => (value ? value.split("-")[0] : undefined);
@@ -44,7 +43,9 @@ export const resolveTmdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
 
   if (!response.ok) return null;
   const data = response.data;
-  const genres = Array.isArray(data.genres) ? data.genres.map(g => g.name).filter((v): v is string => Boolean(v)) : [];
+  const genres = Array.isArray(data.genres)
+    ? data.genres.map((g) => g.name).filter((v): v is string => Boolean(v))
+    : [];
 
   let imdbRating: number | null = null;
   if (data.imdb_id) {
@@ -53,7 +54,12 @@ export const resolveTmdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
       const omdbRes = await safeFetchJson<{ imdbRating?: string; Response?: string }>(
         `https://www.omdbapi.com/?apikey=${omdbApiKey}&i=${data.imdb_id}&plot=short`,
       );
-      if (omdbRes.ok && omdbRes.data.Response !== "False" && omdbRes.data.imdbRating && omdbRes.data.imdbRating !== "N/A") {
+      if (
+        omdbRes.ok &&
+        omdbRes.data.Response !== "False" &&
+        omdbRes.data.imdbRating &&
+        omdbRes.data.imdbRating !== "N/A"
+      ) {
         imdbRating = round1(Number(omdbRes.data.imdbRating));
         if (!Number.isFinite(imdbRating)) imdbRating = null;
       }
@@ -69,8 +75,12 @@ export const resolveTmdb = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia
     description: data.overview || undefined,
     rating: typeof data.vote_average === "number" ? round1(data.vote_average) : null,
     imdbRating,
-    lengthMinutes: parsed.mediaType === "movie" && typeof data.runtime === "number" ? data.runtime : null,
-    episodeCount: parsed.mediaType === "series" && typeof data.number_of_episodes === "number" ? data.number_of_episodes : null,
+    lengthMinutes:
+      parsed.mediaType === "movie" && typeof data.runtime === "number" ? data.runtime : null,
+    episodeCount:
+      parsed.mediaType === "series" && typeof data.number_of_episodes === "number"
+        ? data.number_of_episodes
+        : null,
     genresThemes: genres,
   };
 };

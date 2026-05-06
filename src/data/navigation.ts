@@ -2,7 +2,7 @@
 // Purpose: Navigation links and configuration for application sections
 
 // ─── Third-party: Icons
-import { BookOpen, Film, Gamepad2, Home, Sparkles, Tv } from "lucide-react";
+import { BookOpen, Film, Gamepad2, Home, type LucideIcon, Sparkles, Tv } from "lucide-react";
 
 // ─── Internal — types
 import type { SectionKey } from "@/context/SectionContext";
@@ -11,7 +11,7 @@ export interface SectionLink {
   readonly href: string;
   readonly label: string;
   readonly section: SectionKey;
-  readonly icon?: any;
+  readonly icon?: LucideIcon;
 }
 
 export interface SectionConfig {

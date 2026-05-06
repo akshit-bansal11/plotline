@@ -2,11 +2,7 @@
 // Purpose: Shared safeFetchJson and safeFetchHtml utilities for server-side API routes
 
 // ─── Internal — constants/config/data
-import {
-  FETCH_RETRY_COUNT,
-  FETCH_RETRY_DELAY_MS,
-  FETCH_TIMEOUT_MS,
-} from "@/constants/limits";
+import { FETCH_RETRY_COUNT, FETCH_RETRY_DELAY_MS, FETCH_TIMEOUT_MS } from "@/constants/limits";
 
 // ─── Internal — types
 export type FetchResult<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
@@ -18,7 +14,7 @@ export type FetchResult<T = unknown> = { ok: true; data: T } | { ok: false; erro
 export const safeFetchJson = async <T = unknown>(
   url: string,
   init?: RequestInit,
-  retries: number = FETCH_RETRY_COUNT
+  retries: number = FETCH_RETRY_COUNT,
 ): Promise<FetchResult<T>> => {
   const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -39,16 +35,16 @@ export const safeFetchJson = async <T = unknown>(
 
       if (shouldRetry && attempt < retries) {
         // Exponential backoff
-        await sleep(FETCH_RETRY_DELAY_MS * Math.pow(2, attempt));
+        await sleep(FETCH_RETRY_DELAY_MS * 2 ** attempt);
         continue;
       }
 
       return { ok: false, error };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Request failed";
-      
+
       if (attempt < retries) {
-        await sleep(FETCH_RETRY_DELAY_MS * Math.pow(2, attempt));
+        await sleep(FETCH_RETRY_DELAY_MS * 2 ** attempt);
         continue;
       }
 
@@ -67,7 +63,7 @@ export const safeFetchJson = async <T = unknown>(
  */
 export const safeFetchHtml = async (
   url: string,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
 ): Promise<string | null> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);

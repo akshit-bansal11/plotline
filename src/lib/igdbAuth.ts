@@ -33,7 +33,7 @@ export const getIgdbAccessToken = async (): Promise<{
   }
 
   const now = Date.now();
-  
+
   // Use cached token if valid and not expiring within 60s
   if (igdbTokenCache.token && igdbTokenCache.expiresAt > now + 60_000) {
     return { token: igdbTokenCache.token, error: "" };

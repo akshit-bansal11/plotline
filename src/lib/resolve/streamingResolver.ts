@@ -1,12 +1,11 @@
 // File: src/lib/resolve/streamingResolver.ts
 // Purpose: Netflix and Prime Video URL scraping and title resolver
 
+import type { ResolvedMedia, ResolvedMediaType } from "@/lib/resolve/types";
+// ─── Internal — utils/lib
+import { safeFetchHtml, safeFetchJson } from "@/lib/safeFetch";
 // ─── Internal — types
 import type { ParsedMediaUrl } from "@/utils/parseMediaUrl";
-import type { ResolvedMedia, ResolvedMediaType } from "@/lib/resolve/types";
-
-// ─── Internal — utils/lib
-import { safeFetchJson, safeFetchHtml } from "@/lib/safeFetch";
 
 // ─── Constants & Helpers
 const decodeHtmlEntities = (s: string) =>
@@ -19,13 +18,18 @@ const decodeHtmlEntities = (s: string) =>
 
 const stripServiceSuffix = (s: string) =>
   s
-    .replace(/^(Netflix|Amazon|Prime Video|Apple TV\+?|Disney\+?|Hulu|HBO Max|Peacock|Paramount\+?|Crunchyroll)\s*[:|]\s*/i, "")
+    .replace(
+      /^(Netflix|Amazon|Prime Video|Apple TV\+?|Disney\+?|Hulu|HBO Max|Peacock|Paramount\+?|Crunchyroll)\s*[:|]\s*/i,
+      "",
+    )
     .replace(/\s*[-–—|:]\s*(Netflix|Amazon|Prime Video|Watch|Stream|IMDb).*$/i, "")
     .replace(/\s*\(\d{4}\).*$/, "")
     .trim();
 
 const extractTitleFromHtml = (html: string): string | null => {
-  const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  const jsonLdMatches = html.matchAll(
+    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  );
   for (const m of jsonLdMatches) {
     try {
       const obj = JSON.parse(m[1]) as Record<string, unknown>;
@@ -33,7 +37,9 @@ const extractTitleFromHtml = (html: string): string | null => {
       if (typeof name === "string" && name.length > 0 && name.length < 200) {
         return decodeHtmlEntities(stripServiceSuffix(name));
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const ogMatch =
@@ -88,7 +94,9 @@ export const resolveByTitleSearch = async (
     }>(searchUrl, { headers });
 
     if (response.ok) {
-      const match = (response.data.results || []).find(item => item.media_type === "movie" || item.media_type === "tv");
+      const match = (response.data.results || []).find(
+        (item) => item.media_type === "movie" || item.media_type === "tv",
+      );
       if (match) {
         const type: ResolvedMediaType = match.media_type === "tv" ? "series" : "movie";
         return {
@@ -121,10 +129,11 @@ export const resolveByTitleSearch = async (
       const data = response.data;
       const type: ResolvedMediaType = data.Type === "series" ? "series" : "movie";
       const rating = data.imdbRating && data.imdbRating !== "N/A" ? Number(data.imdbRating) : null;
-      const ratingRounded = typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
+      const ratingRounded =
+        typeof rating === "number" && Number.isFinite(rating) ? round1(rating) : null;
       return {
         id: data.imdbID || title,
-        title: data.Title,
+        title: data.Title || title,
         image: data.Poster && data.Poster !== "N/A" ? data.Poster : null,
         year: data.Year?.match(/\d{4}/)?.[0],
         type: preferredType || type,
@@ -141,7 +150,9 @@ export const resolveByTitleSearch = async (
 /**
  * Resolve metadata from Netflix or Prime Video by scraping the page and searching by title
  */
-export const resolveNetflixOrPrime = async (parsed: ParsedMediaUrl): Promise<ResolvedMedia | null> => {
+export const resolveNetflixOrPrime = async (
+  parsed: ParsedMediaUrl,
+): Promise<ResolvedMedia | null> => {
   const scrapeUrl = parsed.cleanUrl ?? parsed.originalUrl;
   const extraHeaders: Record<string, string> | undefined =
     parsed.source === "netflix"

@@ -3,22 +3,13 @@
 
 "use client";
 
-// ─── React & Next
-	import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-
 // ─── Third-party
 import { Download, LogIn, LogOut, Settings, Upload, UserCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-
-// ─── Internal — types
-import type { LoggableMedia } from "@/types/log-entry";
-
-// ─── Internal — hooks
-import { useNavbarModals } from "@/hooks/useNavbarModals";
-import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
-
+// ─── React & Next
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 // ─── Internal — components
 import { AuthModal } from "@/components/auth/AuthModal";
 import { ProfileModal } from "@/components/auth/ProfileModal";
@@ -31,10 +22,14 @@ import { ImportExportModal } from "@/components/library/ImportExportModal";
 import { LinkDropZone } from "@/components/log-entry/LinkDropZone";
 import { LogEntryModal } from "@/components/log-entry/LogEntryModal";
 import { GlobalSearch, type GlobalSearchHandle } from "@/components/search/GlobalSearch";
-
 // ─── Internal — context
 import { useAuth } from "@/context/AuthContext";
 import { useSection } from "@/context/SectionContext";
+import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+// ─── Internal — hooks
+import { useNavbarModals } from "@/hooks/useNavbarModals";
+// ─── Internal — types
+import type { LoggableMedia } from "@/types/log-entry";
 
 export function Navbar() {
   const { setActiveSection } = useSection();
@@ -44,12 +39,24 @@ export function Navbar() {
 
   // ─── Hooks: Modals
   const {
-    isAuthOpen, openAuth, closeAuth,
-    isLogOpen, openLog, closeLog,
-    isProfileOpen, openProfile, closeProfile,
-    isImportExportOpen, openImportExport, closeImportExport,
-    isSettingsOpen, openSettings, closeSettings,
-    isProfileMenuOpen, toggleProfileMenu, closeProfileMenu,
+    isAuthOpen,
+    openAuth,
+    closeAuth,
+    isLogOpen,
+    openLog,
+    closeLog,
+    isProfileOpen,
+    openProfile,
+    closeProfile,
+    isImportExportOpen,
+    openImportExport,
+    closeImportExport,
+    isSettingsOpen,
+    openSettings,
+    closeSettings,
+    isProfileMenuOpen,
+    toggleProfileMenu,
+    closeProfileMenu,
   } = useNavbarModals();
 
   // ─── State: Pending
@@ -361,18 +368,8 @@ export function Navbar() {
       />
       <ProfileModal isOpen={isProfileOpen} onClose={closeProfile} />
       <ImportExportModal isOpen={isImportExportOpen} onClose={closeImportExport} />
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={closeSettings}
-        onSignOut={handleSignOut}
-      />
-      <LinkDropZone
-        onResolved={handleLinkDropResolved}
-        disabled={!user}
-        onRequireAuth={openAuth}
-      />
+      <SettingsModal isOpen={isSettingsOpen} onClose={closeSettings} onSignOut={handleSignOut} />
+      <LinkDropZone onResolved={handleLinkDropResolved} disabled={!user} onRequireAuth={openAuth} />
     </>
-  );
-}
   );
 }

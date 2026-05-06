@@ -14,19 +14,23 @@ interface LogEntryMetadataProps {
   readonly title: string;
   readonly image: string | null;
   readonly director: string;
+  readonly setDirector: (v: string) => void;
   readonly producer: string;
-  readonly cast: readonly string[];
-  readonly releaseYear: string;
+  readonly setProducer: (v: string) => void;
+  readonly imdbRating: string;
+  readonly setImdbRating: (v: string) => void;
   readonly description: string;
-  readonly isViewMode: boolean;
+  readonly setDescription: (v: string) => void;
+  readonly tags: readonly string[];
+  readonly setTags: (v: string[]) => void;
+  readonly cast: readonly string[];
+  readonly onCastChange: (v: string[]) => void;
+  readonly releaseYear: string;
+  readonly onReleaseYearChange: (v: string) => void;
+  readonly onTitleChange: (v: string) => void;
+  readonly isViewMode?: boolean;
   readonly activeField: string | null;
   readonly setActiveField: (field: string | null) => void;
-  readonly onTitleChange: (v: string) => void;
-  readonly onDirectorChange: (v: string) => void;
-  readonly onProducerChange: (v: string) => void;
-  readonly onCastChange: (v: string[]) => void;
-  readonly onReleaseYearChange: (v: string) => void;
-  readonly onDescriptionChange: (v: string) => void;
   readonly isRefetching?: boolean;
   readonly onRefetch?: () => void;
   readonly refetchError?: string | null;
@@ -36,7 +40,6 @@ interface LogEntryMetadataProps {
 
 export function LogEntryMetadata({
   mediaType,
-  isMovie,
   title = "",
   image = null,
   director,
@@ -49,7 +52,6 @@ export function LogEntryMetadata({
   setDescription,
   tags,
   setTags,
-  setIsMovie,
   cast = [],
   onCastChange,
   activeField,
@@ -218,10 +220,14 @@ export function LogEntryMetadata({
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">
+                <label
+                  htmlFor="meta-field1"
+                  className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+                >
                   {creatorLabels.field1}
                 </label>
                 <input
+                  id="meta-field1"
                   type="text"
                   value={director}
                   onChange={(e) => setDirector(e.target.value)}
@@ -230,10 +236,14 @@ export function LogEntryMetadata({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">
+                <label
+                  htmlFor="meta-field2"
+                  className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+                >
                   {creatorLabels.field2}
                 </label>
                 <input
+                  id="meta-field2"
                   type="text"
                   value={producer}
                   onChange={(e) => setProducer(e.target.value)}
@@ -245,8 +255,14 @@ export function LogEntryMetadata({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">IMDb Rating</label>
+                <label
+                  htmlFor="meta-imdb"
+                  className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+                >
+                  IMDb Rating
+                </label>
                 <input
+                  id="meta-imdb"
                   type="text"
                   value={imdbRating}
                   onChange={(e) => setImdbRating(e.target.value)}
@@ -255,8 +271,14 @@ export function LogEntryMetadata({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Release Year</label>
+                <label
+                  htmlFor="meta-year"
+                  className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+                >
+                  Release Year
+                </label>
                 <input
+                  id="meta-year"
                   type="text"
                   value={releaseYear}
                   onChange={(e) => onReleaseYearChange(e.target.value)}
@@ -267,8 +289,14 @@ export function LogEntryMetadata({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Description</label>
+              <label
+                htmlFor="meta-description"
+                className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+              >
+                Description
+              </label>
               <textarea
+                id="meta-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter description..."
@@ -278,17 +306,22 @@ export function LogEntryMetadata({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Genres & Themes</label>
-              <div className="flex flex-wrap gap-2">
-                {tags && tags.map((tag: string, idx: number) => (
-                  <span 
-                    key={tag + idx}
+              <label
+                htmlFor="genres-themes-container"
+                className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+              >
+                Genres & Themes
+              </label>
+              <div id="genres-themes-container" className="flex flex-wrap gap-2">
+                {tags?.map((tag: string) => (
+                  <span
+                    key={tag}
                     className="px-3 py-1 bg-zinc-900 text-zinc-400 text-[11px] font-bold uppercase tracking-wider rounded-lg border border-zinc-800 flex items-center gap-2 group"
                   >
                     {tag}
                     <button
                       type="button"
-                      onClick={() => setTags(tags.filter((_: any, i: number) => i !== idx))}
+                      onClick={() => setTags(tags.filter((t: string) => t !== tag))}
                       className="hover:text-red-400 transition-colors"
                     >
                       <Search className="w-3 h-3 rotate-45" />
@@ -299,11 +332,16 @@ export function LogEntryMetadata({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">{castLabel}</label>
-              <div className="flex flex-wrap gap-2">
-                {cast && cast.map((person: string, idx: number) => (
-                  <span 
-                    key={person + idx}
+              <label
+                htmlFor="cast-container"
+                className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+              >
+                {castLabel}
+              </label>
+              <div id="cast-container" className="flex flex-wrap gap-2">
+                {cast?.map((person: string) => (
+                  <span
+                    key={person}
                     className="px-3 py-1 bg-zinc-900 text-zinc-400 text-[11px] font-bold uppercase tracking-wider rounded-lg border border-zinc-800 flex items-center gap-2"
                   >
                     {person}
@@ -321,7 +359,6 @@ export function LogEntryMetadata({
                 <div className="mt-2">
                   <input
                     ref={castRef}
-                    autoFocus
                     placeholder="Comma-separated names..."
                     defaultValue={cast.join(", ")}
                     onBlur={(e) => {

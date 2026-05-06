@@ -4,17 +4,15 @@
 "use client";
 
 // ─── Icons
-import { Clock, List, Star, Zap } from "lucide-react";
+import { Clock, Star, Zap } from "lucide-react";
 import Image from "next/image";
 // ─── React & Next
-import { useMemo } from "react";
 
 // ─── Internal — hooks
 import { useAuth } from "@/context/AuthContext";
-import { useDashboardStats } from "@/hooks/useDashboardStats";
-
 // ─── Internal — types
 import type { EntryDoc, EntryMediaType, EntryStatus } from "@/context/DataContext";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { isCompletionStatus } from "@/types/log-entry";
 
 // ─── Internal — utils
@@ -39,13 +37,7 @@ interface DashboardSectionProps {
 /**
  * Renders the primary dashboard view with statistics and activity.
  */
-export function DashboardSection({
-  entries,
-  status,
-  error,
-  onRetry,
-  onSelectEntry,
-}: DashboardSectionProps) {
+export function DashboardSection({ entries, onSelectEntry }: DashboardSectionProps) {
   const { user } = useAuth();
   const uid = user?.uid || null;
 
@@ -140,8 +132,9 @@ export function DashboardSection({
 // ─── Sub-components
 function ActivityRow({ entry, onSelect }: { entry: EntryDoc; onSelect: () => void }) {
   return (
-    <div
-      className="group flex items-center gap-3 p-2 rounded-xl bg-zinc-900/40 border border-transparent hover:border-zinc-800 hover:bg-zinc-800/40 transition-all cursor-pointer"
+    <button
+      type="button"
+      className="group w-full flex items-center gap-3 p-2 rounded-xl bg-zinc-900/40 border border-transparent hover:border-zinc-800 hover:bg-zinc-800/40 transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-white/10 text-left"
       onClick={onSelect}
     >
       <div className="w-10 h-14 rounded-lg overflow-hidden bg-zinc-800 flex-shrink-0">
@@ -170,7 +163,7 @@ function ActivityRow({ entry, onSelect }: { entry: EntryDoc; onSelect: () => voi
           {entry.userRating}
         </div>
       )}
-    </div>
+    </button>
   );
 }
 

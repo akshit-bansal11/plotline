@@ -4,7 +4,6 @@
 "use client";
 
 // ─── React
-import React from "react";
 
 // ─── Icons
 import { Edit, Trash2 } from "lucide-react";
@@ -40,18 +39,20 @@ export function MediaCardFooter({
           </>
         )}
       </div>
-      
+
       {/* Action Row */}
       {showActions && (
         <div className="flex gap-2 mt-3 pointer-events-auto">
-          <button 
+          <button
+            type="button"
             onClick={onEdit}
             className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg flex items-center justify-center gap-2 transition-colors border border-white/10"
           >
             <Edit className="w-3 h-3" />
             <span className="text-[10px] font-bold uppercase">Edit</span>
           </button>
-          <button 
+          <button
+            type="button"
             onClick={onDelete}
             className="flex-1 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg flex items-center justify-center gap-2 transition-colors border border-red-500/20"
           >

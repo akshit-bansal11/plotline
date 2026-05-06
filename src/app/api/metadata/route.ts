@@ -11,13 +11,15 @@ import {
 } from "@/constants/limits";
 import { getEnrichedMetadata } from "@/lib/metadata";
 import { getMissingFields } from "@/lib/metadata/merge";
+// ─── Internal — types
+import type { MetadataResult } from "@/lib/metadata/tmdb";
 // ─── Internal — utils/lib
 import { createInMemoryRateLimit } from "@/lib/rateLimit";
 // ─── Internal — schemas
 import { metadataParamsSchema } from "@/schemas/logEntry";
 
 // ─── State: Caches & Limiter
-const cache = new Map<string, { timestamp: number; data: any | null }>();
+const cache = new Map<string, { timestamp: number; data: MetadataResult | null }>();
 const limiter = createInMemoryRateLimit(RATE_LIMIT_WINDOW_MS, METADATA_RATE_LIMIT_MAX);
 
 /**

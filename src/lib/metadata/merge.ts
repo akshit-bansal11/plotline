@@ -37,9 +37,9 @@ export const getMissingFields = (data: MetadataResult | null, mediaType: EntryMe
           "genreIds",
           "description",
         ];
-  
+
   if (!data) return required;
-  
+
   const missing: string[] = [];
   if (!data.title || data.title.trim().length === 0) missing.push("title");
   if (!data.type || data.type !== mediaType) missing.push("type");
@@ -49,7 +49,7 @@ export const getMissingFields = (data: MetadataResult | null, mediaType: EntryMe
   if (!Array.isArray(data.genresThemes) || data.genresThemes.length === 0)
     missing.push("genresThemes");
   if (!Array.isArray(data.genreIds) || data.genreIds.length === 0) missing.push("genreIds");
-  
+
   if (mediaType === "movie") {
     if (!isValidNumber(data.lengthMinutes) || (data.lengthMinutes ?? 0) <= 0)
       missing.push("lengthMinutes");
@@ -57,7 +57,7 @@ export const getMissingFields = (data: MetadataResult | null, mediaType: EntryMe
     if (!isValidNumber(data.episodeCount) || (data.episodeCount ?? 0) <= 0)
       missing.push("episodeCount");
   }
-  
+
   return missing;
 };
 
@@ -72,7 +72,7 @@ export const logMissingFields = (
 ) => {
   const missing = getMissingFields(data, mediaType);
   if (missing.length === 0) return;
-  
+
   console.warn("[metadata] missing fields", {
     source,
     mediaType,
@@ -91,7 +91,7 @@ export const mergeMetadata = (
   secondary: MetadataResult | null,
 ): MetadataResult | null => {
   if (!primary && !secondary) return null;
-  
+
   console.log("[metadata] merging", {
     primaryTitle: primary?.title,
     secondaryTitle: secondary?.title,
@@ -104,15 +104,15 @@ export const mergeMetadata = (
 
   const primaryDesc = primary.description || "";
   const secondaryDesc = secondary.description || "";
-  
+
   const genres = Array.from(
     new Set([...(primary.genresThemes || []), ...(secondary.genresThemes || [])]),
   );
-  
+
   const genreIds = Array.from(
     new Set([...(primary.genreIds || []), ...(secondary.genreIds || [])]),
   );
-  
+
   const cast = Array.from(new Set([...(primary.cast || []), ...(secondary.cast || [])])).slice(
     0,
     10,

@@ -23,7 +23,7 @@ export const parseYearValue = (value: string | null | undefined): string | null 
 export const parseRatingValue = (
   value: string | null | undefined,
   min: number,
-  max: number
+  max: number,
 ): number | null => {
   if (!value) return null;
   const trimmed = value.trim();

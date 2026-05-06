@@ -3,20 +3,15 @@
 
 "use client";
 
-// ─── React
-import React from "react";
-
 // ─── Icons
-import { Search, RefreshCw, X } from "lucide-react";
-
-// ─── Internal — components
-import { LogEntryMetadata } from "./LogEntryMetadata";
-
+import { RefreshCw, Search, X } from "lucide-react";
+import Image from "next/image";
 // ─── Internal — types
 import type { EntryMediaType } from "@/types/log-entry";
-
 // ─── Internal — utils
 import { cn } from "@/utils";
+// ─── Internal — components
+import { LogEntryMetadata } from "./LogEntryMetadata";
 
 interface LogEntryEditLeftPanelProps {
   state: {
@@ -57,7 +52,7 @@ interface LogEntryEditLeftPanelProps {
     playTime: string;
     platform: string;
     externalId: string | null;
-    currentMode: string;
+    currentMode: "create" | "view" | "edit";
   };
   isRefetching: boolean;
   handleRefetch: () => void;
@@ -67,20 +62,37 @@ interface LogEntryEditLeftPanelProps {
 /**
  * Renders the left side of the entry editor (Metadata, Cast, Tags).
  */
-export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refetchError }: LogEntryEditLeftPanelProps) {
+export function LogEntryEditLeftPanel({
+  state,
+  isRefetching,
+  handleRefetch,
+  refetchError,
+}: LogEntryEditLeftPanelProps) {
   const {
-    title, setTitle,
-    mediaType, setMediaType,
-    isMovie, setIsMovie,
-    image, setImage,
-    description, setDescription,
-    releaseYear, setReleaseYear,
-    director, setDirector,
-    producer, setProducer,
-    tags, setTags,
-    imdbRating, setImdbRating,
-    activeField, setActiveField,
-    cast, setCast,
+    title,
+    setTitle,
+    mediaType,
+    setMediaType,
+    isMovie,
+
+    image,
+    setImage,
+    description,
+    setDescription,
+    releaseYear,
+    setReleaseYear,
+    director,
+    setDirector,
+    producer,
+    setProducer,
+    tags,
+    setTags,
+    imdbRating,
+    setImdbRating,
+    activeField,
+    setActiveField,
+    cast,
+    setCast,
   } = state;
 
   return (
@@ -89,11 +101,12 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
       <div className="flex gap-6">
         <div className="flex-shrink-0 w-32 group relative">
           {image ? (
-            <div className="w-full h-48 rounded-lg overflow-hidden border border-zinc-800 shadow-xl bg-zinc-900">
-              <img src={image} alt="Poster" className="w-full h-full object-cover" />
-              <button 
+            <div className="w-full h-48 rounded-lg overflow-hidden border border-zinc-800 shadow-xl bg-zinc-900 relative">
+              <Image src={image} alt="Poster" fill className="object-cover" />
+              <button
+                type="button"
                 onClick={() => setImage(null)}
-                className="absolute top-2 right-2 p-1 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 p-1 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
               >
                 <X className="w-3 h-3 text-white" />
               </button>
@@ -108,8 +121,14 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
 
         <div className="flex-grow space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Title</label>
+            <label
+              htmlFor="edit-title"
+              className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest"
+            >
+              Title
+            </label>
             <input
+              id="edit-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -120,8 +139,14 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
 
           <div className="flex gap-4">
             <div className="flex-grow space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Type</label>
+              <label
+                htmlFor="edit-type"
+                className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest"
+              >
+                Type
+              </label>
               <select
+                id="edit-type"
                 value={mediaType}
                 onChange={(e) => setMediaType(e.target.value as EntryMediaType)}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -134,8 +159,14 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
               </select>
             </div>
             <div className="w-24 space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Year</label>
+              <label
+                htmlFor="edit-year"
+                className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest"
+              >
+                Year
+              </label>
               <input
+                id="edit-year"
                 type="text"
                 value={releaseYear}
                 onChange={(e) => setReleaseYear(e.target.value)}
@@ -150,6 +181,7 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
       {/* Refetch Trigger */}
       <div className="flex flex-col gap-2">
         <button
+          type="button"
           onClick={handleRefetch}
           disabled={isRefetching}
           className="flex items-center justify-center gap-2 w-full py-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-900 disabled:text-zinc-700 text-zinc-200 text-xs font-bold uppercase tracking-widest rounded-md border border-zinc-700 transition-all"
@@ -157,7 +189,9 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
           <RefreshCw className={cn("w-3 h-3", isRefetching && "animate-spin")} />
           {isRefetching ? "Refetching..." : "Update Metadata from API"}
         </button>
-        {refetchError && <span className="text-[10px] text-red-500 font-medium px-1">{refetchError}</span>}
+        {refetchError && (
+          <span className="text-[10px] text-red-500 font-medium px-1">{refetchError}</span>
+        )}
       </div>
 
       {/* Metadata Fields (extracted component) */}
@@ -165,7 +199,6 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
         <LogEntryMetadata
           mediaType={mediaType}
           isMovie={isMovie}
-          setIsMovie={setIsMovie}
           title={title}
           image={image}
           director={director}
@@ -185,7 +218,7 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
           releaseYear={releaseYear}
           onReleaseYearChange={setReleaseYear}
           onTitleChange={setTitle}
-          currentMode={state.currentMode as any}
+          currentMode={state.currentMode as "create" | "view" | "edit"}
           externalId={state.externalId}
           onRefetch={handleRefetch}
           isRefetching={isRefetching}
@@ -195,4 +228,3 @@ export function LogEntryEditLeftPanel({ state, isRefetching, handleRefetch, refe
     </div>
   );
 }
-

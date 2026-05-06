@@ -3,13 +3,12 @@
 
 "use client";
 
-// ─── React
-import { useCallback, useEffect, useId } from "react";
-import { createPortal } from "react-dom";
-
 // ─── Third-party
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+// ─── React
+import { useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 // ─── Internal — utils
 import { cn } from "@/utils";

@@ -206,5 +206,5 @@ export const ALL_COUNTRIES: { readonly code: string; readonly name: string }[] =
 
 // ─── Derived Popular Countries
 export const POPULAR_COUNTRIES = POPULAR_CODES.map((code) =>
-  ALL_COUNTRIES.find((c) => c.code === code)
-).filter((c): c is typeof ALL_COUNTRIES[number] => Boolean(c));
+  ALL_COUNTRIES.find((c) => c.code === code),
+).filter((c): c is (typeof ALL_COUNTRIES)[number] => Boolean(c));

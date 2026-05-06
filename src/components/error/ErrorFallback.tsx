@@ -4,10 +4,9 @@
 "use client";
 
 // ─── React
-import type { ReactNode } from "react";
 
 // ─── Third-party
-import { RefreshCw, AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface ErrorFallbackProps {
   error?: Error;
@@ -25,7 +24,7 @@ export const ErrorFallback = ({ error, resetError }: ErrorFallbackProps) => {
       </div>
 
       <h2 className="mb-2 text-2xl font-semibold text-white">Something went wrong</h2>
-      
+
       <p className="mb-8 max-w-md text-neutral-400">
         Plotline encountered an unexpected error. Don't worry, your data is safe.
         {error?.message && (

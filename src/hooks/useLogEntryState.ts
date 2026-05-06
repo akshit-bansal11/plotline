@@ -5,12 +5,11 @@
 
 // ─── React
 import { useEffect, useMemo, useRef, useState } from "react";
-
-// ─── Internal — hooks
-import { useInitialListIds, useLists } from "@/hooks/use-log-entry";
-
 // ─── Internal — types
 import type { EntryDoc } from "@/context/DataContext";
+// ─── Internal — hooks
+import { useInitialListIds, useLists } from "@/hooks/use-log-entry";
+import type { RelationType } from "@/services/relations";
 import type {
   EditableRelation,
   EntryMediaType,
@@ -18,13 +17,9 @@ import type {
   LoggableMedia,
 } from "@/types/log-entry";
 import { isCompletionStatus } from "@/types/log-entry";
-import type { RelationType } from "@/services/relations";
 
 // ─── Internal — utils
-import {
-  buildEditableRelations,
-  formatISODate,
-} from "@/utils/log-entry";
+import { buildEditableRelations, formatISODate } from "@/utils/log-entry";
 
 interface LogEntryStateOptions {
   uid: string | null;
@@ -46,7 +41,7 @@ export function useLogEntryState({
 }: LogEntryStateOptions) {
   // ─── Core State
   const [currentMode, setCurrentMode] = useState(mode);
-  
+
   // ─── Metadata State
   const [title, setTitle] = useState("");
   const [mediaType, setMediaType] = useState<EntryMediaType>("movie");
@@ -63,7 +58,7 @@ export function useLogEntryState({
   const [playTime, setPlayTime] = useState("");
   const [platform, setPlatform] = useState("");
   const [activeField, setActiveField] = useState<string | null>(null);
-  
+
   // ─── Progress State
   const [status, setStatus] = useState<EntryStatusValue>("unspecified");
   const [userRating, setUserRating] = useState("");
@@ -76,23 +71,38 @@ export function useLogEntryState({
   const [currentVolumes, setCurrentVolumes] = useState(0);
   const [volumeCount, setVolumeCount] = useState(0);
   const [rewatchCount, setRewatchCount] = useState(0);
-  const [playTime, setPlayTime] = useState("");
-  const [platform, setPlatform] = useState("");
   const [startDate, setStartDate] = useState("");
   const [completionDate, setCompletionDate] = useState("");
   const [completionUnknown, setCompletionUnknown] = useState(false);
-  
+
   // ─── Lists & Relations State
   const [selectedListIds, setSelectedListIds] = useState<Set<string>>(new Set());
   const [initialListIds, setInitialListIds] = useState<Set<string>>(new Set());
   const [relations, setRelations] = useState<EditableRelation[]>([]);
-  const [originalRelations, setOriginalRelations] = useState<{ targetId: string; type: string; createdAtMs: number }[]>([]);
+  const [originalRelations, setOriginalRelations] = useState<
+    { targetId: string; type: string; createdAtMs: number }[]
+  >([]);
   const [relationQuery, setRelationQuery] = useState("");
   const [selectedRelationDoc, setSelectedRelationDoc] = useState<EntryDoc | null>(null);
   const [selectedRelationType, setSelectedRelationType] = useState<RelationType>("Sequel");
 
+  interface LogEntrySnapshot {
+    title: string;
+    status: EntryStatusValue;
+    userRating: string;
+    platform: string;
+    playTime: string;
+    description: string;
+    releaseYear: string;
+    director: string;
+    producer: string;
+    imdbRating: string;
+    cast: string[];
+    tags: string[];
+  }
+
   const initializedRef = useRef<string | number | null>(null);
-  const snapshotRef = useRef<any>(null);
+  const snapshotRef = useRef<LogEntrySnapshot | null>(null);
 
   // ─── Hooks: Lists
   const lists = useLists(uid, isOpen);
@@ -104,12 +114,12 @@ export function useLogEntryState({
     initialMedia?.listIds,
     lists,
     setSelectedListIds,
-    setInitialListIds
+    setInitialListIds,
   );
 
   const availableLists = useMemo(
     () => lists.filter((l) => l.types.includes(mediaType)),
-    [lists, mediaType]
+    [lists, mediaType],
   );
 
   const normalizedInitial = useMemo(() => {
@@ -140,37 +150,51 @@ export function useLogEntryState({
       if (normalizedInitial.id && initializedRef.current === normalizedInitial.id) return;
       initializedRef.current = normalizedInitial.id;
 
-      const entryDoc = currentMode !== "create" 
-        ? (entries.find(e => String(e.id) === String(normalizedInitial.id)) ?? null)
-        : null;
+      const entryDoc =
+        currentMode !== "create"
+          ? (entries.find((e) => String(e.id) === String(normalizedInitial.id)) ?? null)
+          : null;
 
       // Reset state
       setTitle(normalizedInitial.title);
       setMediaType(normalizedInitial.inferredType);
       setIsMovie(!!normalizedInitial.inferredIsMovie);
       setImage(normalizedInitial.image ?? null);
-      setExternalId(entryDoc?.externalId ? String(entryDoc.externalId) : (normalizedInitial.id ? String(normalizedInitial.id) : null));
+      setExternalId(
+        entryDoc?.externalId
+          ? String(entryDoc.externalId)
+          : normalizedInitial.id
+            ? String(normalizedInitial.id)
+            : null,
+      );
       setDescription(normalizedInitial.description ?? "");
       setReleaseYear(normalizedInitial.releaseYear ?? normalizedInitial.year ?? "");
       setDirector(normalizedInitial.director ?? entryDoc?.director ?? "");
       setProducer(normalizedInitial.producer ?? entryDoc?.producer ?? "");
-      setTags(Array.isArray(normalizedInitial.genresThemes) ? normalizedInitial.genresThemes.slice(0, 10) : []);
-      setCast(Array.isArray(normalizedInitial.cast) ? normalizedInitial.cast : (entryDoc?.cast || []));
-      setPlayTime(entryDoc?.playTime || normalizedInitial.playTime || "");
+      setTags(
+        Array.isArray(normalizedInitial.genresThemes)
+          ? normalizedInitial.genresThemes.slice(0, 10)
+          : [],
+      );
+      setCast(
+        Array.isArray(normalizedInitial.cast) ? normalizedInitial.cast : entryDoc?.cast || [],
+      );
+      setPlayTime(String(entryDoc?.playTime || normalizedInitial.playTime || ""));
       setPlatform(entryDoc?.platform || normalizedInitial.platform || "");
 
       const uRating = normalizedInitial.userRating ?? normalizedInitial.rating ?? null;
       setUserRating(uRating != null ? String(uRating) : "");
-      
+
       const iRating = normalizedInitial.imdbRating ?? normalizedInitial.rating ?? null;
       setImdbRating(iRating != null ? String(iRating) : "");
-      
+
       setStatus(normalizedInitial.status ?? "unspecified");
       setStartDate(entryDoc?.startDate ?? "");
-      
+
       if (isCompletionStatus(normalizedInitial.status ?? "unspecified")) {
         if (normalizedInitial.completionDateUnknown) setCompletionUnknown(true);
-        else if (normalizedInitial.completedAt) setCompletionDate(formatISODate(normalizedInitial.completedAt));
+        else if (normalizedInitial.completedAtMs)
+          setCompletionDate(formatISODate(normalizedInitial.completedAtMs));
         else setCompletionDate("");
       } else {
         setCompletionDate("");
@@ -187,13 +211,13 @@ export function useLogEntryState({
 
       if (normalizedInitial.relations) {
         const cleaned = normalizedInitial.relations
-          .filter(r => !r.inferred)
-          .map(r => ({
+          .filter((r) => !r.inferred)
+          .map((r) => ({
             targetId: String(r.targetId || "").trim(),
             type: String(r.type || "").trim(),
-            createdAtMs: r.createdAtMs || Date.now()
+            createdAtMs: r.createdAtMs || Date.now(),
           }))
-          .filter(r => r.targetId && r.type);
+          .filter((r) => r.targetId && r.type);
         setOriginalRelations(cleaned);
         setRelations(buildEditableRelations(cleaned, entries));
       }
@@ -204,17 +228,19 @@ export function useLogEntryState({
         status: normalizedInitial.status ?? "unspecified",
         userRating: uRating != null ? String(uRating) : "",
         platform: entryDoc?.platform ?? normalizedInitial.platform ?? "",
-        playTime: entryDoc?.playTime ?? normalizedInitial.playTime ?? "",
+        playTime: String(entryDoc?.playTime ?? normalizedInitial.playTime ?? ""),
         description: normalizedInitial.description ?? "",
         releaseYear: normalizedInitial.releaseYear ?? normalizedInitial.year ?? "",
         director: normalizedInitial.director ?? entryDoc?.director ?? "",
         producer: normalizedInitial.producer ?? entryDoc?.producer ?? "",
         imdbRating: iRating != null ? String(iRating) : "",
-        cast: Array.isArray(normalizedInitial.cast) ? normalizedInitial.cast : (entryDoc?.cast || []),
-        tags: Array.isArray(normalizedInitial.genresThemes) ? normalizedInitial.genresThemes.slice(0, 10) : []
+        cast: Array.isArray(normalizedInitial.cast) ? normalizedInitial.cast : entryDoc?.cast || [],
+        tags: Array.isArray(normalizedInitial.genresThemes)
+          ? normalizedInitial.genresThemes.slice(0, 10)
+          : [],
       };
     }
-  }, [isOpen, normalizedInitial, entries, mode]);
+  }, [isOpen, normalizedInitial, entries, mode, currentMode]);
 
   // ─── Dirty Tracking logic
   const isDirty = useMemo(() => {
@@ -234,46 +260,96 @@ export function useLogEntryState({
       JSON.stringify(cast) !== JSON.stringify(snap.cast) ||
       JSON.stringify(tags) !== JSON.stringify(snap.tags)
     );
-  }, [title, status, userRating, platform, playTime, description, releaseYear, director, producer, imdbRating, cast, tags]);
+  }, [
+    title,
+    status,
+    userRating,
+    platform,
+    playTime,
+    description,
+    releaseYear,
+    director,
+    producer,
+    imdbRating,
+    cast,
+    tags,
+  ]);
 
   return {
-    currentMode, setCurrentMode,
-    title, setTitle,
-    mediaType, setMediaType,
-    isMovie, setIsMovie,
-    image, setImage,
-    externalId, setExternalId,
-    description, setDescription,
-    releaseYear, setReleaseYear,
-    director, setDirector,
-    producer, setProducer,
-    tags, setTags,
-    imdbRating, setImdbRating,
-    cast, setCast,
-    activeField, setActiveField,
-    status, setStatus,
-    userRating, setUserRating,
-    currentEpisodes, setCurrentEpisodes,
-    episodeCount, setEpisodeCount,
-    currentSeasons, setCurrentSeasons,
-    totalSeasons, setTotalSeasons,
-    currentChapters, setCurrentChapters,
-    chapterCount, setChapterCount,
-    currentVolumes, setCurrentVolumes,
-    volumeCount, setVolumeCount,
-    rewatchCount, setRewatchCount,
-    playTime, setPlayTime,
-    platform, setPlatform,
-    startDate, setStartDate,
-    completionDate, setCompletionDate,
-    completionUnknown, setCompletionUnknown,
-    selectedListIds, setSelectedListIds,
-    initialListIds, setInitialListIds,
-    relations, setRelations,
-    originalRelations, setOriginalRelations,
-    relationQuery, setRelationQuery,
-    selectedRelationDoc, setSelectedRelationDoc,
-    selectedRelationType, setSelectedRelationType,
+    currentMode,
+    setCurrentMode,
+    title,
+    setTitle,
+    mediaType,
+    setMediaType,
+    isMovie,
+    setIsMovie,
+    image,
+    setImage,
+    externalId,
+    setExternalId,
+    description,
+    setDescription,
+    releaseYear,
+    setReleaseYear,
+    director,
+    setDirector,
+    producer,
+    setProducer,
+    tags,
+    setTags,
+    imdbRating,
+    setImdbRating,
+    cast,
+    setCast,
+    activeField,
+    setActiveField,
+    status,
+    setStatus,
+    userRating,
+    setUserRating,
+    currentEpisodes,
+    setCurrentEpisodes,
+    episodeCount,
+    setEpisodeCount,
+    currentSeasons,
+    setCurrentSeasons,
+    totalSeasons,
+    setTotalSeasons,
+    currentChapters,
+    setCurrentChapters,
+    chapterCount,
+    setChapterCount,
+    currentVolumes,
+    setCurrentVolumes,
+    volumeCount,
+    setVolumeCount,
+    rewatchCount,
+    setRewatchCount,
+    playTime,
+    setPlayTime,
+    platform,
+    setPlatform,
+    startDate,
+    setStartDate,
+    completionDate,
+    setCompletionDate,
+    completionUnknown,
+    setCompletionUnknown,
+    selectedListIds,
+    setSelectedListIds,
+    initialListIds,
+    setInitialListIds,
+    relations,
+    setRelations,
+    originalRelations,
+    setOriginalRelations,
+    relationQuery,
+    setRelationQuery,
+    selectedRelationDoc,
+    setSelectedRelationDoc,
+    selectedRelationType,
+    setSelectedRelationType,
     isDirty,
     availableLists,
     lists,

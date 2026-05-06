@@ -5,20 +5,24 @@
 
 // ─── Internal — constants
 import {
-  STREAMING_PROVIDERS,
   ANIME_PROVIDERS,
   GAME_PROVIDERS,
   type OTTProvider,
+  STREAMING_PROVIDERS,
 } from "@/constants/ottProviders";
 
 /**
  * Simulates a set of available providers using a deterministic hash of the title and a seed (e.g., country).
  * This ensures the same title in the same country always shows the same providers.
  */
-const pickProviders = (pool: OTTProvider[], title: string, seed: string): OTTProvider[] => {
+const pickProviders = (
+  pool: readonly OTTProvider[],
+  title: string,
+  seed: string,
+): OTTProvider[] => {
   let hash = 0;
   const str = (title + seed).toLowerCase();
-  
+
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i);
     hash |= 0;
@@ -26,7 +30,7 @@ const pickProviders = (pool: OTTProvider[], title: string, seed: string): OTTPro
 
   const rand = Math.abs(hash % 100);
   let count = 0;
-  
+
   if (rand < 20) count = 0;
   else if (rand < 50) count = 1;
   else if (rand < 80) count = 2;

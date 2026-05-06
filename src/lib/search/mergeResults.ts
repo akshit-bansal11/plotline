@@ -25,11 +25,10 @@ export interface SearchFilters {
 }
 
 // ─── Internal — utils/lib
-import { 
-  normalizeGenreName, 
-  normalizeSerializationName, 
+import {
+  normalizeGamePlatform,
+  normalizeSerializationName,
   normalizeStudioName,
-  normalizeGamePlatform
 } from "@/utils/searchFilters";
 
 // ─── Constants & Helpers
@@ -44,7 +43,11 @@ const parseYearNumber = (value?: string | null) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const resolveSubtype = (type: ApiBaseType, subtype: string | null, lengthMinutes: number | null) => {
+const resolveSubtype = (
+  type: ApiBaseType,
+  subtype: string | null,
+  lengthMinutes: number | null,
+) => {
   if (type === "movie") {
     if (subtype) return subtype;
     if (typeof lengthMinutes === "number" && lengthMinutes > 0 && lengthMinutes <= 45)
@@ -62,8 +65,12 @@ export const mergeSearchResult = (primary: SearchResult, secondary: SearchResult
   const primaryOverview = primary.overview || "";
   const secondaryOverview = secondary.overview || "";
 
-  const mergedGenres = Array.from(new Set([...(primary.genres || []), ...(secondary.genres || [])]));
-  const mergedPlatforms = Array.from(new Set([...(primary.platforms || []), ...(secondary.platforms || [])]));
+  const mergedGenres = Array.from(
+    new Set([...(primary.genres || []), ...(secondary.genres || [])]),
+  );
+  const mergedPlatforms = Array.from(
+    new Set([...(primary.platforms || []), ...(secondary.platforms || [])]),
+  );
   const mergedLength = primary.lengthMinutes ?? secondary.lengthMinutes ?? null;
 
   return {
@@ -71,10 +78,15 @@ export const mergeSearchResult = (primary: SearchResult, secondary: SearchResult
     title: primary.title || secondary.title,
     image: primary.image ?? secondary.image,
     year: primary.year || secondary.year,
-    overview: primaryOverview.length >= secondaryOverview.length ? primaryOverview : secondaryOverview,
+    overview:
+      primaryOverview.length >= secondaryOverview.length ? primaryOverview : secondaryOverview,
     rating: primary.rating ?? secondary.rating ?? null,
     genres: mergedGenres,
-    subtype: resolveSubtype(primary.type, primary.subtype ?? secondary.subtype ?? null, mergedLength),
+    subtype: resolveSubtype(
+      primary.type,
+      primary.subtype ?? secondary.subtype ?? null,
+      mergedLength,
+    ),
     status: primary.status ?? secondary.status ?? null,
     episodeCount: primary.episodeCount ?? secondary.episodeCount ?? null,
     chapterCount: primary.chapterCount ?? secondary.chapterCount ?? null,
@@ -140,11 +152,13 @@ export const itemMatchesFilters = (item: SearchResult, filters: SearchFilters): 
   }
 
   if (typeof filters.episodeMin === "number") {
-    if (typeof item.episodeCount !== "number" || item.episodeCount < filters.episodeMin) return false;
+    if (typeof item.episodeCount !== "number" || item.episodeCount < filters.episodeMin)
+      return false;
   }
 
   if (typeof filters.chapterMin === "number") {
-    if (typeof item.chapterCount !== "number" || item.chapterCount < filters.chapterMin) return false;
+    if (typeof item.chapterCount !== "number" || item.chapterCount < filters.chapterMin)
+      return false;
   }
 
   if (filters.status && item.status !== filters.status) return false;
@@ -154,11 +168,15 @@ export const itemMatchesFilters = (item: SearchResult, filters: SearchFilters): 
   }
 
   if (filters.platform) {
-    if (!item.platforms?.some(p => normalizeGamePlatform(p) === filters.platform)) return false;
+    if (!item.platforms?.some((p) => normalizeGamePlatform(p) === filters.platform)) return false;
   }
 
   if (filters.serialization) {
-    if (!item.serialization || normalizeSerializationName(item.serialization) !== filters.serialization) return false;
+    if (
+      !item.serialization ||
+      normalizeSerializationName(item.serialization) !== filters.serialization
+    )
+      return false;
   }
 
   return true;
@@ -168,18 +186,18 @@ export const itemMatchesFilters = (item: SearchResult, filters: SearchFilters): 
  * Apply filters to a list of search results
  */
 export const applyFilters = (results: SearchResult[], filters: SearchFilters): SearchResult[] => {
-  const hasActiveFilters = 
-    filters.searchType || 
-    filters.subtype || 
-    filters.genres.size > 0 || 
-    filters.yearMin !== null || 
-    filters.yearMax !== null || 
-    filters.ratingMin !== null || 
-    filters.episodeMin !== null || 
-    filters.chapterMin !== null || 
-    filters.status || 
-    filters.studio || 
-    filters.platform || 
+  const hasActiveFilters =
+    filters.searchType ||
+    filters.subtype ||
+    filters.genres.size > 0 ||
+    filters.yearMin !== null ||
+    filters.yearMax !== null ||
+    filters.ratingMin !== null ||
+    filters.episodeMin !== null ||
+    filters.chapterMin !== null ||
+    filters.status ||
+    filters.studio ||
+    filters.platform ||
     filters.serialization;
 
   if (!hasActiveFilters) return results;
@@ -200,7 +218,8 @@ export const sanitizeResult = (item: SearchResult): SearchResult => {
     genres,
     platforms,
     studio: normalizedStudio || item.studio || null,
-    serialization: normalizeSerializationName(item.serialization || null) || item.serialization || null,
+    serialization:
+      normalizeSerializationName(item.serialization || null) || item.serialization || null,
     status: item.status || null,
     subtype: resolveSubtype(item.type, item.subtype || null, item.lengthMinutes ?? null),
   };

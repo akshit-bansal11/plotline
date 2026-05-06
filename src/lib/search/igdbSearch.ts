@@ -17,13 +17,10 @@ export interface IgdbGame {
   total_rating?: number;
 }
 
+import { normalizeGamePlatform, normalizeGenreName } from "@/utils/searchFilters";
+import { getIgdbAccessToken } from "../igdbAuth";
 // ─── Internal — utils/lib
 import { safeFetchJson } from "../safeFetch";
-import { getIgdbAccessToken } from "../igdbAuth";
-import { 
-  normalizeGamePlatform, 
-  normalizeGenreName 
-} from "@/utils/searchFilters";
 
 // ─── Constants & Helpers
 const formatIgdbCoverUrl = (url?: string) => {
@@ -64,7 +61,7 @@ export const searchIGDBGames = async (
 
   const sanitized = queryValue.replace(/"/g, "").trim();
   const body = `search "${sanitized}"; fields id,name,cover.url,first_release_date,summary,genres.name,platforms.name,aggregated_rating,rating,total_rating; limit 20;`;
-  
+
   const response = await safeFetchJson<IgdbGame[]>("https://api.igdb.com/v4/games", {
     method: "POST",
     headers: {
@@ -74,7 +71,7 @@ export const searchIGDBGames = async (
     },
     body,
   });
-  
+
   if (!response.ok) return { results: [], error: response.error };
 
   const payload = response.data;
@@ -83,17 +80,17 @@ export const searchIGDBGames = async (
     const year = item.first_release_date
       ? String(new Date(item.first_release_date * 1000).getUTCFullYear())
       : "";
-    
+
     const ratingValue = normalizeIgdbRating(
       item.aggregated_rating ?? item.total_rating ?? item.rating,
     );
-    
+
     const genres = normalizeGenres((item.genres || []).map((genre) => genre.name));
-    
+
     const normalizedPlatforms = (item.platforms || [])
       .map((platform) => normalizeGamePlatform(platform.name))
       .filter((platform): platform is string => Boolean(platform));
-    
+
     const platforms = Array.from(new Set(normalizedPlatforms));
 
     return {

@@ -54,14 +54,14 @@ export const searchTmdbIdByTitle = async (
       ? `&year=${encodeURIComponent(year)}`
       : `&first_air_date_year=${encodeURIComponent(year)}`
     : "";
-  
+
   const url = `https://api.themoviedb.org/3/search/${tmdbType}?query=${encodeURIComponent(title)}${yearParam}`;
   const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
-  
+
   const response = await safeFetchJson<{ results?: Array<{ id?: number }> }>(finalUrl, { headers });
   if (!response.ok) return null;
-  
+
   const payload = response.data;
   const match = payload.results?.[0];
   return match?.id ? String(match.id) : null;
@@ -83,12 +83,12 @@ export const fetchTmdbCredits = async (
   const url = `https://api.themoviedb.org/3/${tmdbType}/${encodeURIComponent(id)}/credits?language=en-US`;
   const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
-  
+
   const response = await safeFetchJson<{
     cast?: Array<{ name?: string }>;
     crew?: Array<{ name?: string; job?: string }>;
   }>(finalUrl, { headers });
-  
+
   if (!response.ok) return { cast: [], director: null };
 
   const data = response.data;
@@ -128,7 +128,7 @@ export const fetchTmdbMetadataById = async (
   const url = `https://api.themoviedb.org/3/${tmdbType}/${encodeURIComponent(id)}?language=en-US`;
   const headers = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : undefined;
   const finalUrl = bearerToken ? url : `${url}&api_key=${apiKey}`;
-  
+
   const [detailsRes, credits] = await Promise.all([
     safeFetchJson<{
       title?: string;

@@ -3,40 +3,27 @@
 
 "use client";
 
-// ─── React & Next
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-
-// ─── Firebase
-import { serverTimestamp, Timestamp } from "firebase/firestore";
-
 // ─── Icons
 import { X } from "lucide-react";
-
-// ─── Internal — services
-import { deleteLogEntry, saveLogEntry } from "@/services/log-entry";
-
-// ─── Internal — hooks
-import { useAuth } from "@/context/AuthContext";
-import { useData } from "@/context/DataContext";
-import { useBodyScrollLock, useEscapeKey } from "@/hooks/use-log-entry";
-import { useLogEntryState } from "@/hooks/useLogEntryState";
-import { useLogEntryHandlers } from "@/hooks/useLogEntryHandlers";
-
+// ─── React & Next
+import { useCallback, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 // ─── Internal — components
 import { NewListModal } from "@/components/lists/NewListModal";
 import { InfographicToast } from "@/components/overlay/InfographicToast";
 import { acquireModalZIndex } from "@/components/overlay/modalStack";
-import { LogEntryViewPanel } from "./LogEntryViewPanel";
-import { LogEntryEditLeftPanel } from "./LogEntryEditLeftPanel";
-import { LogEntryRightPanel } from "./LogEntryRightPanel";
-import { LogEntryFooter } from "./LogEntryFooter";
-
+// ─── Internal — hooks
+import { useAuth } from "@/context/AuthContext";
+import { useData } from "@/context/DataContext";
+import { useBodyScrollLock, useEscapeKey } from "@/hooks/use-log-entry";
+import { useLogEntryHandlers } from "@/hooks/useLogEntryHandlers";
+import { useLogEntryState } from "@/hooks/useLogEntryState";
 // ─── Internal — types
-import type {
-  EntryMediaType,
-  LoggableMedia,
-} from "@/types/log-entry";
+import type { LoggableMedia } from "@/types/log-entry";
+import { LogEntryEditLeftPanel } from "./LogEntryEditLeftPanel";
+import { LogEntryFooter } from "./LogEntryFooter";
+import { LogEntryRightPanel } from "./LogEntryRightPanel";
+import { LogEntryViewPanel } from "./LogEntryViewPanel";
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -66,10 +53,8 @@ export function LogEntryModal({
 
   const {
     isSaving,
-    isDeleting,
     isRefetching,
     error,
-    setError,
     info,
     setInfo,
     refetchError,
@@ -81,7 +66,9 @@ export function LogEntryModal({
   // ─── UI Transitions & Overlays
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isNewListOpen, setIsNewListOpen] = useState(false);
-  const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(null);
+  const [duplicateToast, setDuplicateToast] = useState<{ id: number; message: string } | null>(
+    null,
+  );
   const modalZIndexRef = useRef<number | null>(null);
 
   // ─── Hooks: Lifecycle
@@ -96,52 +83,51 @@ export function LogEntryModal({
     if (!initialMedia) return null;
     return {
       ...initialMedia,
-      id: initialMedia.id
+      id: initialMedia.id,
     };
   }, [initialMedia]);
 
   // ─── Handlers
-  const onSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    await handleSave({
-      uid,
-      currentMode: state.currentMode,
-      normalizedInitial,
-      ...state,
-      onSuccess: () => {
-        setInfo("Saved successfully.");
-        setTimeout(() => {
-          setInfo(null);
-          onClose();
-        }, 1500);
-      }
-    });
-  }, [uid, state, handleSave, normalizedInitial, onClose]);
-
   const onRefetch = useCallback(async () => {
-    if (!state.externalId) return;
-    await handleRefetchMetadata(
-      state.externalId,
-      state.mediaType,
-      state.title,
-      (metadata: any) => {
-        state.setTitle(metadata.title || state.title);
-        state.setDescription(metadata.description || state.description);
-        state.setImage(metadata.image || state.image);
-        state.setReleaseYear(metadata.releaseYear || state.releaseYear);
-        state.setDirector(metadata.director || state.director);
-        state.setProducer(metadata.producer || state.producer);
-        state.setTags(metadata.genresThemes || state.tags);
-        state.setImdbRating(metadata.imdbRating || state.imdbRating);
-        state.setCast(metadata.cast || state.cast);
-        state.setPlayTime(metadata.playTime || state.playTime);
-        state.setPlatform(metadata.platform || state.platform);
-      }
-    );
+    await handleRefetchMetadata(state.externalId, state.mediaType, state.title, (payload) => {
+      if (payload.title) state.setTitle(payload.title);
+      if (payload.description) state.setDescription(payload.description);
+      if (payload.image) state.setImage(payload.image);
+      if (payload.releaseYear) state.setReleaseYear(payload.releaseYear);
+      if (payload.director) state.setDirector(payload.director);
+      if (payload.producer) state.setProducer(payload.producer);
+      if (payload.genresThemes) state.setTags(payload.genresThemes);
+      if (payload.imdbRating) state.setImdbRating(payload.imdbRating);
+      if (payload.cast) state.setCast(payload.cast);
+    });
   }, [state, handleRefetchMetadata]);
 
+  const onSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      await handleSave({
+        uid,
+        ...state,
+        normalizedInitial,
+        onSuccess: () => {
+          setInfo("Saved successfully.");
+          setTimeout(() => {
+            setInfo(null);
+            onClose();
+          }, 1500);
+        },
+      });
+    },
+    [uid, state, handleSave, normalizedInitial, onClose, setInfo],
+  );
+
   const onDelete = useCallback(async () => {
-    await handleDeleteAction(uid, normalizedInitial?.id ? String(normalizedInitial.id) : undefined, entries, onClose);
+    await handleDeleteAction(
+      uid,
+      normalizedInitial?.id ? String(normalizedInitial.id) : undefined,
+      entries,
+      onClose,
+    );
   }, [uid, normalizedInitial, entries, onClose, handleDeleteAction]);
 
   // ─── Render
@@ -151,18 +137,20 @@ export function LogEntryModal({
     modalZIndexRef.current = acquireModalZIndex();
   }
 
-  const activeEntryDoc = state.currentMode !== "create" 
-    ? (entries.find(e => String(e.id) === String(normalizedInitial?.id)) || null)
-    : null;
+  const activeEntryDoc =
+    state.currentMode !== "create"
+      ? entries.find((e) => String(e.id) === String(normalizedInitial?.id)) || null
+      : null;
 
   return createPortal(
-    <div 
+    <div
       className="fixed inset-0 flex items-center justify-center p-6 bg-black/75 backdrop-blur-sm"
       style={{ zIndex: modalZIndexRef.current || 1000 }}
     >
       <div className="relative w-full max-w-[1200px] bg-[#0c0c0c] rounded-2xl overflow-hidden flex flex-col shadow-2xl border border-white/5 h-[90vh] max-h-[720px]">
         {/* Close Button */}
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-4 right-4 text-zinc-600 hover:text-zinc-300 transition-colors z-50"
         >
@@ -172,10 +160,7 @@ export function LogEntryModal({
         {/* Content Area */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {state.currentMode === "view" && activeEntryDoc ? (
-            <LogEntryViewPanel 
-              entry={activeEntryDoc} 
-              onEdit={() => state.setCurrentMode("edit")} 
-            />
+            <LogEntryViewPanel entry={activeEntryDoc} onEdit={() => state.setCurrentMode("edit")} />
           ) : (
             <>
               {/* Left Panel: Metadata */}
@@ -183,18 +168,14 @@ export function LogEntryModal({
                 <LogEntryEditLeftPanel
                   state={state}
                   isRefetching={isRefetching}
-                  handleRefetch={handleRefetchMetadata}
+                  handleRefetch={onRefetch}
                   refetchError={refetchError}
                 />
               </div>
 
               {/* Right Panel: Progress & Tracking */}
               <div className="w-1/2">
-                <LogEntryRightPanel
-                  uid={uid}
-                  state={state}
-                  setIsNewListOpen={setIsNewListOpen}
-                />
+                <LogEntryRightPanel uid={uid} state={state} setIsNewListOpen={setIsNewListOpen} />
               </div>
             </>
           )}
@@ -225,7 +206,7 @@ export function LogEntryModal({
         isOpen={isNewListOpen}
         onClose={() => setIsNewListOpen(false)}
         defaultType={state.mediaType}
-        onCreated={(list) => state.setSelectedListIds(prev => new Set([...prev, list.id]))}
+        onCreated={(list) => state.setSelectedListIds((prev) => new Set([...prev, list.id]))}
       />
       <InfographicToast
         isOpen={Boolean(duplicateToast)}
@@ -234,6 +215,6 @@ export function LogEntryModal({
         onClose={() => setDuplicateToast(null)}
       />
     </div>,
-    document.body
+    document.body,
   );
 }

@@ -47,12 +47,9 @@ export interface TmdbDetail {
   genres?: Array<{ id?: number; name?: string }>;
 }
 
+import { normalizeGenreName, normalizeStatusName } from "@/utils/searchFilters";
 // ─── Internal — utils/lib
 import { safeFetchJson } from "../safeFetch";
-import { 
-  normalizeGenreName, 
-  normalizeStatusName 
-} from "@/utils/searchFilters";
 
 // ─── Constants
 const TMDB_MOVIE_GENRE_MAP: Record<number, string> = {
@@ -88,7 +85,11 @@ const normalizeGenres = (genres: Array<string | null | undefined>) => {
   return Array.from(set);
 };
 
-const resolveSubtype = (type: ApiBaseType, subtype: string | null, lengthMinutes: number | null) => {
+const resolveSubtype = (
+  type: ApiBaseType,
+  subtype: string | null,
+  lengthMinutes: number | null,
+) => {
   if (type === "movie") {
     if (subtype) return subtype;
     if (typeof lengthMinutes === "number" && lengthMinutes > 0 && lengthMinutes <= 45)
@@ -128,16 +129,20 @@ export const fetchTmdbDetails = async (id: number, type: "movie" | "tv") => {
   if (!response.ok) return null;
 
   const payload = response.data;
-  const genres = normalizeGenres((payload.genres || []).map((g) => g.name).filter((g): g is string => Boolean(g)));
+  const genres = normalizeGenres(
+    (payload.genres || []).map((g) => g.name).filter((g): g is string => Boolean(g)),
+  );
 
   const runtime = typeof payload.runtime === "number" ? payload.runtime : null;
-  const episodeRuntime = Array.isArray(payload.episode_run_time) && payload.episode_run_time.length > 0
-    ? payload.episode_run_time[0] || null
-    : null;
+  const episodeRuntime =
+    Array.isArray(payload.episode_run_time) && payload.episode_run_time.length > 0
+      ? payload.episode_run_time[0] || null
+      : null;
 
   return {
     status: normalizeStatusName(payload.status),
-    episodeCount: typeof payload.number_of_episodes === "number" ? payload.number_of_episodes : null,
+    episodeCount:
+      typeof payload.number_of_episodes === "number" ? payload.number_of_episodes : null,
     lengthMinutes: type === "movie" ? runtime : episodeRuntime,
     genres,
   };
@@ -149,12 +154,16 @@ export const fetchTmdbDetails = async (id: number, type: "movie" | "tv") => {
 export const searchTMDB = async (
   queryValue: string,
 ): Promise<{ results: SearchResult[]; error: string }> => {
-  const endpoint = buildTmdbUrl(`/search/multi?query=${encodeURIComponent(queryValue)}&include_adult=false`);
+  const endpoint = buildTmdbUrl(
+    `/search/multi?query=${encodeURIComponent(queryValue)}&include_adult=false`,
+  );
   if (!endpoint.url) {
     return { results: [], error: "Movie/series data provider is not configured." };
   }
 
-  const response = await safeFetchJson<{ results?: TmdbResult[] }>(endpoint.url, { headers: endpoint.headers });
+  const response = await safeFetchJson<{ results?: TmdbResult[] }>(endpoint.url, {
+    headers: endpoint.headers,
+  });
   if (!response.ok) return { results: [], error: response.error };
 
   const payload = response.data;

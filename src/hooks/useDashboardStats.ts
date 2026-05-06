@@ -5,12 +5,10 @@
 
 // ─── React
 import { useMemo } from "react";
-
-// ─── Internal — hooks
-import { useDashboardData } from "@/hooks/useDashboardData";
-
 // ─── Internal — types
 import type { EntryDoc, EntryMediaType } from "@/context/DataContext";
+// ─── Internal — hooks
+import { useDashboardData } from "@/hooks/useDashboardData";
 import { isCompletionStatus } from "@/types/log-entry";
 
 /**
@@ -22,7 +20,7 @@ export function useDashboardStats(entries: EntryDoc[]) {
     () => entries.filter((e) => isCompletionStatus(e.status)),
     [entries],
   );
-  
+
   const metricsByType = useDashboardData(completedEntries);
 
   const heroStats = useMemo(

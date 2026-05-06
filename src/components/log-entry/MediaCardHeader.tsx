@@ -4,7 +4,6 @@
 "use client";
 
 // ─── React
-import React from "react";
 
 // ─── Icons
 import { Star } from "lucide-react";
@@ -36,6 +35,7 @@ export function MediaCardHeader({
       {userRating && (
         <div className="pointer-events-auto">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onRatingClick?.();
@@ -52,15 +52,16 @@ export function MediaCardHeader({
       {showStatusControl && status && (
         <div className="pointer-events-auto">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onStatusClick?.();
             }}
             className={cn(
               "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border backdrop-blur-md transition-all shadow-xl",
-              status === "completed" 
-                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" 
-                : "bg-blue-500/20 border-blue-500/40 text-blue-300"
+              status === "completed"
+                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                : "bg-blue-500/20 border-blue-500/40 text-blue-300",
             )}
           >
             {entryStatusLabels[status]}

@@ -3,11 +3,10 @@
 
 "use client";
 
-// ─── React
-import { useMemo, useRef, useState } from "react";
-
 // ─── Third-party: Framer Motion
 import { motion, useInView } from "motion/react";
+// ─── React
+import { useRef } from "react";
 
 // ─── Internal — hooks
 import { useFilteredItems } from "@/hooks/useFilteredItems";
@@ -43,7 +42,7 @@ export function MediaSection<TItem>({
 }: MediaSectionProps<TItem>) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  
+
   const { filterRaw, setFilterRaw, filteredItems } = useFilteredItems({
     items,
     getGenresThemes,
@@ -73,9 +72,7 @@ export function MediaSection<TItem>({
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="w-full"
       >
-        <div className="px-4 md:px-8">
-          {children(filteredItems)}
-        </div>
+        <div className="px-4 md:px-8">{children(filteredItems)}</div>
       </motion.div>
     </section>
   );

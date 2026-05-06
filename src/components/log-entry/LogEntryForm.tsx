@@ -1,14 +1,13 @@
 // File: src/components/log-entry/LogEntryForm.tsx
 // Purpose: Main form fields and progress tracking for log entries
 
-import { ChevronDown } from "lucide-react";
-import { cn, entryStatusLabels, entryMediaTypeLabels } from "@/utils";
-import type { EntryMediaType, EntryStatusValue } from "../../types/log-entry";
 import { StarRating } from "@/components/ui/StarRating";
-import { Stepper } from "./Stepper";
+import { cn, entryMediaTypeLabels, entryStatusLabels } from "@/utils";
+import type { EntryMediaType, EntryStatusValue } from "../../types/log-entry";
+import { todayISODate } from "../../utils/log-entry";
 import { SectionHeader } from "./SectionHeader";
 import { StatColumn } from "./StatColumn";
-import { todayISODate } from "../../utils/log-entry";
+import { Stepper } from "./Stepper";
 
 interface LogEntryFormProps {
   readonly status: EntryStatusValue;
@@ -57,7 +56,7 @@ export const statusCategories = {
   active: ["watching", "reading", "playing", "rewatching", "rereading", "replaying"],
   planning: ["plan_to_watch", "plan_to_read", "plan_to_play", "backlogged"],
   completed: ["completed", "fully_completed"],
-  paused: ["on_hold", "dropped"]
+  paused: ["on_hold", "dropped"],
 };
 
 export const getStatusBadgeClass = (s: EntryStatusValue) => {
@@ -120,9 +119,7 @@ export function LogEntryForm({
   onCompletionDateChange,
   completionUnknown,
   onCompletionUnknownChange,
-  statusIsComplete,
   isViewMode,
-  isMovie,
   imdbRating,
   lengthMinutes,
   playTime,
@@ -130,6 +127,8 @@ export function LogEntryForm({
   platform,
   onPlatformChange,
 }: LogEntryFormProps) {
+  const isAnimeMovie = mediaType === "anime" && isMovie;
+
   if (isViewMode) {
     return (
       <div className="flex flex-col gap-6">
@@ -164,10 +163,7 @@ export function LogEntryForm({
 
           {(mediaType === "series" || (mediaType === "anime" && !isMovie)) && (
             <>
-              <StatColumn
-                label="EPISODES"
-                value={`${currentEpisodes} / ${episodeCount || "?"}`}
-              />
+              <StatColumn label="EPISODES" value={`${currentEpisodes} / ${episodeCount || "?"}`} />
               <StatColumn label="SEASONS" value={`${currentSeasons} / ${totalSeasons || "?"}`} />
             </>
           )}
@@ -180,9 +176,11 @@ export function LogEntryForm({
           )}
 
           {rewatchCount > 0 && (
-            <StatColumn 
-              label={mediaType === "game" ? "REPLAYS" : mediaType === "manga" ? "REREADS" : "REWATCHES"} 
-              value={String(rewatchCount)} 
+            <StatColumn
+              label={
+                mediaType === "game" ? "REPLAYS" : mediaType === "manga" ? "REREADS" : "REWATCHES"
+              }
+              value={String(rewatchCount)}
             />
           )}
 
@@ -190,7 +188,9 @@ export function LogEntryForm({
           {playTime && <StatColumn label="PLAY TIME" value={playTime} />}
           {platform && <StatColumn label="PLATFORM" value={platform} />}
           {startDate && <StatColumn label="STARTED" value={startDate} />}
-          {completionDate && !completionUnknown && <StatColumn label="COMPLETED" value={completionDate} />}
+          {completionDate && !completionUnknown && (
+            <StatColumn label="COMPLETED" value={completionDate} />
+          )}
         </div>
       </div>
     );
@@ -204,12 +204,16 @@ export function LogEntryForm({
           <SectionHeader title="Status" />
           <div className="flex flex-col gap-4">
             {Object.entries(statusCategories).map(([category, opts]) => {
-              const filteredOpts = opts.filter(o => statusOptions.includes(o as any));
+              const filteredOpts = opts.filter((o) =>
+                statusOptions.includes(o as EntryStatusValue),
+              );
               if (filteredOpts.length === 0) return null;
 
               return (
                 <div key={category} className="space-y-2">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-600 px-1">{category}</span>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-600 px-1">
+                    {category}
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {filteredOpts.map((opt) => {
                       const isSelected = status === opt;
@@ -222,7 +226,7 @@ export function LogEntryForm({
                             "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all border",
                             isSelected
                               ? getStatusBadgeClass(opt as EntryStatusValue)
-                              : "bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400"
+                              : "bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400",
                           )}
                         >
                           {entryStatusLabels[opt as EntryStatusValue] || opt.replace("_", " ")}
@@ -281,8 +285,14 @@ export function LogEntryForm({
           {mediaType === "game" && (
             <div className="grid grid-cols-2 gap-4 col-span-full">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Play Time</label>
+                <label
+                  htmlFor="form-playtime"
+                  className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+                >
+                  Play Time
+                </label>
                 <input
+                  id="form-playtime"
                   type="text"
                   value={playTime}
                   onChange={(e) => onPlayTimeChange(e.target.value)}
@@ -291,8 +301,14 @@ export function LogEntryForm({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Platform</label>
+                <label
+                  htmlFor="form-platform"
+                  className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1"
+                >
+                  Platform
+                </label>
                 <input
+                  id="form-platform"
                   type="text"
                   value={platform}
                   onChange={(e) => onPlatformChange(e.target.value)}
@@ -302,11 +318,7 @@ export function LogEntryForm({
               </div>
             </div>
           )}
-          <Stepper
-            label={rewatchLabel}
-            value={rewatchCount}
-            onValueChange={onRewatchCountChange}
-          />
+          <Stepper label={rewatchLabel} value={rewatchCount} onValueChange={onRewatchCountChange} />
         </div>
       </div>
 
@@ -342,7 +354,7 @@ export function LogEntryForm({
                   "px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border",
                   isSelected
                     ? "bg-blue-600/10 border-blue-500/50 text-blue-400"
-                    : "bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400"
+                    : "bg-zinc-900/50 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400",
                 )}
               >
                 {list.name}
@@ -357,9 +369,15 @@ export function LogEntryForm({
         <SectionHeader title="Dates" />
         <div className="grid grid-cols-2 gap-8">
           <div className="space-y-2">
-            <label className="text-[10px] font-mono uppercase tracking-widest text-[#555]">Start Date</label>
+            <label
+              htmlFor="form-start-date"
+              className="text-[10px] font-mono uppercase tracking-widest text-[#555]"
+            >
+              Start Date
+            </label>
             <div className="flex items-center gap-2">
               <input
+                id="form-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => onStartDateChange(e.target.value)}
@@ -377,13 +395,18 @@ export function LogEntryForm({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-mono uppercase tracking-widest text-[#555]">Completion Date</label>
+              <label
+                htmlFor="form-completion-date"
+                className="text-[10px] font-mono uppercase tracking-widest text-[#555]"
+              >
+                Completion Date
+              </label>
               <button
                 type="button"
                 onClick={() => onCompletionUnknownChange(!completionUnknown)}
                 className={cn(
                   "text-[9px] font-bold uppercase transition-colors",
-                  completionUnknown ? "text-blue-400" : "text-zinc-600 hover:text-zinc-500"
+                  completionUnknown ? "text-blue-400" : "text-zinc-600 hover:text-zinc-500",
                 )}
               >
                 Unknown
@@ -391,6 +414,7 @@ export function LogEntryForm({
             </div>
             <div className="flex items-center gap-2">
               <input
+                id="form-completion-date"
                 type="date"
                 value={completionDate}
                 disabled={completionUnknown}

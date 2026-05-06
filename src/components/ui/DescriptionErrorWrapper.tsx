@@ -4,7 +4,6 @@
 "use client";
 
 // ─── React
-import type { ReactNode } from "react";
 
 // ─── Third-party
 import { AlertTriangle } from "lucide-react";

@@ -2,17 +2,7 @@
 // Purpose: Core logic for CSV parsing, data mapping, and Firestore batch operations for import/export
 
 // ─── Firebase
-import {
-  collection,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  Timestamp,
-  writeBatch,
-  doc,
-  limit,
-} from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, Timestamp } from "firebase/firestore";
 
 // ─── Internal — services
 import { db } from "@/lib/firebase";
