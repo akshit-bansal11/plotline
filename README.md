@@ -1,5 +1,7 @@
 # Plotline
 
+> **Plotline has moved into [Lorestep](https://lorestep.akshitbansal.dev/library).** This site now redirects there. Plotline's Firebase data was not migrated.
+
 Plotline is a cinematic media tracking platform for discovering, organizing, and managing movies, series, anime, manga, and games.  
 It combines metadata and search results from providers like TMDB, OMDB, MyAnimeList, and Twitch, then lets authenticated users manage personal libraries, lists, and log entries with Firebase-backed auth and data flows.
 
